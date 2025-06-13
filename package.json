@@ -1,0 +1,42 @@
+{
+  "name": "zg",
+  "version": "0.1.0",
+  "description": "A synchronous, in-memory graph database client generated from Zod schemas.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "zg": "dist/build/main.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "zg": "node --experimental-wasm-modules dist/build/main.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "zg",
+    "graph",
+    "database",
+    "zod",
+    "ptree",
+    "flatbuffers",
+    "synchronous",
+    "codegen"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/jest": "^29.5.14",
+    "commander": "^12.0.0",
+    "flatbuffers": "^24.3.25",
+    "jest": "^30.0.0",
+    "prolly-gunna": "^3.2.2",
+    "ts-jest": "^29.4.0",
+    "uuidv7": "^1.0.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  }
+}
