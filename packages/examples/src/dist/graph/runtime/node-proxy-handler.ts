@@ -3,15 +3,28 @@ import { PTree } from 'prolly-gunna';
 import { ZgDbClient } from '../client.js';
 import * as flatbuffers from 'flatbuffers';
 
-export function createNodeProxyHandler(ptree: PTree, client: ZgDbClient, buffer: flatbuffers.ByteBuffer, nodeName: string) {
+// This is a temporary mock. The real proxy will wrap a FlatBuffer.
+type MockTarget = {
+    buffer: flatbuffers.ByteBuffer,
+    data: any, // For now, we store the raw data for easy access.
+}
+
+export function createNodeProxyHandler(ptree: PTree, client: ZgDbClient, buffer: flatbuffers.ByteBuffer, nodeName: string, data: any) {
+    
+    const target = { buffer, data };
+
     return {
-        get(target: flatbuffers.ByteBuffer, prop: string | symbol) {
+        get(target: MockTarget, prop: string | symbol) {
             if (typeof prop === 'symbol') return undefined;
-            console.log(`Accessing '${prop}' on ${nodeName}`);
-            // TODO: Differentiate between scalar and relation properties.
-            // For scalars: use FlatBuffers accessors.
-            // For relations: use PTree index lookups.
-            return `value for ${prop}`;
+
+            // Return scalar properties directly from the mocked data.
+            if (prop in target.data) {
+                return target.data[prop];
+            }
+            
+            // TODO: Real relationship logic will go here, involving PTree lookups.
+            console.log(`Accessing '${prop}' on ${nodeName}, returning empty array for now.`);
+            return [];
         }
     };
 }
