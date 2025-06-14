@@ -7,7 +7,6 @@ import { loadConfig } from "./config-loader.js";
 import { processSchema } from "./schema-processor.js";
 import { generateFbs } from "./codegen/fbs-generator.js";
 import { runFlatc } from "./codegen/flatc-runner.js";
-import { generateTsClient } from "./codegen/ts-generator.js";
 
 program
   .command("build")
@@ -25,10 +24,10 @@ program
   .action(async (options) => {
     console.log(`Starting build from ${options.config}...`);
     const outputDir = path.resolve(process.cwd(), options.output);
-    const tempFbsPath = path.join(outputDir, "_schema.fbs");
+    const fbsPath = path.join(outputDir, "_schema.fbs");
 
     try {
-      // 1. Load and process the user's graph configuration
+      // 1. Load and process the graph config
       const config = await loadConfig(options.config);
       const processedSchema = processSchema(config.schema);
       console.log("✅ Schema loaded and processed.");
@@ -46,16 +45,12 @@ program
         path.resolve(process.cwd(), options.config),
         userConfigDestPath
       );
-      console.log(`✅ User graph config copied to ${userConfigDestPath}`);
+      console.log(`✅ Graph config copied to ${userConfigDestPath}`);
 
       // 5. Write temporary .fbs file and run the flatc compiler
-      await fs.writeFile(tempFbsPath, fbsSchema, "utf8");
-      await runFlatc(outputDir, tempFbsPath);
+      await fs.writeFile(fbsPath, fbsSchema, "utf8");
+      await runFlatc(outputDir, fbsPath);
       console.log("✅ flatc compiler executed successfully.");
-
-      // 6. Generate the final TypeScript client and runtime handlers
-      await generateTsClient(outputDir, processedSchema);
-      console.log("✅ TypeScript client and runtime generated.");
 
       console.log(
         `\n🎉 Build complete! Your graph client is ready at ${outputDir}`
@@ -63,14 +58,6 @@ program
     } catch (error) {
       console.error("\n❌ Build failed:", error);
       process.exit(1);
-    } finally {
-      // 7. Clean up the temporary FBS file
-      try {
-        await fs.unlink(tempFbsPath);
-        console.log("✅ Temporary files cleaned up.");
-      } catch (cleanupError) {
-        // This is not a fatal error, might happen if the build fails early
-      }
     }
   });
 
