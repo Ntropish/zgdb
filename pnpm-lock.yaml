@@ -115,6 +115,18 @@ importers:
         specifier: ^3.25.64
         version: 3.25.64
 
+  packages/runtime:
+    dependencies:
+      flatbuffers:
+        specifier: ^24.3.25
+        version: 24.12.23
+      prolly-gunna:
+        specifier: ^5.0.0
+        version: 5.0.0
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+
 packages:
 
   '@ampproject/remapping@2.3.0':
@@ -1508,6 +1520,9 @@ packages:
 
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
+
+  rxjs@7.8.2:
+    resolution: {integrity: sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==}
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
@@ -3351,6 +3366,10 @@ snapshots:
 
   resolve-pkg-maps@1.0.0: {}
 
+  rxjs@7.8.2:
+    dependencies:
+      tslib: 2.8.1
+
   semver@6.3.1: {}
 
   semver@7.7.2: {}
@@ -3473,8 +3492,7 @@ snapshots:
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
 
-  tslib@2.8.1:
-    optional: true
+  tslib@2.8.1: {}
 
   tsx@4.20.3:
     dependencies:

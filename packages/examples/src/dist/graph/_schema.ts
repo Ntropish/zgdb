@@ -2,7 +2,4 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-export { IdVector } from './id-vector.js';
-export { Post } from './post.js';
-export { Tag } from './tag.js';
-export { User } from './user.js';
+export * as GraphDB from './graph-db.js';

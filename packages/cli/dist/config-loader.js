@@ -35,15 +35,7 @@ export async function loadConfig(configPath) {
     const tempPath = absoluteConfigPath + `.${Date.now()}.mjs`;
     await fs.writeFile(tempPath, transpiledCode);
     try {
-        const config = await importFresh(tempPath);
-        // TODO: Add more robust validation logic here.
-        if (!config ||
-            !config.schema ||
-            !config.schema.nodes ||
-            !config.schema.edges) {
-            throw new Error("Invalid config file: must have a default export with a `schema` property containing `nodes` and `edges`.");
-        }
-        return config;
+        return (await importFresh(tempPath));
     }
     finally {
         // Cleanup the temporary file

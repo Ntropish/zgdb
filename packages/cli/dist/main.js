@@ -4,8 +4,7 @@ import { program } from "commander";
 import path from "path";
 import fs from "fs/promises";
 import { loadConfig } from "./config-loader.js";
-import { processSchema } from "./schema-processor.js";
-import { generateFbs } from "./codegen/fbs-generator.js";
+import { generateFbsSchema } from "./codegen/fbs-generator.js";
 import { runFlatc } from "./codegen/flatc-runner.js";
 program
     .command("build")
@@ -19,10 +18,8 @@ program
     try {
         // 1. Load and process the graph config
         const config = await loadConfig(options.config);
-        const processedSchema = processSchema(config.schema);
-        console.log("✅ Schema loaded and processed.");
         // 2. Generate the FlatBuffers schema (.fbs) string
-        const fbsSchema = generateFbs(processedSchema);
+        const fbsSchema = generateFbsSchema(config);
         console.log("✅ FlatBuffers schema generated in memory.");
         // 3. Ensure output directory exists
         await fs.mkdir(outputDir, { recursive: true });

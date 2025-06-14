@@ -14,16 +14,16 @@ declare const EdgeSchema: z.ZodObject<{
         backward: string;
     }>;
 }, "strip", z.ZodTypeAny, {
-    source: string;
     target: string;
+    source: string;
     cardinality: "one-to-one" | "one-to-many" | "many-to-many";
     name: {
         forward: string;
         backward: string;
     };
 }, {
-    source: string;
     target: string;
+    source: string;
     cardinality: "one-to-one" | "one-to-many" | "many-to-many";
     name: {
         forward: string;

@@ -1,53 +1,34 @@
 import { z } from "zod";
 
-// --- Node Definitions ---
-const userNode = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  age: z.number().int(),
-});
-
-const postNode = z.object({
-  id: z.string().uuid(),
-  title: z.string(),
-  published: z.boolean(),
-  viewCount: z.number().int(),
-});
-
-const tagNode = z.object({
-  id: z.string(),
-  name: z.string(),
-});
-
-// --- Graph Configuration ---
-const graphConfig = {
-  schema: {
-    nodes: {
-      user: userNode,
-      post: postNode,
-      tag: tagNode,
+const schema = {
+  user: {
+    fields: z.object({
+      name: z.string(),
+      age: z.number().int(),
+    }),
+    relations: {
+      posts: ["many", "post"],
     },
-    edges: [
-      {
-        source: "user",
-        target: "post",
-        cardinality: "one-to-many",
-        name: {
-          forward: "posts",
-          backward: "author",
-        },
-      },
-      {
-        source: "post",
-        target: "tag",
-        cardinality: "one-to-many",
-        name: {
-          forward: "tags",
-          backward: "posts",
-        },
-      },
-    ],
+  },
+  post: {
+    fields: z.object({
+      title: z.string(),
+      published: z.boolean(),
+      viewCount: z.number().int(),
+    }),
+    relations: {
+      tags: ["many", "tag"],
+      author: ["one", "user"],
+    },
+  },
+  tag: {
+    fields: z.object({
+      name: z.string(),
+    }),
+    relations: {
+      posts: ["many", "post"],
+    },
   },
 };
 
-export default graphConfig;
+export default schema;

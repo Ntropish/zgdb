@@ -36,8 +36,18 @@ name(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
+createdAt():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+}
+
+updatedAt():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+}
+
 static startTag(builder:flatbuffers.Builder) {
-  builder.startObject(2);
+  builder.startObject(4);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -48,15 +58,25 @@ static addName(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset) {
   builder.addFieldOffset(1, nameOffset, 0);
 }
 
+static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
+  builder.addFieldInt64(2, createdAt, BigInt('0'));
+}
+
+static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
+  builder.addFieldInt64(3, updatedAt, BigInt('0'));
+}
+
 static endTag(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createTag(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createTag(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   Tag.startTag(builder);
   Tag.addId(builder, idOffset);
   Tag.addName(builder, nameOffset);
+  Tag.addCreatedAt(builder, createdAt);
+  Tag.addUpdatedAt(builder, updatedAt);
   return Tag.endTag(builder);
 }
 }

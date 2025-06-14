@@ -1,7 +1,14 @@
-import { ProcessedSchema } from "../schema-processor.js";
+import { z } from "zod";
+type RelationType = "one" | "many";
+type RelationDefinition = [RelationType, string];
+interface SchemaDefinition {
+    fields: z.ZodObject<any>;
+    relations: Record<string, RelationDefinition>;
+}
+type Schema = Record<string, SchemaDefinition>;
 /**
- * Generates the full FlatBuffers schema (.fbs) file content as a string.
- * @param schema The processed schema object.
- * @returns The .fbs schema as a string.
+ * Generates FlatBuffers schema from a Zod-based schema definition
+ * following graph database design principles
  */
-export declare function generateFbs(schema: ProcessedSchema): string;
+export declare function generateFbsSchema(schema: Schema, namespace?: string): string;
+export {};

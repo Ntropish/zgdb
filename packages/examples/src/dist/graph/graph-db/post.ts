@@ -43,18 +43,28 @@ published():boolean {
 
 viewCount():number {
   const offset = this.bb!.__offset(this.bb_pos, 10);
-  return offset ? this.bb!.readFloat64(this.bb_pos + offset) : 0.0;
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
-author():string|null
-author(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-author(optionalEncoding?:any):string|Uint8Array|null {
+authorId():string|null
+authorId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+authorId(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
+createdAt():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+}
+
+updatedAt():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 16);
+  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+}
+
 static startPost(builder:flatbuffers.Builder) {
-  builder.startObject(5);
+  builder.startObject(7);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -70,11 +80,19 @@ static addPublished(builder:flatbuffers.Builder, published:boolean) {
 }
 
 static addViewCount(builder:flatbuffers.Builder, viewCount:number) {
-  builder.addFieldFloat64(3, viewCount, 0.0);
+  builder.addFieldInt32(3, viewCount, 0);
 }
 
-static addAuthor(builder:flatbuffers.Builder, authorOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, authorOffset, 0);
+static addAuthorId(builder:flatbuffers.Builder, authorIdOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(4, authorIdOffset, 0);
+}
+
+static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
+  builder.addFieldInt64(5, createdAt, BigInt('0'));
+}
+
+static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
+  builder.addFieldInt64(6, updatedAt, BigInt('0'));
 }
 
 static endPost(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -82,13 +100,15 @@ static endPost(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createPost(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, titleOffset:flatbuffers.Offset, published:boolean, viewCount:number, authorOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createPost(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, titleOffset:flatbuffers.Offset, published:boolean, viewCount:number, authorIdOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   Post.startPost(builder);
   Post.addId(builder, idOffset);
   Post.addTitle(builder, titleOffset);
   Post.addPublished(builder, published);
   Post.addViewCount(builder, viewCount);
-  Post.addAuthor(builder, authorOffset);
+  Post.addAuthorId(builder, authorIdOffset);
+  Post.addCreatedAt(builder, createdAt);
+  Post.addUpdatedAt(builder, updatedAt);
   return Post.endPost(builder);
 }
 }
