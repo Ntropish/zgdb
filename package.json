@@ -8,12 +8,7 @@
   "bin": {
     "zg": "dist/build/main.js"
   },
-  "scripts": {
-    "build": "tsc",
-    "test": "jest",
-    "zg": "node --experimental-wasm-modules dist/build/main.js",
-    "prepublishOnly": "npm run build"
-  },
+  "scripts": {},
   "keywords": [
     "zg",
     "graph",
