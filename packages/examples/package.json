@@ -1,5 +1,5 @@
 {
-  "name": "@zg/examples",
+  "name": "@zgdb/examples",
   "version": "0.1.0",
   "description": "A synchronous, in-memory graph database client generated from Zod schemas.",
   "main": "dist/index.js",
@@ -12,7 +12,7 @@
     "run-example:3": "node --loader ts-node/esm ./03-instant-search.ts"
   },
   "keywords": [
-    "zg",
+    "zgdb",
     "graph",
     "database",
     "zod",

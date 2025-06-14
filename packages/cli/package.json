@@ -1,5 +1,5 @@
 {
-  "name": "@zg/cli",
+  "name": "@zgdb/cli",
   "version": "0.1.0",
   "description": "A synchronous, in-memory graph database client generated from Zod schemas.",
   "main": "dist/index.js",
@@ -16,6 +16,7 @@
   },
   "keywords": [
     "zg",
+    "zgdb",
     "graph",
     "database",
     "zod",
