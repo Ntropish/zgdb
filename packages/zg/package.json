@@ -6,7 +6,7 @@
     "zg": "bin/zg.js"
   },
   "scripts": {
-    "prepublishOnly": "pnpm build --filter @zg/cli"
+    "prepublishOnly": "pnpm --filter @zg/cli run build"
   },
   "dependencies": {
     "@zg/cli": "workspace:*"
