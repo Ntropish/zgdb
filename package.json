@@ -1,5 +1,5 @@
 {
-  "name": "@zg",
+  "name": "@zgdb",
   "version": "0.1.0",
   "description": "A synchronous, in-memory graph database client generated from Zod schemas.",
   "main": "dist/index.js",
@@ -11,6 +11,7 @@
   "scripts": {},
   "keywords": [
     "zg",
+    "zgdb",
     "graph",
     "database",
     "zod",

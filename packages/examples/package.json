@@ -24,7 +24,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@zg/cli": "workspace:*",
+    "@zgdb/cli": "workspace:*",
     "@types/jest": "^29.5.14",
     "commander": "^12.0.0",
     "cross-env": "^7.0.3",
