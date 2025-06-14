@@ -3,19 +3,27 @@ import { PTree } from 'prolly-gunna';
 import type { User, Post, Tag } from './types.js';
 import { createApiProxyHandler } from './runtime/api-proxy-handler.js';
 
+
+export interface Collection<T extends {id: string}> extends Iterable<T> {
+    add(value: Omit<T, 'id'> & { id: string }): T;
+    get(id: string): T | undefined;
+    values(): IterableIterator<T>;
+}
+
+
 export type ZgDbClient = {
-    user: Map<string, User>;
-    post: Map<string, Post>;
-    tag: Map<string, Tag>;
+    user: Collection<User>;
+    post: Collection<Post>;
+    tag: Collection<Tag>;
 };
 
 export function createClient(ptree?: PTree): ZgDbClient {
     const db = ptree || new PTree();
     const client = {} as ZgDbClient;
     
-    client.user = new Proxy(new Map(), createApiProxyHandler(db, client, 'user'));
-    client.post = new Proxy(new Map(), createApiProxyHandler(db, client, 'post'));
-    client.tag = new Proxy(new Map(), createApiProxyHandler(db, client, 'tag'));
+    client.user = new Proxy({} as Collection<User>, createApiProxyHandler(db, client, 'user'));
+    client.post = new Proxy({} as Collection<Post>, createApiProxyHandler(db, client, 'post'));
+    client.tag = new Proxy({} as Collection<Tag>, createApiProxyHandler(db, client, 'tag'));
 
     return client;
 }
