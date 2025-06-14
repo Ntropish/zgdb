@@ -2,43 +2,46 @@
 import { z } from 'zod';
 import graphConfig from './graph.config.js';
 
-// --- Augmented Zod Schemas with Relationships ---
-// These schemas are extended from your base schemas in graph.config.ts
-// to include relationship fields. z.lazy() is used to handle circular dependencies.
+// --- Final Augmented Interfaces ---
+// These are the full TypeScript types for your nodes, including all relationships.
+// They are defined first to allow TypeScript to resolve circular dependencies.
+export interface User extends z.infer<typeof graphConfig.schema.nodes.user> {
+  posts: Post[];
+}
 
-// TypeScript needs to know the type of the schema before it is used in z.lazy()
-// So we declare them all first with a base type.
-let UserSchema: z.ZodObject<any>;
-let PostSchema: z.ZodObject<any>;
-let TagSchema: z.ZodObject<any>;
+export interface Post extends z.infer<typeof graphConfig.schema.nodes.post> {
+  author: User;
+  tags: Tag[];
+}
 
-const UserSchema = graphConfig.schema.nodes.user.extend({
+export interface Tag extends z.infer<typeof graphConfig.schema.nodes.tag> {
+  posts: Post[];
+}
+
+// --- Augmented Zod Schemas ---
+// These Zod schemas are extended from your base schemas in graph.config.ts
+// to include full relationship validation, using z.lazy() to handle circularity.
+export const UserSchema: z.ZodType<User> = graphConfig.schema.nodes.user.extend({
   posts: z.array(z.lazy(() => PostSchema)),
 });
 
-const PostSchema = graphConfig.schema.nodes.post.extend({
+export const PostSchema: z.ZodType<Post> = graphConfig.schema.nodes.post.extend({
   author: z.lazy(() => UserSchema),
   tags: z.array(z.lazy(() => TagSchema)),
 });
 
-const TagSchema = graphConfig.schema.nodes.tag.extend({
+export const TagSchema: z.ZodType<Tag> = graphConfig.schema.nodes.tag.extend({
   posts: z.array(z.lazy(() => PostSchema)),
 });
 
-// --- Final TypeScript Types ---
-// These are the final, fully-featured types for your nodes, including relationships.
-export type User = z.infer<typeof UserSchema>;
-export type Post = z.infer<typeof PostSchema>;
-export type Tag = z.infer<typeof TagSchema>;
-
 // --- Creation Input Types ---
-// These types define the data needed to create a new node.
+// These types define the shape of the data needed to create a new node.
 export type UserCreationInput = z.infer<typeof graphConfig.schema.nodes.user> & {
 
 };
 
 export type PostCreationInput = z.infer<typeof graphConfig.schema.nodes.post> & {
-  author: z.infer<typeof graphConfig.schema.nodes.user>,
+  author: z.infer<typeof graphConfig.schema.nodes.user>;
 };
 
 export type TagCreationInput = z.infer<typeof graphConfig.schema.nodes.tag> & {
