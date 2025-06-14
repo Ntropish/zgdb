@@ -3,7 +3,7 @@ import { NodeData, GraphSchema, FlatBufferSerializers, Edge } from "./types";
 import { PTree, TreeConfigOptions, BatchItem, ScanOptions } from "prolly-gunna";
 import { Subject, Observable, from, merge } from "rxjs";
 import { filter, map, debounceTime, buffer } from "rxjs/operators";
-import { flatbuffers } from "flatbuffers";
+import * as flatbuffers from "flatbuffers";
 import KeyEncoder from "./key-encoder";
 
 /**
@@ -22,7 +22,7 @@ export class ProllyStorage implements Storage {
     this.tree = tree;
 
     // Listen to tree changes
-    this.tree.onChange((event) => {
+    this.tree.onChange((event: any) => {
       this.changes$.next({
         type: "tree-change",
         data: event,

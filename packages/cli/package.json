@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "mv:interfaces": "mv src/interfaces.ts dist/interfaces.ts",
     "test": "jest",
     "zg": "node --experimental-wasm-modules dist/main.js",
     "prepublishOnly": "npm run build"

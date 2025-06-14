@@ -1,7 +1,10 @@
-import { createClient } from "./dist/graph/client";
-import type { User, Post, Tag } from "./dist/graph/types";
-import { filter, countBy, sortBy, chain } from "lodash-es";
-import { uuidv7 as uuid } from "uuidv7";
+import { GeneratedFlatBufferSerializers } from "./dist/graph/generated-serializers";
+import { ProllyStorage } from "@zgdb/runtime";
+
+const serializers = new GeneratedFlatBufferSerializers();
+const storage = new ProllyStorage(serializers, {
+  enableAutoSave: true,
+});
 
 console.log("Hello World");
 

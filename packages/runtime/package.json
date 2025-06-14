@@ -1,10 +1,11 @@
 {
-  "name": "runtime",
+  "name": "@zgdb/runtime",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
@@ -12,6 +13,7 @@
   "dependencies": {
     "flatbuffers": "^24.3.25",
     "prolly-gunna": "^5.0.0",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "typescript": "^5.3.3"
   }
 }

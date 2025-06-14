@@ -70,6 +70,7 @@ static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
 
 static endPostTagEdge(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
+  builder.requiredField(offset, 4) // id
   return offset;
 }
 

@@ -46,25 +46,42 @@ viewCount():number {
   return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
-authorId():string|null
-authorId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-authorId(optionalEncoding?:any):string|Uint8Array|null {
+tagsIds(index: number):string
+tagsIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+tagsIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+}
+
+tagsIdsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+authorIds(index: number):string
+authorIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+authorIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+}
+
+authorIdsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 createdAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
-  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
-}
-
-updatedAt():bigint {
   const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
+updatedAt():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 18);
+  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+}
+
 static startPost(builder:flatbuffers.Builder) {
-  builder.startObject(7);
+  builder.startObject(8);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -83,30 +100,60 @@ static addViewCount(builder:flatbuffers.Builder, viewCount:number) {
   builder.addFieldInt32(3, viewCount, 0);
 }
 
-static addAuthorId(builder:flatbuffers.Builder, authorIdOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, authorIdOffset, 0);
+static addTagsIds(builder:flatbuffers.Builder, tagsIdsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(4, tagsIdsOffset, 0);
+}
+
+static createTagsIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startTagsIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
+static addAuthorIds(builder:flatbuffers.Builder, authorIdsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(5, authorIdsOffset, 0);
+}
+
+static createAuthorIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startAuthorIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
 }
 
 static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(5, createdAt, BigInt('0'));
+  builder.addFieldInt64(6, createdAt, BigInt('0'));
 }
 
 static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
-  builder.addFieldInt64(6, updatedAt, BigInt('0'));
+  builder.addFieldInt64(7, updatedAt, BigInt('0'));
 }
 
 static endPost(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
+  builder.requiredField(offset, 4) // id
   return offset;
 }
 
-static createPost(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, titleOffset:flatbuffers.Offset, published:boolean, viewCount:number, authorIdOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
+static createPost(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, titleOffset:flatbuffers.Offset, published:boolean, viewCount:number, tagsIdsOffset:flatbuffers.Offset, authorIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   Post.startPost(builder);
   Post.addId(builder, idOffset);
   Post.addTitle(builder, titleOffset);
   Post.addPublished(builder, published);
   Post.addViewCount(builder, viewCount);
-  Post.addAuthorId(builder, authorIdOffset);
+  Post.addTagsIds(builder, tagsIdsOffset);
+  Post.addAuthorIds(builder, authorIdsOffset);
   Post.addCreatedAt(builder, createdAt);
   Post.addUpdatedAt(builder, updatedAt);
   return Post.endPost(builder);

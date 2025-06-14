@@ -8,6 +8,16 @@ const schema = {
     }),
     relations: {
       posts: ["many", "post"],
+      familiars: ["many", "familiar"],
+    },
+  },
+  familiar: {
+    fields: z.object({
+      name: z.string(),
+      age: z.number().int(),
+    }),
+    relations: {
+      user: ["one", "user"],
     },
   },
   post: {

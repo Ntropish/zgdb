@@ -1,47 +1,48 @@
 namespace GraphDB;
 
 table User {
-  id: string;
+  id: string (key);
   name: string;
   age: int32;
   posts_ids: [string];
+  familiars_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Familiar {
+  id: string (key);
+  name: string;
+  age: int32;
+  user_ids: [string];
   created_at: int64;
   updated_at: int64;
 }
 
 table Post {
-  id: string;
+  id: string (key);
   title: string;
   published: bool;
   viewCount: int32;
-  author_id: string;
+  tags_ids: [string];
+  author_ids: [string];
   created_at: int64;
   updated_at: int64;
 }
 
 table Tag {
-  id: string;
+  id: string (key);
   name: string;
+  posts_ids: [string];
   created_at: int64;
   updated_at: int64;
 }
 
 table PostTagEdge {
-  id: string;
+  id: string (key);
   post_id: string;
   tag_id: string;
   created_at: int64;
 }
 
-union GraphNode {
-  User,
-  Post,
-  Tag,
-  PostTagEdge,
-}
-
-table GraphDatabase {
-  nodes: [GraphNode];
-}
-
-root_type GraphDatabase;
+root_type User;

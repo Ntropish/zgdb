@@ -59,6 +59,9 @@ importers:
       '@zgdb/cli':
         specifier: workspace:*
         version: link:../cli
+      '@zgdb/runtime':
+        specifier: workspace:*
+        version: link:../runtime
       commander:
         specifier: ^12.0.0
         version: 12.1.0
@@ -126,6 +129,9 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
+      typescript:
+        specifier: ^5.3.3
+        version: 5.8.3
 
 packages:
 

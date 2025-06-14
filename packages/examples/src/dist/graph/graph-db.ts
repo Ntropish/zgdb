@@ -2,8 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-export { GraphDatabase } from './graph-db/graph-database.js';
-export { GraphNode } from './graph-db/graph-node.js';
+export { Familiar } from './graph-db/familiar.js';
 export { Post } from './graph-db/post.js';
 export { PostTagEdge } from './graph-db/post-tag-edge.js';
 export { Tag } from './graph-db/tag.js';

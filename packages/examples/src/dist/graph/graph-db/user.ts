@@ -4,6 +4,8 @@
 
 import * as flatbuffers from 'flatbuffers';
 
+
+
 export class User {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
@@ -53,18 +55,30 @@ postsIdsLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-createdAt():bigint {
+familiarsIds(index: number):string
+familiarsIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+familiarsIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
-updatedAt():bigint {
+familiarsIdsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+createdAt():bigint {
   const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
+updatedAt():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 16);
+  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+}
+
 static startUser(builder:flatbuffers.Builder) {
-  builder.startObject(6);
+  builder.startObject(7);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -95,25 +109,51 @@ static startPostsIdsVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
+static addFamiliarsIds(builder:flatbuffers.Builder, familiarsIdsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(4, familiarsIdsOffset, 0);
+}
+
+static createFamiliarsIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startFamiliarsIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
 static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(4, createdAt, BigInt('0'));
+  builder.addFieldInt64(5, createdAt, BigInt('0'));
 }
 
 static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
-  builder.addFieldInt64(5, updatedAt, BigInt('0'));
+  builder.addFieldInt64(6, updatedAt, BigInt('0'));
 }
 
 static endUser(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
+  builder.requiredField(offset, 4) // id
   return offset;
 }
 
-static createUser(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset, age:number, postsIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
+static finishUserBuffer(builder:flatbuffers.Builder, offset:flatbuffers.Offset) {
+  builder.finish(offset);
+}
+
+static finishSizePrefixedUserBuffer(builder:flatbuffers.Builder, offset:flatbuffers.Offset) {
+  builder.finish(offset, undefined, true);
+}
+
+static createUser(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset, age:number, postsIdsOffset:flatbuffers.Offset, familiarsIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   User.startUser(builder);
   User.addId(builder, idOffset);
   User.addName(builder, nameOffset);
   User.addAge(builder, age);
   User.addPostsIds(builder, postsIdsOffset);
+  User.addFamiliarsIds(builder, familiarsIdsOffset);
   User.addCreatedAt(builder, createdAt);
   User.addUpdatedAt(builder, updatedAt);
   return User.endUser(builder);
