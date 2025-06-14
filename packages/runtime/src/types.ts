@@ -16,8 +16,8 @@ export interface FlatBufferSerializers {
   deserializeEdge(buffer: Uint8Array): Edge;
 
   // Get supported types
-  getSupportedTypes(): string[];
-  getEdgeTypes(): string[];
+  getSupportedNodeTypes(): string[];
+  getSupportedEdgeTypes(): string[];
 }
 
 // ============================================

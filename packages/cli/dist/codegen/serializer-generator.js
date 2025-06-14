@@ -16,7 +16,7 @@ export function generateSerializer(schema) {
     const edgeTypes = Array.from(edgeTables.keys());
     // --- Imports ---
     lines.push(`import * as flatbuffers from 'flatbuffers';`);
-    lines.push(`import { NodeData, Edge, FlatBufferSerializers } from './interfaces';`);
+    lines.push(`import { NodeData, Edge, FlatBufferSerializers } from '@zgdb/runtime';`);
     const allTypeNames = [...nodeTypes, ...edgeTypes].map(capitalize);
     lines.push(`import { ${allTypeNames.join(", ")} } from './graph-db';`);
     lines.push("");

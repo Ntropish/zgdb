@@ -1,5 +1,5 @@
 {
-  "name": "@zgdb/runtime",
+  "name": "@zgdb/types",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
@@ -11,10 +11,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@zgdb/types": "workspace:*",
-    "flatbuffers": "^24.3.25",
-    "prolly-gunna": "^5.0.0",
-    "rxjs": "^7.8.2",
     "typescript": "^5.3.3"
   }
 }

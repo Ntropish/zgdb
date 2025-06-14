@@ -44,7 +44,7 @@ program
       const config = await loadConfig(options.config);
 
       const fbsSchema = generateFbsSchema(config);
-      console.log("✅ FlatBuffers schema generated in memory.");
+      console.log("✅ FlatBuffers schema generated.");
 
       await fs.mkdir(outputDir, { recursive: true });
 
@@ -55,8 +55,8 @@ program
       );
       console.log(`✅ Graph config copied to ${userConfigDestPath}`);
 
-      await fs.copyFile(path.join(srcDir, "interfaces.ts"), interfacesPath);
-      console.log(`✅ Interfaces copied to ${interfacesPath}`);
+      // await fs.copyFile(path.join(srcDir, "interfaces.ts"), interfacesPath);
+      // console.log(`✅ Interfaces copied to ${interfacesPath}`);
 
       await fs.writeFile(fbsPath, fbsSchema, "utf8");
       await runFlatc(outputDir, fbsPath);

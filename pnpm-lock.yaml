@@ -13,6 +13,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
+      '@zgdb/types':
+        specifier: workspace:*
+        version: link:../types
       commander:
         specifier: ^12.0.0
         version: 12.1.0
@@ -120,6 +123,9 @@ importers:
 
   packages/runtime:
     dependencies:
+      '@zgdb/types':
+        specifier: workspace:*
+        version: link:../types
       flatbuffers:
         specifier: ^24.3.25
         version: 24.12.23
@@ -129,6 +135,12 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
+      typescript:
+        specifier: ^5.3.3
+        version: 5.8.3
+
+  packages/types:
+    dependencies:
       typescript:
         specifier: ^5.3.3
         version: 5.8.3

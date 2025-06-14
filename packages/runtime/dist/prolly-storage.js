@@ -85,7 +85,7 @@ class ProllyStorage {
     // ============================================
     getNode(id) {
         // Try each supported type from the serializers
-        const types = this.serializers.getSupportedTypes();
+        const types = this.serializers.getSupportedNodeTypes();
         for (const type of types) {
             const key = key_encoder_1.default.nodeKey(type, id);
             const value = this.tree.getSync(key);
@@ -316,7 +316,7 @@ class ProllyStorage {
                 try {
                     const keyStr = new TextDecoder().decode(diff.key);
                     const type = key_encoder_1.default.getTypeFromKey(keyStr);
-                    if (type && this.serializers.getSupportedTypes().includes(type)) {
+                    if (type && this.serializers.getSupportedNodeTypes().includes(type)) {
                         left = this.serializers.deserializeNode(type, diff.leftValue);
                     }
                     else if (keyStr.startsWith("e:")) {
@@ -334,7 +334,7 @@ class ProllyStorage {
                 try {
                     const keyStr = new TextDecoder().decode(diff.key);
                     const type = key_encoder_1.default.getTypeFromKey(keyStr);
-                    if (type && this.serializers.getSupportedTypes().includes(type)) {
+                    if (type && this.serializers.getSupportedNodeTypes().includes(type)) {
                         right = this.serializers.deserializeNode(type, diff.rightValue);
                     }
                     else if (keyStr.startsWith("e:")) {
@@ -355,7 +355,7 @@ class ProllyStorage {
     // Private Helpers
     // ============================================
     getNodeTypes() {
-        return this.serializers.getSupportedTypes();
+        return this.serializers.getSupportedNodeTypes();
     }
     reverseEdgeKey(edge) {
         return new TextEncoder().encode(`r:${edge.to}:${edge.type}:${edge.from}:${edge.id}`);

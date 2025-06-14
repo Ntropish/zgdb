@@ -1,5 +1,5 @@
 import * as flatbuffers from 'flatbuffers';
-import { NodeData, Edge, FlatBufferSerializers } from './interfaces';
+import { NodeData, Edge, FlatBufferSerializers } from '@zgdb/runtime';
 import { User, Familiar, Post, Tag, PostTagEdge } from './graph-db';
 
 export class GeneratedFlatBufferSerializers implements FlatBufferSerializers {

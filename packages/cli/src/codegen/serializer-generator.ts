@@ -22,7 +22,7 @@ export function generateSerializer(schema: Schema): string {
   // --- Imports ---
   lines.push(`import * as flatbuffers from 'flatbuffers';`);
   lines.push(
-    `import { NodeData, Edge, FlatBufferSerializers } from './interfaces';`
+    `import { NodeData, Edge, FlatBufferSerializers } from '@zgdb/runtime';`
   );
 
   const allTypeNames = [...nodeTypes, ...edgeTypes].map(capitalize);

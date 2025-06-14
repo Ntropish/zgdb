@@ -7,8 +7,8 @@ export interface FlatBufferSerializers {
     deserializeNode(type: string, buffer: Uint8Array): NodeData;
     serializeEdge(edge: Edge): Uint8Array;
     deserializeEdge(buffer: Uint8Array): Edge;
-    getSupportedTypes(): string[];
-    getEdgeTypes(): string[];
+    getSupportedNodeTypes(): string[];
+    getSupportedEdgeTypes(): string[];
 }
 export interface GraphSchema {
     [nodeType: string]: {
