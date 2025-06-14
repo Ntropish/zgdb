@@ -47,12 +47,13 @@ zg.post.add({
 // incrementally, avoiding loading the entire collection into memory at once.
 
 // 1. Find all published posts (like SELECT * FROM posts WHERE published = true)
-const publishedPosts = chain(zg.post).filter({ published: true }).value(); // .value() executes the pipeline
-console.log(
-  "Published Posts:",
-  publishedPosts.map((p) => p.title)
-);
+const publishedPostThunks = chain(zg.post).filter({ published: true }).value();
 
+for (const getPosts of publishedPostThunks) {
+  for (const post of getPosts()) {
+    console.log(post);
+  }
+}
 // 2. Count users by age (like SELECT age, COUNT(*) FROM users GROUP BY age)
 const usersByAge = chain(zg.user).countBy("age").value();
 console.log("Users by Age:", usersByAge); //-> { '30': 2, '42': 1 }

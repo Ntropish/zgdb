@@ -13,29 +13,26 @@ export class Collection<T, TCreationInput> implements Iterable<T> {
         private ptree: PTree,
         private client: ZgDbClient,
         private nodeName: string
-    ) {
-        // By defining the methods in the constructor with Object.defineProperty,
-        // we can explicitly set enumerable: false. This is the key to making
-        // the class behave like a native JavaScript iterable, which solves
-        // issues with libraries like lodash.
-        Object.defineProperty(this, 'add', {
-            value: (value: TCreationInput): T => {
-                console.log(`[ADD] ${this.nodeName} with id: ${(value as any).id}`);
-                // TODO: Actual PTree write logic goes here.
-                const mockBuffer = {} as any; 
-                return new Proxy(mockBuffer, createNodeProxyHandler(this.ptree, this.client, mockBuffer, this.nodeName, value as any)) as T;
-            },
-            enumerable: false
-        });
+    ) {}
 
-        Object.defineProperty(this, 'get', {
-            value: (id: string): T | undefined => {
-                console.log(`[GET] ${this.nodeName} with id: ${id}`);
-                // TODO: Actual PTree read logic goes here.
-                return undefined;
-            },
-            enumerable: false
-        });
+    add(value: TCreationInput): T {
+        console.log(`[ADD] ${this.nodeName} with id: ${(value as any).id}`);
+        // TODO: Actual PTree write logic goes here.
+        
+        // For now, we return a mock proxy to satisfy the type.
+        // In the real implementation, this would be a proxy over a FlatBuffer.
+        const mockBuffer = {} as any; 
+        return new Proxy(mockBuffer, createNodeProxyHandler(this.ptree, this.client, mockBuffer, this.nodeName, value as any)) as T;
+    }
+
+    get(id: string): T | undefined {
+        console.log(`[GET] ${this.nodeName} with id: ${id}`);
+        // TODO: Actual PTree read logic goes here.
+        return undefined;
+    }
+
+    values(): IterableIterator<T> {
+        return this[Symbol.iterator]();
     }
 
     *[Symbol.iterator](): IterableIterator<T> {
@@ -44,3 +41,11 @@ export class Collection<T, TCreationInput> implements Iterable<T> {
         yield* [];
     }
 }
+
+// This is the key: we explicitly define the methods on the prototype
+// and mark them as non-enumerable, just like native JavaScript classes.
+Object.defineProperties(Collection.prototype, {
+    add: { enumerable: false },
+    get: { enumerable: false },
+    values: { enumerable: false },
+});

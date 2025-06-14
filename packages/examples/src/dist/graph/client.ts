@@ -3,12 +3,6 @@ import { PTree } from 'prolly-gunna';
 import type { User, Post, Tag, UserCreationInput, PostCreationInput, TagCreationInput } from './types.js';
 import { Collection } from './collection.js';
 
-
-export interface Collection<T, TCreationInput> extends Iterable<T> {
-    add(value: TCreationInput): T;
-    get(id: string): T | undefined;
-}
-
 export type ZgDbClient = {
     user: Collection<User, UserCreationInput>;
     post: Collection<Post, PostCreationInput>;
