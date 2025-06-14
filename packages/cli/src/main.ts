@@ -1,8 +1,10 @@
 #!/usr/bin/env node
+// --- src/main.ts ---
 import { program } from "commander";
 import path from "path";
 import fs from "fs/promises";
 import { loadConfig } from "./config-loader.js";
+import { processSchema } from "./schema-processor.js";
 import { generateFbs } from "./codegen/fbs-generator.js";
 // We will uncomment these as we build them
 // import { runFlatc } from './codegen/flatc-runner.js';
@@ -29,12 +31,19 @@ program
       const config = await loadConfig(options.config);
       console.log("✅ Config loaded successfully.");
 
-      // 2. Generate the FlatBuffers schema (.fbs) from the config
-      const fbsSchema = generateFbs(config.schema);
+      // 2. Process schema to add canonical names
+      const processedSchema = processSchema(config.schema);
+      console.log("✅ Schema processed with canonical edge names.");
+
+      // Let's print the processed schema to verify the new names
+      console.log("\n--- Processed Schema Edges ---");
+      console.log(JSON.stringify(processedSchema.edges, null, 2));
+      console.log("--- End Processed Schema Edges ---\n");
+
+      // 3. Generate the FlatBuffers schema (.fbs) from the processed schema
+      const fbsSchema = generateFbs(processedSchema);
       console.log("✅ FlatBuffers schema generated.");
 
-      // For now, let's just print the generated schema to see our progress.
-      // In the next step, we'll write this to a file and run flatc.
       console.log("\n--- Generated FBS ---");
       console.log(fbsSchema);
       console.log("--- End Generated FBS ---\n");

@@ -36,7 +36,7 @@ export async function loadConfig(configPath) {
     await fs.writeFile(tempPath, transpiledCode);
     try {
         const config = await importFresh(tempPath);
-        // TODO: Add validation logic here to ensure the config has the correct shape.
+        // TODO: Add more robust validation logic here.
         if (!config ||
             !config.schema ||
             !config.schema.nodes ||
