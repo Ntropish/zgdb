@@ -1,6 +1,6 @@
 // --- src/codegen/fbs-generator.ts ---
 import { ZodTypeAny, ZodObject } from "zod";
-import { ProcessedSchema } from "../schema-processor.js";
+import { ProcessedSchema, ProcessedEdge } from "../schema-processor.js";
 
 /**
  * Maps Zod types to their FlatBuffers schema counterparts.
@@ -28,25 +28,42 @@ function zodToFbsType(type: ZodTypeAny): string {
  * @returns The .fbs schema as a string.
  */
 export function generateFbs(schema: ProcessedSchema): string {
-  const { nodes } = schema;
+  const { nodes, edges } = schema;
   const fbsTables: string[] = [];
 
   // Generate a table for each node type
   for (const nodeName in nodes) {
     const zodSchema = nodes[nodeName] as ZodObject<any>;
-    const fields = Object.entries(
-      zodSchema.shape as { [key: string]: ZodTypeAny }
-    )
-      .map(([fieldName, zodType]) => {
-        return `  ${fieldName}:${zodToFbsType(zodType)};`;
-      })
-      .join("\n");
 
-    const table = `table ${capitalize(nodeName)} {\n${fields}\n}`;
+    // Get scalar fields from the Zod schema
+    const scalarFields = Object.entries(
+      zodSchema.shape as { [key: string]: ZodTypeAny }
+    ).map(([fieldName, zodType]) => {
+      return `  ${fieldName}:${zodToFbsType(zodType)};`;
+    });
+
+    // Get "to-one" relationship fields (foreign keys)
+    const relationshipFields = edges
+      .filter((edge: ProcessedEdge) => {
+        // A field is added if this node is on the "many" side of a one-to-many relationship.
+        // The backward name must be singular for it to be a true to-one link.
+        const isTrueOneToMany =
+          edge.cardinality === "one-to-many" &&
+          !edge.name.backward.endsWith("s");
+        return edge.target === nodeName && isTrueOneToMany;
+      })
+      .map((edge: ProcessedEdge) => {
+        // The field name is the "backward" name (e.g., "author")
+        // It stores the ID of the source node, which is a string.
+        return `  ${edge.name.backward}:string;`;
+      });
+
+    const allFields = [...scalarFields, ...relationshipFields].join("\n");
+    const table = `table ${capitalize(nodeName)} {\n${allFields}\n}`;
     fbsTables.push(table);
   }
 
-  // Generate a table for storing relationship indices
+  // Our generic "edge table" for storing to-many relationship indices.
   const idVectorTable = `
 table IdVector {
   ids:[string];

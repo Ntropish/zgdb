@@ -2,7 +2,7 @@ import { z } from "zod";
 declare const EdgeSchema: z.ZodObject<{
     source: z.ZodString;
     target: z.ZodString;
-    cardinality: z.ZodEnum<["one-to-one", "one-to-many"]>;
+    cardinality: z.ZodEnum<["one-to-one", "one-to-many", "many-to-many"]>;
     name: z.ZodObject<{
         forward: z.ZodString;
         backward: z.ZodString;
@@ -16,7 +16,7 @@ declare const EdgeSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     source: string;
     target: string;
-    cardinality: "one-to-one" | "one-to-many";
+    cardinality: "one-to-one" | "one-to-many" | "many-to-many";
     name: {
         forward: string;
         backward: string;
@@ -24,7 +24,7 @@ declare const EdgeSchema: z.ZodObject<{
 }, {
     source: string;
     target: string;
-    cardinality: "one-to-one" | "one-to-many";
+    cardinality: "one-to-one" | "one-to-many" | "many-to-many";
     name: {
         forward: string;
         backward: string;

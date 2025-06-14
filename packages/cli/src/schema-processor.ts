@@ -5,7 +5,7 @@ import { z } from "zod";
 const EdgeSchema = z.object({
   source: z.string(),
   target: z.string(),
-  cardinality: z.enum(["one-to-one", "one-to-many"]),
+  cardinality: z.enum(["one-to-one", "one-to-many", "many-to-many"]),
   name: z.object({
     forward: z.string(),
     backward: z.string(),
@@ -37,7 +37,8 @@ function capitalize(s: string): string {
  */
 export function processSchema(schema: any): ProcessedSchema {
   const processedEdges = schema.edges.map((edge: Edge) => {
-    // Validate each edge against our internal schema
+    // We will add a 'many-to-many' cardinality for clarity, but the logic
+    // in fbs-generator will also infer it if needed.
     const parsedEdge = EdgeSchema.parse(edge);
 
     const sourceName = capitalize(parsedEdge.source);
