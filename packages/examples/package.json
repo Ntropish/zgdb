@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build-graph": "zg build --config ./test-graph.config.ts --output ./dist/graph",
+    "build-graph": "zg build --config ./src/graph.config.ts --output ./src/dist/graph",
     "run:1": "node --experimental-strip-types ./01-basic-queries.ts",
     "run:2": "node --loader ts-node/esm ./02-graph-analysis.ts",
     "run:3": "node --loader ts-node/esm ./03-instant-search.ts"
@@ -24,8 +24,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@zgdb/cli": "workspace:*",
     "@types/jest": "^29.5.14",
+    "@zgdb/cli": "workspace:*",
     "commander": "^12.0.0",
     "cross-env": "^7.0.3",
     "flatbuffers": "^24.3.25",
@@ -35,7 +35,7 @@
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "uuidv7": "^1.0.2",
-    "zod": "^3.22.4"
+    "zod": "^3.25.64"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
