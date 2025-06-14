@@ -12,7 +12,8 @@ export function runFlatc(outputDir, fbsPath) {
             "-T", // Generate TypeScript
             "-o",
             outputDir, // Output directory
-            "--gen-all", // Generate all necessary files
+            "--gen-all", // Generate all necessary files and helpers
+            "--ts-entry-points", // Create a single entry point file
             fbsPath, // The input schema file
         ];
         const flatcProcess = spawn("flatc", args, { stdio: "pipe" });
@@ -25,21 +26,12 @@ export function runFlatc(outputDir, fbsPath) {
                 resolve();
             }
             else {
-                const errorMsg = `flatc compiler failed with exit code ${code}.
-        Please ensure 'flatc' is installed and available in your system's PATH.
-        You can download it from the official FlatBuffers repository:
-        https://github.com/google/flatbuffers/releases
-
-        Stderr:
-        ${stderr}`;
+                const errorMsg = `flatc compiler failed with exit code ${code}.\nDetails:\n${stderr}`;
                 reject(new Error(errorMsg));
             }
         });
         flatcProcess.on("error", (err) => {
-            const errorMsg = `Failed to spawn 'flatc' process.
-        Please ensure 'flatc' is installed and available in your system's PATH.
-        Error: ${err.message}`;
-            reject(new Error(errorMsg));
+            reject(new Error(`Failed to spawn 'flatc' process. Make sure 'flatc' is installed and in your PATH. Error: ${err.message}`));
         });
     });
 }

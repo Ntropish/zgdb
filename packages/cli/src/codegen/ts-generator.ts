@@ -11,44 +11,31 @@ import {
  * Orchestrates the generation of all user-facing TypeScript files.
  * @param outputDir The directory to write the files to.
  * @param schema The processed schema from the config.
- * @param configPath The original path to the user's config file.
  */
 export async function generateTsClient(
   outputDir: string,
-  schema: ProcessedSchema,
-  configPath: string
+  schema: ProcessedSchema
 ): Promise<void> {
   const runtimeDir = path.join(outputDir, "runtime");
   await fs.mkdir(runtimeDir, { recursive: true });
 
-  // Find the relative path from the generated client to the user's config file.
-  const relativeConfigPath = path
-    .relative(outputDir, path.resolve(process.cwd(), configPath))
-    .replace(/\\/g, "/")
-    .replace(/\.ts$/, ""); // Use without extension for clean imports
-
-  await generateTypesFile(outputDir, schema, relativeConfigPath);
+  await generateTypesFile(outputDir, schema);
   await generateClientFile(outputDir, schema);
   await generateApiProxyHandler(runtimeDir);
   await generateNodeProxyHandler(runtimeDir);
 }
 
-async function generateTypesFile(
-  outputDir: string,
-  schema: ProcessedSchema,
-  configPath: string
-) {
+async function generateTypesFile(outputDir: string, schema: ProcessedSchema) {
   const { nodes, edges } = schema;
   const nodeNames = Object.keys(nodes);
 
-  const zodSchemaImports = nodeNames.map((name) => `${name}Node`).join(", ");
-  const importStatement = `import { z } from 'zod';\nimport { ${zodSchemaImports} } from '${configPath}';`;
+  const importStatement = `import { z } from 'zod';\nimport graphConfig from './graph.config.js';`;
 
-  // A two-stage definition using z.lazy() is the correct way to handle
-  // circular dependencies between Zod schemas.
   const augmentedSchemas = nodeNames
     .map((nodeName) => {
       const capNodeName = capitalize(nodeName);
+      const baseNodeSchema = `graphConfig.schema.nodes.${nodeName}`;
+
       const relatedFields = edges
         .map((edge: ProcessedEdge) => {
           const sourceCap = capitalize(edge.source);
@@ -70,7 +57,7 @@ async function generateTypesFile(
         .filter(Boolean)
         .join("\n");
 
-      return `const ${capNodeName}Schema = ${nodeName}Node.extend({\n${relatedFields}\n});`;
+      return `const ${capNodeName}Schema = ${baseNodeSchema}.extend({\n${relatedFields}\n});`;
     })
     .join("\n\n");
 
@@ -84,17 +71,21 @@ async function generateTypesFile(
   const creationInputTypes = nodeNames
     .map((nodeName) => {
       const capNodeName = capitalize(nodeName);
+      const baseNodeSchema = `graphConfig.schema.nodes.${nodeName}`;
+      const baseNodeCreationSchema = `graphConfig.schema.nodes.${nodeName}`;
+
       const creationInputRelatedFields = edges
         .filter(
           (edge) =>
             edge.target === nodeName && !edge.name.backward.endsWith("s")
         )
         .map((edge) => {
-          return `  ${edge.name.backward}: z.infer<typeof ${edge.source}Node}>,`;
+          const sourceCreationSchema = `graphConfig.schema.nodes.${edge.source}`;
+          return `  ${edge.name.backward}: z.infer<typeof ${sourceCreationSchema}>,`;
         })
         .join("\n");
 
-      return `export type ${capNodeName}CreationInput = z.infer<typeof ${nodeName}Node> & {\n${creationInputRelatedFields}\n};`;
+      return `export type ${capNodeName}CreationInput = z.infer<typeof ${baseNodeCreationSchema}> & {\n${creationInputRelatedFields}\n};`;
     })
     .join("\n\n");
 

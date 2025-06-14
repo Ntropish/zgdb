@@ -25,15 +25,18 @@ program
         // 2. Generate the FlatBuffers schema (.fbs) string
         const fbsSchema = generateFbs(processedSchema);
         console.log("✅ FlatBuffers schema generated in memory.");
-        // 3. Ensure output directory exists and write temporary .fbs file
+        // 3. Ensure output directory exists
         await fs.mkdir(outputDir, { recursive: true });
+        // 4. Copy the user's config into the output directory to make it self-contained
+        const userConfigDestPath = path.join(outputDir, "graph.config.ts");
+        await fs.copyFile(path.resolve(process.cwd(), options.config), userConfigDestPath);
+        console.log(`✅ User graph config copied to ${userConfigDestPath}`);
+        // 5. Write temporary .fbs file and run the flatc compiler
         await fs.writeFile(tempFbsPath, fbsSchema, "utf8");
-        console.log(`✅ Temporary FBS schema written to ${tempFbsPath}`);
-        // 4. Run the flatc compiler on the .fbs file
         await runFlatc(outputDir, tempFbsPath);
         console.log("✅ flatc compiler executed successfully.");
-        // 5. Generate the final TypeScript client and runtime handlers
-        await generateTsClient(outputDir, processedSchema, options.config);
+        // 6. Generate the final TypeScript client and runtime handlers
+        await generateTsClient(outputDir, processedSchema);
         console.log("✅ TypeScript client and runtime generated.");
         console.log(`\n🎉 Build complete! Your graph client is ready at ${outputDir}`);
     }
@@ -42,7 +45,7 @@ program
         process.exit(1);
     }
     finally {
-        // 6. Clean up the temporary FBS file
+        // 7. Clean up the temporary FBS file
         try {
             await fs.unlink(tempFbsPath);
             console.log("✅ Temporary files cleaned up.");
