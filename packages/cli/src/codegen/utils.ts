@@ -1,46 +1,77 @@
-/**
- * @file src/codegen/utils.ts
- * @description Shared utilities and type definitions for code generation.
- */
-
 import { z } from "zod";
 
-export type RelationType = "one" | "many";
-export type RelationDefinition = [RelationType, string];
+// ============================================
+//  Type Definitions
+// ============================================
 
-export interface SchemaDefinition {
-  fields: z.ZodObject<any>;
-  relations: Record<string, RelationDefinition>;
+export interface Schema {
+  [nodeType: string]: {
+    fields: z.ZodObject<any, any>;
+    relations: Record<string, [RelationType, string]>;
+  };
 }
+type RelationType = "one" | "many";
 
-export type Schema = Record<string, SchemaDefinition>;
+// ============================================
+//  Utility Functions
+// ============================================
 
 /**
- * Identifies many-to-many relationships in the schema and defines the
- * necessary edge tables to connect them.
- * @param schema The graph schema definition.
- * @returns A map of edge table names to their source and target nodes.
+ * Converts a Zod type to its corresponding TypeScript type as a string.
+ */
+export function ZodToTsType(type: z.ZodTypeAny): string {
+  if (type instanceof z.ZodString) return "string";
+  if (type instanceof z.ZodNumber) return "number";
+  if (type instanceof z.ZodBoolean) return "boolean";
+  if (type instanceof z.ZodDate) return "Date";
+  if (type instanceof z.ZodArray) {
+    return `${ZodToTsType(type.element)}[]`;
+  }
+  // Add other Zod types as needed for your schemas
+  return "any";
+}
+
+/**
+ * Scans the schema to find all many-to-many relationships, which require
+ * a dedicated edge table for storage.
+ *
+ * @param schema The user-defined graph schema.
+ * @returns A map where keys are edge table names (e.g., "post_tag_edge")
+ * and values are objects specifying the 'from' and 'to' node types.
  */
 export function getEdgeTables(
   schema: Schema
 ): Map<string, { from: string; to: string }> {
   const edgeTables = new Map<string, { from: string; to: string }>();
 
-  for (const [tableName, tableDef] of Object.entries(schema)) {
-    for (const [relationName, [relationType, targetTable]] of Object.entries(
-      tableDef.relations
-    )) {
-      if (relationType === "many") {
-        const targetRelations = schema[targetTable]?.relations || {};
-        const hasReverseMany = Object.values(targetRelations).some(
-          ([type, target]) => type === "many" && target === tableName
-        );
+  // Iterate over all node types in the schema (we'll call it typeA)
+  for (const typeA in schema) {
+    // Iterate over the relations of the current node type
+    for (const relNameA in schema[typeA].relations) {
+      const [relationTypeA, typeB] = schema[typeA].relations[relNameA];
 
-        if (hasReverseMany) {
-          const [from, to] = [tableName, targetTable].sort();
-          const edgeTableName = `${from}_${to}_edge`;
-          if (!edgeTables.has(edgeTableName)) {
-            edgeTables.set(edgeTableName, { from, to });
+      // A many-to-many relationship is a candidate for an edge table.
+      // We need to find the corresponding 'many' relation on the other side (typeB).
+      if (relationTypeA === "many" && schema[typeB]) {
+        const relationsB = schema[typeB].relations;
+
+        // Look for a matching relation on typeB that points back to typeA
+        for (const relNameB in relationsB) {
+          const [relationTypeB, backRefType] = relationsB[relNameB];
+
+          // Check if it's also a 'many' relation and if it points back to the original type
+          if (relationTypeB === "many" && backRefType === typeA) {
+            // To avoid duplicates and have a canonical name, we sort the type names alphabetically.
+            const sortedTypes = [typeA, typeB].sort();
+            const edgeName = `${sortedTypes[0]}_${sortedTypes[1]}_edge`;
+
+            // Add the new edge table to our map if it doesn't already exist.
+            if (!edgeTables.has(edgeName)) {
+              edgeTables.set(edgeName, {
+                from: sortedTypes[0],
+                to: sortedTypes[1],
+              });
+            }
           }
         }
       }

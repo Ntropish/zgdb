@@ -1,22 +1,25 @@
-/**
- * @file src/codegen/utils.ts
- * @description Shared utilities and type definitions for code generation.
- */
 import { z } from "zod";
-export type RelationType = "one" | "many";
-export type RelationDefinition = [RelationType, string];
-export interface SchemaDefinition {
-    fields: z.ZodObject<any>;
-    relations: Record<string, RelationDefinition>;
+export interface Schema {
+    [nodeType: string]: {
+        fields: z.ZodObject<any, any>;
+        relations: Record<string, [RelationType, string]>;
+    };
 }
-export type Schema = Record<string, SchemaDefinition>;
+type RelationType = "one" | "many";
 /**
- * Identifies many-to-many relationships in the schema and defines the
- * necessary edge tables to connect them.
- * @param schema The graph schema definition.
- * @returns A map of edge table names to their source and target nodes.
+ * Converts a Zod type to its corresponding TypeScript type as a string.
+ */
+export declare function ZodToTsType(type: z.ZodTypeAny): string;
+/**
+ * Scans the schema to find all many-to-many relationships, which require
+ * a dedicated edge table for storage.
+ *
+ * @param schema The user-defined graph schema.
+ * @returns A map where keys are edge table names (e.g., "post_tag_edge")
+ * and values are objects specifying the 'from' and 'to' node types.
  */
 export declare function getEdgeTables(schema: Schema): Map<string, {
     from: string;
     to: string;
 }>;
+export {};
