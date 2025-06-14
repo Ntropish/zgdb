@@ -1,4 +1,4 @@
-# zg
+# zgdb
 
 Define your data graph with Zod. Use it like a native JavaScript object. That's it.
 
