@@ -2,16 +2,14 @@
   "name": "@zgdb/cli",
   "version": "0.1.0",
   "description": "A synchronous, in-memory graph database client generated from Zod schemas.",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "type": "module",
   "bin": {
-    "zg": "dist/build/main.js"
+    "zg": "dist/main.js"
   },
   "scripts": {
     "build": "tsc",
     "test": "jest",
-    "zg": "node --experimental-wasm-modules dist/build/main.js",
+    "zg": "node --experimental-wasm-modules dist/main.js",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
