@@ -1,5 +1,5 @@
-import { createClient } from "./dist/index.js";
-import type { User, Post, Tag } from "./dist/index.js";
+import { createClient } from "./dist/graph/client";
+import type { User, Post, Tag } from "./dist/graph/types";
 import { filter, countBy, sortBy, chain } from "lodash-es";
 import { uuidv7 as uuid } from "uuidv7";
 

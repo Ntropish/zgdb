@@ -1,7 +1,8 @@
 import { ProcessedSchema } from "../schema-processor.js";
 /**
- * Generates the final user-facing client.ts file.
- * @param outputDir The directory to write the file to.
+ * Orchestrates the generation of all user-facing TypeScript files.
+ * @param outputDir The directory to write the files to.
  * @param schema The processed schema from the config.
+ * @param configPath The original path to the user's config file.
  */
-export declare function generateClient(outputDir: string, schema: ProcessedSchema): Promise<void>;
+export declare function generateTsClient(outputDir: string, schema: ProcessedSchema, configPath: string): Promise<void>;

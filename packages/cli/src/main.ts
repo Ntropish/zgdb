@@ -7,7 +7,7 @@ import { loadConfig } from "./config-loader.js";
 import { processSchema } from "./schema-processor.js";
 import { generateFbs } from "./codegen/fbs-generator.js";
 import { runFlatc } from "./codegen/flatc-runner.js";
-import { generateClient } from "./codegen/ts-generator.js";
+import { generateTsClient } from "./codegen/ts-generator.js";
 
 program
   .command("build")
@@ -46,9 +46,9 @@ program
       await runFlatc(outputDir, tempFbsPath);
       console.log("✅ flatc compiler executed successfully.");
 
-      // 5. Generate the final TypeScript client
-      await generateClient(outputDir, processedSchema);
-      console.log("✅ TypeScript client generated.");
+      // 5. Generate the final TypeScript client and runtime handlers
+      await generateTsClient(outputDir, processedSchema, options.config);
+      console.log("✅ TypeScript client and runtime generated.");
 
       console.log(
         `\n🎉 Build complete! Your graph client is ready at ${outputDir}`
@@ -62,7 +62,7 @@ program
         await fs.unlink(tempFbsPath);
         console.log("✅ Temporary files cleaned up.");
       } catch (cleanupError) {
-        // This is not a fatal error
+        // This is not a fatal error, might happen if the build fails early
       }
     }
   });

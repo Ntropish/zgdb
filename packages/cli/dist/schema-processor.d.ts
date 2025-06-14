@@ -41,6 +41,7 @@ export interface ProcessedSchema {
     nodes: any;
     edges: ProcessedEdge[];
 }
+export declare function capitalize(s: string): string;
 /**
  * Processes the raw schema from the user config, adding canonical names
  * and other useful metadata for the codegen pipeline.
