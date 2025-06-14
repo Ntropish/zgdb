@@ -2,26 +2,26 @@
 import { PTree } from 'prolly-gunna';
 import { ZgDbClient, Collection } from '../client.js';
 
-export function createApiProxyHandler<T extends {id: string}>(ptree: PTree, client: ZgDbClient, nodeName: string): ProxyHandler<Collection<T>> {
-    const handler: ProxyHandler<Collection<T>> = {
+export function createApiProxyHandler<T, TCreationInput>(ptree: PTree, client: ZgDbClient, nodeName: string): ProxyHandler<Collection<T, TCreationInput>> {
+    const handler: ProxyHandler<Collection<T, TCreationInput>> = {
         get(target, prop, receiver) {
             if (prop === 'add') {
-                return (value: T) => {
-                    console.log(`[ADD] Request for ${nodeName} with id: ${value.id}`);
+                return (value: TCreationInput) => {
+                    console.log(`[ADD] Request for ${nodeName} with id: ${(value as any).id}`);
                     // TODO: PTree insertion/update, serialization, and index update logic.
-                    // For now, just return the value for API compatibility.
-                    return value;
+                    // For now, just return the value for API compatibility, cast to T
+                    return value as any as T;
                 }
             }
             if (prop === 'get') {
-                return (id: string) => {
+                return (id: string): T | undefined => {
                     console.log(`[GET] Request for ${nodeName} with id: ${id}`);
                     // TODO: PTree lookup, deserialization, and node proxy creation logic.
                     return undefined;
                 }
             }
             if (prop === 'values' || prop === Symbol.iterator) {
-                return function* () {
+                return function* (): IterableIterator<T> {
                     console.log(`[ITERATE] Iterating over ${nodeName}`);
                     // TODO: PTree scan logic.
                     yield* [];
