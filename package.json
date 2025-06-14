@@ -5,9 +5,6 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
-  "bin": {
-    "zg": "dist/build/main.js"
-  },
   "scripts": {},
   "keywords": [
     "zg",

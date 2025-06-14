@@ -1,7 +1,9 @@
-import { createClient } from "./dist/index.ts";
-import type { User, Post, Tag } from "./dist/index.ts";
+import { createClient } from "./dist/index.js";
+import type { User, Post, Tag } from "./dist/index.js";
 import { filter, countBy, sortBy, chain } from "lodash-es";
 import { uuidv7 as uuid } from "uuidv7";
+
+console.log("Hello World");
 
 const zg = createClient();
 

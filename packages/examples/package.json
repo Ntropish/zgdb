@@ -7,9 +7,9 @@
   "type": "module",
   "scripts": {
     "build-graph": "zg build --config ./test-graph.config.ts --output ./dist/graph",
-    "run-example:1": "node --loader ts-node/esm ./01-basic-queries.ts",
-    "run-example:2": "node --loader ts-node/esm ./02-graph-analysis.ts",
-    "run-example:3": "node --loader ts-node/esm ./03-instant-search.ts"
+    "run:1": "node --experimental-strip-types ./01-basic-queries.ts",
+    "run:2": "node --loader ts-node/esm ./02-graph-analysis.ts",
+    "run:3": "node --loader ts-node/esm ./03-instant-search.ts"
   },
   "keywords": [
     "zgdb",
