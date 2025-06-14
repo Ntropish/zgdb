@@ -2,8 +2,11 @@
 module.exports = {
   preset: "ts-jest",
   testEnvironment: "node",
-  // Automatically clear mock calls, instances, contexts and results before every test
   clearMocks: true,
-  // Indicates which provider should be used to instrument code for coverage
-  coverageProvider: "v8",
+  // Point to the new integration test location
+  testMatch: ["**/tests/**/*.test.ts"],
+  // We still need to transform dependencies that use modern JS
+  transformIgnorePatterns: [
+    "/node_modules/(?!prolly-gunna|uuidv7|@noble/curves)",
+  ],
 };

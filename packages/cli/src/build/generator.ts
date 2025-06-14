@@ -21,29 +21,8 @@ interface GraphConfig {
   };
 }
 
-// --- Main Generator Function ---
-export function generate(configPath: string, outputPath: string): void {
-  const config = loadConfig(configPath);
-  validateConfig(config);
-  fs.mkdirSync(outputPath, { recursive: true });
+// --- Helper Functions ---
 
-  const fbsSchema = generateFlatbuffersSchema(config);
-  const fbsPath = path.join(outputPath, "schema.fbs");
-  fs.writeFileSync(fbsPath, fbsSchema);
-  console.log("Generated FlatBuffers schema:", fbsPath);
-
-  runFlatc(outputPath, fbsPath);
-  console.log("Successfully ran flatc compiler.");
-
-  const clientFiles = generateTypeScriptClient(config, outputPath);
-  for (const [fileName, content] of Object.entries(clientFiles)) {
-    const filePath = path.join(outputPath, fileName);
-    fs.writeFileSync(filePath, content);
-    console.log(`Generated client file: ${filePath}`);
-  }
-}
-
-// --- Helper Functions (loadConfig, validateConfig, runFlatc are unchanged) ---
 function loadConfig(configPath: string): GraphConfig {
   const configModule = require(configPath);
   return configModule.default;
@@ -65,6 +44,10 @@ function runFlatc(outputPath: string, fbsPath: string): void {
     console.error("Error running flatc. Is it installed and in your PATH?");
     throw error;
   }
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function generateFlatbuffersSchema(config: GraphConfig): string {
@@ -110,6 +93,96 @@ function generateFlatbuffersSchema(config: GraphConfig): string {
   return fbs;
 }
 
+function generateInterfaceProperties(
+  config: GraphConfig,
+  nodeName: string
+): string {
+  const nodeSchema = config.schema.nodes[nodeName];
+  let properties = "";
+  // Primitives
+  for (const [key, type] of Object.entries(nodeSchema.shape)) {
+    properties += `${key}: any;\n  `; // Simplified for now
+  }
+  // Relationships
+  for (const edge of config.schema.edges) {
+    if (edge.source === nodeName) {
+      const targetType = capitalize(edge.target);
+      const propType =
+        edge.cardinality === "one-to-many" ? `${targetType}[]` : targetType;
+      properties += `readonly ${edge.name.forward}: ${propType};\n  `;
+    }
+    if (edge.target === nodeName) {
+      const sourceType = capitalize(edge.source);
+      properties += `readonly ${edge.name.backward}: ${sourceType};\n  `;
+    }
+  }
+  return properties;
+}
+
+function generateRelationConfig(edge: EdgeConfig, nodeName: string): string {
+  if (edge.source === nodeName) {
+    // This is a forward relation (e.g., user.posts)
+    return `'${edge.name.forward}': {
+            kind: '${edge.cardinality}',
+            target: '${edge.target}',
+            foreignKey: '${edge.name.backward}_id'
+        }`;
+  } else {
+    // edge.target === nodeName
+    // This is a backward relation (e.g., post.author)
+    return `'${edge.name.backward}': {
+            kind: 'one-to-one',
+            target: '${edge.source}',
+            localKey: '${edge.name.backward}_id'
+        }`;
+  }
+}
+
+function generateNodeConfig(config: GraphConfig, nodeName: string): string {
+  const capName = capitalize(nodeName);
+  const nodeSchema = config.schema.nodes[nodeName];
+  const primitiveFields = Object.keys(nodeSchema.shape);
+
+  // Create the list of setters for serialization
+  const serializers = primitiveFields.map((field) => {
+    return `const ${field}Offset = builder.createString(data.${field}?.toString() ?? '');`;
+  });
+
+  const creatorCall = primitiveFields
+    .map(
+      (field) =>
+        `${capName}Fbs.add${capitalize(field)}(builder, ${field}Offset);`
+    )
+    .join("\n    ");
+
+  return `{
+    // --- Serialization ---
+    serialize: (data: any): Uint8Array => {
+        const builder = new flatbuffers.Builder(1024);
+        ${serializers.join("\n        ")}
+        ${capName}Fbs.start${capName}(builder);
+        ${creatorCall}
+        const dataOffset = ${capName}Fbs.end${capName}(builder);
+        builder.finish(dataOffset);
+        return builder.asUint8Array();
+    },
+    // --- Deserialization ---
+    deserialize: (buffer: Uint8Array): any => {
+        const buf = new flatbuffers.ByteBuffer(buffer);
+        return ${capName}Fbs.getRootAs${capName}(buf);
+    },
+    // --- Relationships ---
+    relations: {
+        ${config.schema.edges
+          .filter(
+            (edge) => edge.source === nodeName || edge.target === nodeName
+          )
+          .map((edge) => generateRelationConfig(edge, nodeName))
+          .join(",\n        ")}
+    }
+}`;
+}
+
 function generateTypeScriptClient(
   config: GraphConfig,
   outputPath: string
@@ -150,7 +223,6 @@ ${nodeNames
   .join("\n")}
 
 const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
 
 // --- Schema-aware serialization and configuration ---
 const clientConfig: ClientConfig = {
@@ -187,93 +259,28 @@ export * from './types';
   };
 }
 
-function generateInterfaceProperties(
-  config: GraphConfig,
-  nodeName: string
-): string {
-  const nodeSchema = config.schema.nodes[nodeName];
-  let properties = "";
-  // Primitives
-  for (const [key, type] of Object.entries(nodeSchema.shape)) {
-    properties += `${key}: any;\n  `; // Simplified for now
+// --- Main Generator Function ---
+export function generate(configPath: string, outputPath: string): void {
+  const config = loadConfig(configPath);
+  validateConfig(config);
+  fs.mkdirSync(outputPath, { recursive: true });
+
+  const fbsSchema = generateFlatbuffersSchema(config);
+  const fbsPath = path.join(outputPath, "schema.fbs");
+  fs.writeFileSync(fbsPath, fbsSchema);
+  console.log("Generated FlatBuffers schema:", fbsPath);
+
+  runFlatc(outputPath, fbsPath);
+  console.log("Successfully ran flatc compiler.");
+
+  const clientFiles = generateTypeScriptClient(config, outputPath);
+  for (const [fileName, content] of Object.entries(clientFiles)) {
+    const filePath = path.join(outputPath, fileName);
+    fs.writeFileSync(filePath, content);
+    console.log(`Generated client file: ${filePath}`);
   }
-  // Relationships
-  for (const edge of config.schema.edges) {
-    if (edge.source === nodeName) {
-      const targetType = capitalize(edge.target);
-      const propType =
-        edge.cardinality === "one-to-many" ? `${targetType}[]` : targetType;
-      properties += `readonly ${edge.name.forward}: ${propType};\n  `;
-    }
-    if (edge.target === nodeName) {
-      const sourceType = capitalize(edge.source);
-      properties += `readonly ${edge.name.backward}: ${sourceType};\n  `;
-    }
-  }
-  return properties;
-}
 
-function generateNodeConfig(config: GraphConfig, nodeName: string): string {
-  const capName = capitalize(nodeName);
-  const nodeSchema = config.schema.nodes[nodeName];
-  const primitiveFields = Object.keys(nodeSchema.shape);
-
-  // Create the list of setters for serialization
-  const serializers = primitiveFields.map((field) => {
-    return `const ${field}Offset = builder.createString(data.${field}?.toString() ?? '');`;
-  });
-
-  const creatorCall = primitiveFields
-    .map(
-      (field) =>
-        `${capName}Fbs.add${capitalize(field)}(builder, ${field}Offset);`
-    )
-    .join("\n    ");
-
-  return `{
-    // --- Serialization ---
-    serialize: (builder: flatbuffers.Builder, data: any): number => {
-        ${serializers.join("\n        ")}
-        ${capName}Fbs.start${capName}(builder);
-        ${creatorCall}
-        return ${capName}Fbs.end${capName}(builder);
-    },
-    // --- Deserialization ---
-    deserialize: (buffer: Uint8Array): any => {
-        const buf = new flatbuffers.ByteBuffer(buffer);
-        return ${capName}Fbs.getRootAs${capName}(buf);
-    },
-    // --- Relationships ---
-    relations: {
-        ${config.schema.edges
-          .filter(
-            (edge) => edge.source === nodeName || edge.target === nodeName
-          )
-          .map((edge) => generateRelationConfig(edge, nodeName))
-          .join(",\n        ")}
-    }
-}`;
-}
-
-function generateRelationConfig(edge: EdgeConfig, nodeName: string): string {
-  if (edge.source === nodeName) {
-    // This is a forward relation (e.g., user.posts)
-    return `'${edge.name.forward}': {
-            kind: '${edge.cardinality}',
-            target: '${edge.target}',
-            foreignKey: '${edge.name.backward}_id'
-        }`;
-  } else {
-    // edge.target === nodeName
-    // This is a backward relation (e.g., post.author)
-    return `'${edge.name.backward}': {
-            kind: 'one-to-one',
-            target: '${edge.source}',
-            localKey: '${edge.name.backward}_id'
-        }`;
-  }
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  // REMOVED the complex and faulty `compileGeneratedClient` function.
+  // Jest will handle compilation during the test run.
+  console.log("Successfully generated client source files.");
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@zg",
+  "name": "@zg/cli",
   "version": "0.1.0",
   "description": "A synchronous, in-memory graph database client generated from Zod schemas.",
   "main": "dist/index.js",
@@ -26,6 +26,21 @@
   ],
   "author": "",
   "license": "ISC",
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "@types/jest": "^29.5.14",
+    "commander": "^12.0.0",
+    "cross-env": "^7.0.3",
+    "flatbuffers": "^24.3.25",
+    "jest": "^30.0.0",
+    "lodash-es": "^4.17.21",
+    "prolly-gunna": "^5.0.0",
+    "ts-jest": "^29.4.0",
+    "ts-node": "^10.9.2",
+    "uuidv7": "^1.0.2",
+    "zod": "^3.22.4",
+    "typescript": "^5.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24"
+  }
 }

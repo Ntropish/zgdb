@@ -2,7 +2,7 @@
 import { flatbuffers } from 'flatbuffers';
 import { createClient as createZgClient } from 'zg/runtime';
 import type { ClientConfig } from 'zg/runtime';
-import { User, Post, Tag } from './types';
+import { User, Post, Tag } from './types.js';
 import { User as UserFbs } from './schema_generated.js';
 import { Post as PostFbs } from './schema_generated.js';
 import { Tag as TagFbs } from './schema_generated.js';
@@ -109,4 +109,4 @@ export function createClient() {
     };
 }
 
-export * from './types';
+export * from './types.js';

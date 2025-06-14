@@ -1,0 +1,44 @@
+{
+  "name": "@zg/examples",
+  "version": "0.1.0",
+  "description": "A synchronous, in-memory graph database client generated from Zod schemas.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build-graph": "zg build --config ./test-graph.config.ts --output ./dist/graph",
+    "run-example:1": "node --loader ts-node/esm ./01-basic-queries.ts",
+    "run-example:2": "node --loader ts-node/esm ./02-graph-analysis.ts",
+    "run-example:3": "node --loader ts-node/esm ./03-instant-search.ts"
+  },
+  "keywords": [
+    "zg",
+    "graph",
+    "database",
+    "zod",
+    "ptree",
+    "flatbuffers",
+    "synchronous",
+    "codegen"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@zg/cli": "workspace:*",
+    "@types/jest": "^29.5.14",
+    "commander": "^12.0.0",
+    "cross-env": "^7.0.3",
+    "flatbuffers": "^24.3.25",
+    "jest": "^30.0.0",
+    "lodash-es": "^4.17.21",
+    "prolly-gunna": "^5.0.0",
+    "ts-jest": "^29.4.0",
+    "ts-node": "^10.9.2",
+    "uuidv7": "^1.0.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  }
+}

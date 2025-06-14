@@ -22,7 +22,7 @@ if (!alice || !bob) {
 const tagInfluence = chain(zg.tag) // Use the iterable directly
   .map((tag) => ({
     name: tag.name,
-    influence: sumBy(tag.posts, "viewCount"),
+    influence: sumBy(tag.posts, (p) => p.viewCount),
   }))
   .sortBy("influence")
   .last()
@@ -33,9 +33,12 @@ console.log("Most Influential Tag:", tagInfluence); //-> { name: 'Performance', 
 // 2. Social Network Analysis: Find "friends of friends"
 // This part of the logic is okay, as it operates on `alice.posts`, which is
 // a specific, finite array relation, not the entire database collection.
-const alicesTags = flatMap(alice.posts, "tags");
-const friendPosts = flatMap(alicesTags, "posts");
-const friendsOfAlice = uniqBy(flatMap(friendPosts, "author"), "id");
+const alicesTags = flatMap(alice.posts, (p) => p.tags);
+const friendPosts = flatMap(alicesTags, (t) => t.posts);
+const friendsOfAlice = uniqBy(
+  flatMap(friendPosts, (p) => p.author),
+  (f) => f.id
+);
 
 console.log(
   "Alice's 'friends':",
@@ -44,7 +47,9 @@ console.log(
 
 // 3. Content Recommendation: Suggest tags for a user
 // Suggest tags that appear in posts by other authors that the user hasn't used yet.
-const alicesUsedTagIds = new Set(flatMap(alice.posts, "tags").map((t) => t.id));
+const alicesUsedTagIds = new Set(
+  flatMap(alice.posts, (p) => p.tags).map((t) => t.id)
+);
 
 const suggestedTags = chain(zg.post) // Use the iterable directly
   .filter((p) => p.author.id !== alice.id) // Find posts by other authors

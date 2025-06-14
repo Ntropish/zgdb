@@ -1,0 +1,14 @@
+{
+  "name": "zg",
+  "version": "1.0.0",
+  "description": "The official CLI for ZG.",
+  "bin": {
+    "zg": "bin/zg.js"
+  },
+  "scripts": {
+    "prepublishOnly": "pnpm build --filter @zg/cli"
+  },
+  "dependencies": {
+    "@zg/cli": "workspace:*"
+  }
+}

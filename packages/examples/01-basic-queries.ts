@@ -1,5 +1,5 @@
-import { createClient } from "./dist";
-import type { User, Post, Tag } from "./dist";
+import { createClient } from "./dist/index.ts";
+import type { User, Post, Tag } from "./dist/index.ts";
 import { filter, countBy, sortBy, chain } from "lodash-es";
 import { uuidv7 as uuid } from "uuidv7";
 

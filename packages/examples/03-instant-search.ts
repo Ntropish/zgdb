@@ -1,4 +1,4 @@
-import { createClient } from "./generated/graph";
+import { createClient } from "./dist";
 import { chain } from "lodash-es";
 import { uuidv7 as uuid } from "uuidv7";
 

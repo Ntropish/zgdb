@@ -41,7 +41,7 @@ const textEncoder = new TextEncoder();
 // --- Proxy for the Set-like object (e.g., zg.user) ---
 function createNodeSetProxy(context, nodeType) {
     const nodeConfig = context.config.nodes[nodeType];
-    return new Proxy({}, {
+    const proxy = new Proxy({}, {
         get(target, prop, receiver) {
             if (prop === "add") {
                 return (data) => {
@@ -54,7 +54,8 @@ function createNodeSetProxy(context, nodeType) {
                     builder.finish(dataOffset);
                     const valueBytes = builder.asUint8Array();
                     db.insertSync(keyBytes, valueBytes);
-                    // TODO: Update relationship indexes here
+                    // In a real implementation, this is where we would update secondary indexes
+                    // to make one-to-many traversals efficient.
                     return createNodeProxy(context, nodeType, data.id);
                 };
             }
@@ -69,11 +70,28 @@ function createNodeSetProxy(context, nodeType) {
                     return createNodeProxy(context, nodeType, id);
                 };
             }
-            // TODO: Implement [Symbol.iterator] using a PTree scan/cursor
-            // for `chain(zg.user)` to work.
+            // --- Implement iterator ---
+            if (prop === Symbol.iterator) {
+                return function* () {
+                    // Use the new synchronous PTree scan to iterate over all nodes of this type.
+                    const prefix = `${nodeType}/`;
+                    const scanResult = context.db.scanItemsSync({
+                        startBound: textEncoder.encode(prefix),
+                    });
+                    // In a real implementation, we would handle pagination here.
+                    for (const [keyBytes] of scanResult.items) {
+                        const key = Buffer.from(keyBytes).toString();
+                        if (key.startsWith(prefix)) {
+                            const id = key.substring(prefix.length);
+                            yield createNodeProxy(context, nodeType, id);
+                        }
+                    }
+                };
+            }
             return Reflect.get(target, prop, receiver);
         },
     });
+    return proxy;
 }
 // --- Proxy for an individual node object (e.g., a specific user) ---
 function createNodeProxy(context, nodeType, id) {
@@ -89,19 +107,35 @@ function createNodeProxy(context, nodeType, id) {
             // Check if this is a defined relationship
             const relation = nodeConfig.relations[prop];
             if (relation) {
-                // TODO: Implement relationship traversal logic using the schema
-                // e.g., for `user.posts`, scan an index for posts with `author_id === user.id`
-                console.warn(`Relationship traversal for '${prop}' not yet implemented.`);
-                return relation.kind === "one-to-many" ? [] : null;
+                const fbsObject = nodeConfig.deserialize(context.db.getSync(textEncoder.encode(cacheKey)));
+                // --- One-to-one relationship (e.g., post.author) ---
+                if (relation.kind === "one-to-one") {
+                    const foreignKeyId = fbsObject[relation.localKey]();
+                    if (!foreignKeyId)
+                        return null;
+                    return createNodeProxy(context, relation.target, foreignKeyId);
+                }
+                // --- One-to-many relationship (e.g., user.posts) ---
+                if (relation.kind === "one-to-many") {
+                    // WARNING: This is an inefficient full table scan.
+                    // A real implementation MUST use a secondary index.
+                    const results = [];
+                    const targetIterator = createNodeSetProxy(context, relation.target);
+                    for (const targetNode of targetIterator) {
+                        const targetFbsObject = context.config.nodes[relation.target].deserialize(context.db.getSync(textEncoder.encode(makeKey(relation.target, targetNode.id))));
+                        if (targetFbsObject[relation.foreignKey] &&
+                            targetFbsObject[relation.foreignKey]() === id) {
+                            results.push(targetNode);
+                        }
+                    }
+                    return results;
+                }
             }
             // Otherwise, assume it's a primitive property
-            const keyBytes = textEncoder.encode(cacheKey);
-            const valueBytes = context.db.getSync(keyBytes);
+            const valueBytes = context.db.getSync(textEncoder.encode(cacheKey));
             if (!valueBytes)
                 return null;
-            // Use the generated deserializer
             const fbsObject = nodeConfig.deserialize(valueBytes);
-            // Access the property on the FlatBuffers object
             if (typeof fbsObject[prop] === "function") {
                 return fbsObject[prop]();
             }

@@ -1,6 +1,6 @@
 import { PTree, TreeConfigOptions } from "prolly-gunna";
 import { createNodeSetProxy } from "./proxy";
-import flatbuffers from "flatbuffers";
+import * as flatbuffers from "flatbuffers";
 
 // --- Type Definitions for the Runtime ---
 

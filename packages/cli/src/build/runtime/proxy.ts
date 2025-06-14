@@ -1,5 +1,5 @@
 import { PTree } from "prolly-gunna";
-import flatbuffers from "flatbuffers";
+import * as flatbuffers from "flatbuffers";
 import type { GraphContext, NodeConfig } from "./client";
 
 // --- Type Definitions ---

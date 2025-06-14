@@ -11,7 +11,6 @@ const proxy_1 = require("./proxy");
  */
 function createClient(clientConfig) {
     const db = new prolly_gunna_1.PTree(clientConfig.treeConfig);
-    console.log("PTree instance created for the graph.");
     const graphContext = {
         db,
         nodeCache: new Map(),
