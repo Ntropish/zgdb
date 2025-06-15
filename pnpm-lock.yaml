@@ -120,9 +120,6 @@ importers:
 
   packages/runtime:
     dependencies:
-      flatbuffers:
-        specifier: ^24.3.25
-        version: 24.12.23
       immer:
         specifier: ^10.1.1
         version: 10.1.1
@@ -132,6 +129,10 @@ importers:
       ulid:
         specifier: ^3.0.1
         version: 3.0.1
+    devDependencies:
+      flatbuffers:
+        specifier: ^24.12.23
+        version: 24.12.23
       zod:
         specifier: ^3.25.64
         version: 3.25.64
