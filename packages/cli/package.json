@@ -1,6 +1,6 @@
 {
   "name": "@zgdb/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A synchronous, in-memory graph database client generated from Zod schemas.",
   "type": "module",
   "bin": {
@@ -43,7 +43,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
     "uuidv7": "^1.0.2",
-    "zod": "^3.22.4"
+    "zod": "^3.25.64"
   },
   "devDependencies": {
     "@types/node": "^20.11.24"
