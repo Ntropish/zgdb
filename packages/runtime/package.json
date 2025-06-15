@@ -1,6 +1,6 @@
 {
   "name": "@zgdb/runtime",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,15 +14,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "flatbuffers": "^24.12.23",
     "immer": "^10.1.1",
     "typescript": "^5.3.3",
     "ulid": "^3.0.1"
   },
   "devDependencies": {
+    "flatbuffers": "^24.12.23",
     "zod": "^3.25.64"
   },
   "peerDependencies": {
+    "flatbuffers": "^24.12.23",
     "zod": "^3.25.64"
   }
 }
