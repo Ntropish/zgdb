@@ -7,67 +7,84 @@ import type { Draft } from 'immer';
 // ============================================
 //  Store Adapter Interface
 // ============================================
-/**
- * Defines the contract for any storage backend. Implement this interface
- * to connect the ZGDB client to your chosen database (e.g., Map, LevelDB, IndexedDB).
- */
 export interface StoreAdapter {
   get(key: string): Promise<Uint8Array | undefined>;
   set(key: string, value: Uint8Array): Promise<void>;
+  transact<T>(
+    updateFn: (transactionCtx: {
+      get(key: string): Promise<Uint8Array | undefined>;
+      set(key: string, value: Uint8Array): void;
+    }) => Promise<T>
+  ): Promise<T>;
 }
 
-type ClientNodeType = (typeof supportedNodeTypes)[number];
-type NodeDataType<T extends ClientNodeType> = T extends 'user' ? UserData : T extends 'post' ? PostData : T extends 'tag' ? TagData : T extends 'familiar' ? FamiliarData : never;
 
+export type NodeDataTypeMap = {
+  'user': UserData;
+  'familiar': FamiliarData;
+  'post': PostData;
+  'tag': TagData;
+};
+    
+type ClientNodeType = keyof NodeDataTypeMap;
+
+export type TransactionClient = {
+  getNode<T extends ClientNodeType>(nodeType: T, nodeId: string): Promise<NodeDataTypeMap[T] | undefined>;
+  createNode<T extends ClientNodeType>(nodeType: T, data: { fields: NodeDataTypeMap[T]['fields'], relationIds: NodeDataTypeMap[T]['relationIds'] }): Promise<NodeDataTypeMap[T]>;
+  updateNode<T extends ClientNodeType>(nodeType: T, nodeId: string, recipe: (draft: Draft<NodeDataTypeMap[T]>) => void): Promise<NodeDataTypeMap[T]>;
+};
+    
 // ============================================
 //  Client Factory
 // ============================================
 export function createClient(store: StoreAdapter) {
+  const createTxClient = (txStore: { get: (key: string) => Promise<Uint8Array | undefined>; set: (key: string, value: Uint8Array) => void; }): TransactionClient => {
+        const txCache = new Map<string, any>();
+
+        // This object now correctly implements the generic methods from TransactionClient
+        return {
+            async getNode<T extends ClientNodeType>(nodeType: T, nodeId: string) {
+                const key = KeyEncoder.nodeKey(nodeType, nodeId).toString();
+                if (txCache.has(key)) return txCache.get(key);
+                
+                const buffer = await txStore.get(key);
+                if (!buffer) return undefined;
+
+                const node = (deserializeNode as any)[nodeType](buffer);
+                txCache.set(key, node);
+                return node;
+            },
+            async createNode<T extends ClientNodeType>(nodeType: T, data: { fields: NodeDataTypeMap[T]['fields'], relationIds: NodeDataTypeMap[T]['relationIds'] }) {
+                const node = (createNodeData as any)[nodeType](data);
+                const key = KeyEncoder.nodeKey(nodeType, node.id).toString();
+                const buffer = (serializeNode as any)[nodeType](node);
+                
+                txCache.set(key, node);
+                txStore.set(key, buffer);
+                return node;
+            },
+            async updateNode<T extends ClientNodeType>(nodeType: T, nodeId: string, recipe: (draft: Draft<NodeDataTypeMap[T]>) => void) {
+                const existingNode = await this.getNode(nodeType, nodeId);
+                if (!existingNode) {
+                    throw new Error(`Node ${nodeType}:${nodeId} not found for update.`);
+                }
+                const updatedNode = (updateNodeData as any)[nodeType](existingNode, recipe);
+                const key = KeyEncoder.nodeKey(nodeType, nodeId).toString();
+                const buffer = (serializeNode as any)[nodeType](updatedNode);
+
+                txCache.set(key, updatedNode);
+                txStore.set(key, buffer);
+                return updatedNode;
+            },
+        };
+    };
+
   return {
-    /**
-     * Creates a new node, serializes it, and saves it to the store.
-     */
-    async createNode<T extends ClientNodeType>(
-      nodeType: T,
-      data: { fields: NodeDataType<T>['fields'], relationIds: NodeDataType<T>['relationIds'] }
-    ): Promise<NodeDataType<T>> {
-      const node = createNodeData[nodeType](data as any);
-      const key = KeyEncoder.nodeKey(nodeType, node.id).toString();
-      const buffer = serializeNode[nodeType](node as any);
-      await store.set(key, buffer);
-      return node as NodeDataType<T>;
-    },
-
-    /**
-     * Retrieves and deserializes a node from the store.
-     */
-    async getNode<T extends ClientNodeType>(nodeType: T, nodeId: string): Promise<NodeDataType<T> | undefined> {
-      const key = KeyEncoder.nodeKey(nodeType, nodeId).toString();
-      const buffer = await store.get(key);
-      if (!buffer) return undefined;
-      return deserializeNode[nodeType](buffer) as NodeDataType<T>;
-    },
-
-    /**
-     * Atomically retrieves, updates, and saves a node.
-     */
-    async updateNode<T extends ClientNodeType>(
-      nodeType: T,
-      nodeId: string,
-      recipe: (draft: Draft<NodeDataType<T>>) => void
-    ): Promise<NodeDataType<T>> {
-      const key = KeyEncoder.nodeKey(nodeType, nodeId).toString();
-      const existingBuffer = await store.get(key);
-      if (!existingBuffer) {
-        throw new Error(`Node with key ${key} not found for update.`);
-      }
-
-      const existingNode = deserializeNode[nodeType](existingBuffer) as NodeDataType<T>;
-      const updatedNode = updateNodeData[nodeType](existingNode as any, recipe as any);
-      const updatedBuffer = serializeNode[nodeType](updatedNode as any);
-
-      await store.set(key, updatedBuffer);
-      return updatedNode as NodeDataType<T>;
+    async transact<T>(recipe: (tx: TransactionClient) => Promise<T>): Promise<T> {
+      return store.transact(async (txStore) => {
+        const txClient = createTxClient(txStore);
+        return recipe(txClient);
+      });
     }
   };
 }

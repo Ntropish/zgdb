@@ -1,6 +1,6 @@
 /**
  * @file src/codegen/client-generator.ts
- * @description Generates a type-safe, store-agnostic database client.
+ * @description Generates a type-safe, store-agnostic database client with transaction support.
  */
 
 import { Schema } from "./utils.js";
@@ -13,9 +13,13 @@ export function generateClient(schema: Schema): string {
   const lines: string[] = [];
   const nodeTypes = Object.keys(schema);
 
-  const allNodeDataTypes = nodeTypes
-    .map((t) => `${capitalize(t)}Data`)
-    .join(" | ");
+  // --- Type Definitions ---
+  const clientNodeTypes = `(typeof supportedNodeTypes)[number]`;
+  const nodeDataMap = `
+export type NodeDataTypeMap = {
+${nodeTypes.map((t) => `  '${t}': ${capitalize(t)}Data;`).join("\n")}
+};
+    `;
 
   // --- Imports ---
   lines.push(`import { KeyEncoder } from '@zgdb/runtime';`);
@@ -37,105 +41,84 @@ export function generateClient(schema: Schema): string {
   lines.push("// ============================================");
   lines.push("//  Store Adapter Interface");
   lines.push("// ============================================");
-  lines.push("/**");
-  lines.push(
-    " * Defines the contract for any storage backend. Implement this interface"
-  );
-  lines.push(
-    " * to connect the ZGDB client to your chosen database (e.g., Map, LevelDB, IndexedDB)."
-  );
-  lines.push(" */");
   lines.push(`export interface StoreAdapter {`);
   lines.push(`  get(key: string): Promise<Uint8Array | undefined>;`);
   lines.push(`  set(key: string, value: Uint8Array): Promise<void>;`);
+  lines.push(`  transact<T>(`);
+  lines.push(`    updateFn: (transactionCtx: {`);
+  lines.push(`      get(key: string): Promise<Uint8Array | undefined>;`);
+  lines.push(`      set(key: string, value: Uint8Array): void;`);
+  lines.push(`    }) => Promise<T>`);
+  lines.push(`  ): Promise<T>;`);
   lines.push(`}`);
   lines.push("");
 
   // --- Type Helpers ---
-  lines.push(`type ClientNodeType = (typeof supportedNodeTypes)[number];`);
-  lines.push(
-    `type NodeDataType<T extends ClientNodeType> = T extends 'user' ? UserData : T extends 'post' ? PostData : T extends 'tag' ? TagData : T extends 'familiar' ? FamiliarData : never;`
-  );
-  lines.push("");
+  lines.push(nodeDataMap);
+  lines.push(`type ClientNodeType = keyof NodeDataTypeMap;`);
+  lines.push(`
+export type TransactionClient = {
+  getNode<T extends ClientNodeType>(nodeType: T, nodeId: string): Promise<NodeDataTypeMap[T] | undefined>;
+  createNode<T extends ClientNodeType>(nodeType: T, data: { fields: NodeDataTypeMap[T]['fields'], relationIds: NodeDataTypeMap[T]['relationIds'] }): Promise<NodeDataTypeMap[T]>;
+  updateNode<T extends ClientNodeType>(nodeType: T, nodeId: string, recipe: (draft: Draft<NodeDataTypeMap[T]>) => void): Promise<NodeDataTypeMap[T]>;
+};
+    `);
 
   // --- createClient Factory ---
   lines.push("// ============================================");
   lines.push("//  Client Factory");
   lines.push("// ============================================");
   lines.push(`export function createClient(store: StoreAdapter) {`);
+  lines.push(`  const createTxClient = (txStore: { get: (key: string) => Promise<Uint8Array | undefined>; set: (key: string, value: Uint8Array) => void; }): TransactionClient => {
+        const txCache = new Map<string, any>();
+
+        // This object now correctly implements the generic methods from TransactionClient
+        return {
+            async getNode<T extends ClientNodeType>(nodeType: T, nodeId: string) {
+                const key = KeyEncoder.nodeKey(nodeType, nodeId).toString();
+                if (txCache.has(key)) return txCache.get(key);
+                
+                const buffer = await txStore.get(key);
+                if (!buffer) return undefined;
+
+                const node = (deserializeNode as any)[nodeType](buffer);
+                txCache.set(key, node);
+                return node;
+            },
+            async createNode<T extends ClientNodeType>(nodeType: T, data: { fields: NodeDataTypeMap[T]['fields'], relationIds: NodeDataTypeMap[T]['relationIds'] }) {
+                const node = (createNodeData as any)[nodeType](data);
+                const key = KeyEncoder.nodeKey(nodeType, node.id).toString();
+                const buffer = (serializeNode as any)[nodeType](node);
+                
+                txCache.set(key, node);
+                txStore.set(key, buffer);
+                return node;
+            },
+            async updateNode<T extends ClientNodeType>(nodeType: T, nodeId: string, recipe: (draft: Draft<NodeDataTypeMap[T]>) => void) {
+                const existingNode = await this.getNode(nodeType, nodeId);
+                if (!existingNode) {
+                    throw new Error(\`Node \${nodeType}:\${nodeId} not found for update.\`);
+                }
+                const updatedNode = (updateNodeData as any)[nodeType](existingNode, recipe);
+                const key = KeyEncoder.nodeKey(nodeType, nodeId).toString();
+                const buffer = (serializeNode as any)[nodeType](updatedNode);
+
+                txCache.set(key, updatedNode);
+                txStore.set(key, buffer);
+                return updatedNode;
+            },
+        };
+    };`);
+  lines.push(``);
+
   lines.push(`  return {`);
-
-  // --- createNode Method ---
-  lines.push(`    /**`);
   lines.push(
-    `     * Creates a new node, serializes it, and saves it to the store.`
+    `    async transact<T>(recipe: (tx: TransactionClient) => Promise<T>): Promise<T> {`
   );
-  lines.push(`     */`);
-  lines.push(`    async createNode<T extends ClientNodeType>(`);
-  lines.push(`      nodeType: T,`);
-  lines.push(
-    `      data: { fields: NodeDataType<T>['fields'], relationIds: NodeDataType<T>['relationIds'] }`
-  );
-  lines.push(`    ): Promise<NodeDataType<T>> {`);
-  lines.push(`      const node = createNodeData[nodeType](data as any);`);
-  lines.push(
-    `      const key = KeyEncoder.nodeKey(nodeType, node.id).toString();`
-  );
-  lines.push(`      const buffer = serializeNode[nodeType](node as any);`);
-  lines.push(`      await store.set(key, buffer);`);
-  lines.push(`      return node as NodeDataType<T>;`);
-  lines.push(`    },`);
-  lines.push(``);
-
-  // --- getNode Method ---
-  lines.push(`    /**`);
-  lines.push(`     * Retrieves and deserializes a node from the store.`);
-  lines.push(`     */`);
-  lines.push(
-    `    async getNode<T extends ClientNodeType>(nodeType: T, nodeId: string): Promise<NodeDataType<T> | undefined> {`
-  );
-  lines.push(
-    `      const key = KeyEncoder.nodeKey(nodeType, nodeId).toString();`
-  );
-  lines.push(`      const buffer = await store.get(key);`);
-  lines.push(`      if (!buffer) return undefined;`);
-  lines.push(
-    `      return deserializeNode[nodeType](buffer) as NodeDataType<T>;`
-  );
-  lines.push(`    },`);
-  lines.push(``);
-
-  // --- updateNode Method ---
-  lines.push(`    /**`);
-  lines.push(`     * Atomically retrieves, updates, and saves a node.`);
-  lines.push(`     */`);
-  lines.push(`    async updateNode<T extends ClientNodeType>(`);
-  lines.push(`      nodeType: T,`);
-  lines.push(`      nodeId: string,`);
-  lines.push(`      recipe: (draft: Draft<NodeDataType<T>>) => void`);
-  lines.push(`    ): Promise<NodeDataType<T>> {`);
-  lines.push(
-    `      const key = KeyEncoder.nodeKey(nodeType, nodeId).toString();`
-  );
-  lines.push(`      const existingBuffer = await store.get(key);`);
-  lines.push(`      if (!existingBuffer) {`);
-  lines.push(
-    `        throw new Error(\`Node with key \${key} not found for update.\`);`
-  );
-  lines.push(`      }`);
-  lines.push(``);
-  lines.push(
-    `      const existingNode = deserializeNode[nodeType](existingBuffer) as NodeDataType<T>;`
-  );
-  lines.push(
-    `      const updatedNode = updateNodeData[nodeType](existingNode as any, recipe as any);`
-  );
-  lines.push(
-    `      const updatedBuffer = serializeNode[nodeType](updatedNode as any);`
-  );
-  lines.push(``);
-  lines.push(`      await store.set(key, updatedBuffer);`);
-  lines.push(`      return updatedNode as NodeDataType<T>;`);
+  lines.push(`      return store.transact(async (txStore) => {`);
+  lines.push(`        const txClient = createTxClient(txStore);`);
+  lines.push(`        return recipe(txClient);`);
+  lines.push(`      });`);
   lines.push(`    }`);
   lines.push(`  };`);
   lines.push(`}`);

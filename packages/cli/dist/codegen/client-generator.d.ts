@@ -1,6 +1,6 @@
 /**
  * @file src/codegen/client-generator.ts
- * @description Generates a type-safe, store-agnostic database client.
+ * @description Generates a type-safe, store-agnostic database client with transaction support.
  */
 import { Schema } from "./utils.js";
 export declare function generateClient(schema: Schema): string;
