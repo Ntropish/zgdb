@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ===================================================================
-// src/main.ts
+// src/main.ts (Updated)
 // ===================================================================
 import { program } from "commander";
 import path from "path";
@@ -9,7 +9,11 @@ import { loadConfig } from "./config-loader.js";
 import { generateFbsSchema } from "./codegen/fbs-generator.js";
 import { runFlatc } from "./codegen/flatc-runner.js";
 import { generateSerializer } from "./codegen/serializer-generator.js";
-import { generateIndex } from "./codegen/index-generator.js"; // New import
+import { generateMutationHelpers } from "./codegen/mutation-helpers-generator.js"; // New
+import { generateIndex } from "./codegen/index-generator.js";
+
+const __dirname = import.meta.dirname;
+const cliDir = path.resolve(__dirname, "..");
 
 program
   .command("build")
@@ -21,48 +25,51 @@ program
   )
   .option(
     "-o, --output <path>",
-    "Path to the output directory for the generated client",
+    "Path to the output directory",
     "./src/dist/graph"
   )
   .action(async (options) => {
     console.log(`Starting build from ${options.config}...`);
     const outputDir = path.resolve(process.cwd(), options.output);
 
-    // Define paths for all generated files
+    // Define paths
     const fbsPath = path.join(outputDir, "_schema.fbs");
     const serializerPath = path.join(outputDir, "generated-serializers.ts");
-    const schemaDestPath = path.join(outputDir, "graph-schema.ts"); // Renamed
-    const indexPath = path.join(outputDir, "index.ts"); // New
+    const mutationHelpersPath = path.join(outputDir, "mutation-helpers.ts"); // New
+    const schemaDestPath = path.join(outputDir, "graph-schema.ts");
+    const indexPath = path.join(outputDir, "index.ts");
 
     try {
-      // 1. Load the user's graph configuration
       const config = await loadConfig(options.config);
-
-      // 2. Ensure the output directory exists
       await fs.mkdir(outputDir, { recursive: true });
 
-      // 3. Copy the user's config to the output dir, renaming it for clarity
+      // Copy schema
       await fs.copyFile(
         path.resolve(process.cwd(), options.config),
         schemaDestPath
       );
       console.log(`✅ Graph schema copied to ${schemaDestPath}`);
 
-      // 4. Generate and write the FlatBuffers schema (.fbs) file
+      // Generate FBS
       const fbsSchema = generateFbsSchema(config);
       await fs.writeFile(fbsPath, fbsSchema, "utf8");
       console.log("✅ FlatBuffers schema (.fbs) generated.");
 
-      // 5. Run the flatc compiler to generate TS files from the .fbs schema
+      // Run flatc
       await runFlatc(outputDir, fbsPath);
       console.log("✅ flatc compiler executed successfully.");
 
-      // 6. Generate and write the type-safe serializer/deserializer code
+      // Generate serializers
       const serializerCode = generateSerializer(config);
       await fs.writeFile(serializerPath, serializerCode, "utf8");
       console.log(`✅ Type-safe serializers generated at ${serializerPath}`);
 
-      // 7. Generate and write the main index.ts file for re-exports
+      // Generate mutation helpers
+      const mutationHelpersCode = generateMutationHelpers(config); // New
+      await fs.writeFile(mutationHelpersPath, mutationHelpersCode, "utf8"); // New
+      console.log(`✅ Mutation helpers generated at ${mutationHelpersPath}`); // New
+
+      // Generate main index file
       const indexCode = generateIndex();
       await fs.writeFile(indexPath, indexCode, "utf8");
       console.log(`✅ Main index file generated at ${indexPath}`);
