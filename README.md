@@ -1,114 +1,168 @@
-# zgdb
+# ZGDB: The Zero-Latency Graph Database
 
-Define your data graph with Zod. Use it like a native JavaScript object. That's it.
+ZGDB is a new kind of database for a new kind of application. It's a schema-first, embeddable, transactional graph database for TypeScript/JavaScript that you generate from your Zod schemas. It lives inside your application's process, providing zero-latency data access and a developer experience that feels less like a database and more like a native data structure.
 
-zg is a new kind of database for a new kind of application. It's an in-memory, synchronous graph database client that you generate from your Zod schemas. It feels less like a database and more like a native data structure.
+- **Schema First**: Use the power and safety of Zod to define your data graph's nodes and their relationships.
 
-- Schema First: Use the power and safety of Zod to define your nodes and edges.
+- **Type Safe**: The command-line tool generates a client perfectly tailored to your schema, providing end-to-end type safety.
 
-- Zero Latency: Read, write, and traverse the graph synchronously. No async/await, no promises, no ORMs.
+- **Transactional**: Atomically create, update, and connect nodes within a transaction. Your data remains consistent, always.
 
-- Fully Typed: The build process generates a client that is perfectly tailored to your schema.
+- **Flexible & Fast**: Choose between high-performance synchronous or versatile asynchronous clients depending on your storage adapter and use case.
+
+- **Embeddable**: ZGDB is not a separate server. It's a library that runs within your application, eliminating network latency and simplifying your stack.
 
 ## How it Works
 
-Stop waiting for your data. Start using it.
-
 ### 1. Define Schema
 
-Create a graph.config.ts file to define your data model.
+Create a schema file (e.g., schema.ts) to define your data model using Zod. Each key in the schema object represents a node type.
 
 ```ts
-// graph.config.ts
+// ./src/portfolio/schema.ts
 import { z } from "zod";
 
-const userNode = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-});
-
-const postNode = z.object({
-  id: z.string().uuid(),
-  title: z.string(),
-});
-
-const graphConfig = {
-  schema: {
-    nodes: {
-      user: userNode,
-      post: postNode,
+const schema = {
+  portfolio: {
+    fields: z.object({
+      name: z.string(),
+      cashBalance: z.number(),
+    }),
+    relations: {
+      holdings: ["many", "holding"],
+      trades: ["many", "trade"],
     },
-    edges: [
-      {
-        source: "user",
-        target: "post",
-        cardinality: "one-to-many",
-        name: {
-          forward: "posts", // user.posts -> Post[]
-          backward: "author", // post.author -> User
-        },
-      },
-    ],
+  },
+  stock: {
+    fields: z.object({
+      ticker: z.string().toUpperCase(),
+      currentPrice: z.number(),
+    }),
+    relations: {
+      holdings: ["many", "holding"],
+    },
+  },
+  holding: {
+    fields: z.object({
+      shares: z.number(),
+    }),
+    relations: {
+      portfolio: ["one", "portfolio"],
+      stock: ["one", "stock"],
+    },
+  },
+  trade: {
+    fields: z.object({
+      type: z.enum(["buy", "sell"]),
+      shares: z.number(),
+      pricePerShare: z.number(),
+    }),
+    relations: {
+      portfolio: ["one", "portfolio"],
+      stock: ["one", "stock"],
+    },
   },
 };
 
-export default graphConfig;
+export default schema;
 ```
 
 ### 2. Build Client
 
-Run the zg command in your terminal.
+Run the `zg` command in your terminal, pointing to your schema file.
 
 ```
-npx zg build
+zg build --config ./src/portfolio/schema.ts --output ./src/portfolio/dist/graph
 ```
 
 This generates a fully-typed client in `./src/generated/graph`.
 
-### 3. Use Synchronously
+### 3. Use Your Database
 
-Import the generated client and interact with your data immediately.
+Import the generated client factory and a store adapter. Create a client instance and begin interacting with your data within transactions.
+
+#### Synchronous Example
+
+Ideal for in-memory operations and high-performance simulations where every microsecond counts.
 
 ```ts
-import { createClient } from "./generated/graph";
-import type { User, Post } from "./generated/graph";
-import { v4 as uuid } from "uuid";
+import { createSyncClient } from "./portfolio/dist/graph";
+import { MapStoreAdapterSync } from "../map-store-adapter-sync";
 
-// `createClient` is a synchronous operation
-const zg = createClient();
+// `createSyncClient` is a synchronous operation
+const db = createSyncClient(new MapStoreAdapterSync());
 
-// --- Write Data ---
-const alice: User = zg.user.add({
-  id: uuid(),
-  name: "Alice",
+// Use the `transactSync` method for atomic writes
+const { portfolioId, stockId } = db.transactSync((tx) => {
+  const stock = tx.createNode("stock", {
+    fields: { ticker: "ZGDB", currentPrice: 150.0 },
+    relationIds: { holdings: [] },
+  });
+
+  const portfolio = tx.createNode("portfolio", {
+    fields: { name: "My First Portfolio", cashBalance: 10000 },
+    relationIds: { holdings: [], trades: [] },
+  });
+
+  return { portfolioId: portfolio.id, stockId: stock.id };
 });
 
-const post: Post = zg.post.add({
-  id: uuid(),
-  title: "Hello, World!",
-  author: alice, // Link nodes by passing the object directly
+// Execute a trade
+db.transactSync((tx) => {
+  const portfolio = tx.getNode("portfolio", portfolioId);
+  if (!portfolio) return;
+
+  // Create a holding to link the portfolio and stock
+  const holding = tx.createNode("holding", {
+    fields: { shares: 10 },
+    relationIds: { portfolio: portfolio.id, stock: stockId },
+  });
+
+  // Update the portfolio with the new holding
+  tx.updateNode("portfolio", portfolio.id, (p) => {
+    p.relationIds.holdings.push(holding.id);
+    p.fields.cashBalance -= 10 * 150.0;
+  });
 });
+```
 
-// --- Read & Traverse Data ---
-// No `await`. The data is just there.
+#### Asynchronous Example
 
-const retrievedPost = zg.post.get(post.id);
+Perfect for when your data is stored externally (e.g., in a file or a remote key-value store) and requires asynchronous I/O.
 
-if (retrievedPost) {
-  // Traverse the graph with simple property access
-  console.log(retrievedPost.author.name); //-> "Alice"
+```ts
+import { createClient } from "./portfolio/dist/graph";
+import { MapStoreAdapter } from "../map-store-adapter"; // An async adapter
+
+const db = createClient(new MapStoreAdapter());
+
+async function main() {
+  // Use the `transact` method for atomic async writes
+  const { portfolioId } = await db.transact(async (tx) => {
+    const portfolio = await tx.createNode("portfolio", {
+      fields: { name: "My Async Portfolio", cashBalance: 25000 },
+      relationIds: { holdings: [], trades: [] },
+    });
+    return { portfolioId: portfolio.id };
+  });
+
+  // Read data within a transaction
+  const myPortfolio = await db.transact((tx) =>
+    tx.getNode("portfolio", portfolioId)
+  );
+
+  console.log(myPortfolio?.fields.name); // -> "My Async Portfolio"
 }
 
-// The relationship is automatically available on the other side
-console.log(alice.posts[0].title); //-> "Hello, World!"
+main();
 ```
 
 ## Why zg?
 
-Modern applications, especially collaborative and creative tools, require instant interaction with complex, interconnected data. Traditional databases, with their asynchronous APIs, force developers to build complex state management layers.
+Modern applications, especially collaborative and creative tools, require instant interaction with complex, interconnected data. Traditional databases, with their asynchronous APIs and network overhead, force developers to build complex state management layers.
 
-`zg` solves this by bringing the database into your application's runtime, providing a synchronous, native-like experience that simplifies your code and unlocks a new level of performance for interactive UIs.
+`zgdb` solves this by bringing a powerful, transactional graph database into your application's runtime. This provides a synchronous, native-like developer experience that simplifies your code, eliminates entire categories of state management bugs, and unlocks a new level of performance for interactive applications.
 
 ### Status
 
-zg is currently an experimental proof-of-concept. It's a great way to explore the future of application data architecture.
+ZGDB is a rapidly evolving project. The core API is stabilizing, and it is a fantastic tool for exploring the future of application data architecture. It is suitable for prototyping, internal tools, and applications where its performance and developer experience benefits shine.
