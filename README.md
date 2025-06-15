@@ -93,7 +93,7 @@ Ideal for in-memory operations and high-performance simulations where every micr
 
 ```ts
 import { createSyncClient } from "./portfolio/dist/graph";
-import { MapStoreAdapterSync } from "../map-store-adapter-sync";
+import { MapStoreAdapterSync } from "@zgdb/runtime";
 
 // `createSyncClient` is a synchronous operation
 const db = createSyncClient(new MapStoreAdapterSync());
@@ -138,7 +138,7 @@ Perfect for when your data is stored externally (e.g., in a file or a remote key
 
 ```ts
 import { createClient } from "./portfolio/dist/graph";
-import { MapStoreAdapter } from "../map-store-adapter"; // An async adapter
+import { MapStoreAdapter } from "@zgdb/runtime"; // An async adapter
 
 const db = createClient(new MapStoreAdapter());
 
