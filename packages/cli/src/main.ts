@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ===================================================================
-// src/main.ts (Updated)
+// packages/cli/src/main.ts (Updated for new architecture)
 // ===================================================================
 import { program } from "commander";
 import path from "path";
@@ -10,11 +10,11 @@ import { generateFbsSchema } from "./codegen/fbs-generator.js";
 import { runFlatc } from "./codegen/flatc-runner.js";
 import { generateSerializer } from "./codegen/serializer-generator.js";
 import { generateMutationHelpers } from "./codegen/mutation-helpers-generator.js";
-import { generateClient } from "./codegen/client-generator.js"; // New
+import { generateTypes } from "./codegen/type-generator.js"; // New
+import { generateClient } from "./codegen/client-generator.js";
 import { generateIndex } from "./codegen/index-generator.js";
 
 const __dirname = import.meta.dirname;
-const cliDir = path.resolve(__dirname, "..");
 
 program
   .command("build")
@@ -33,50 +33,53 @@ program
     console.log(`Starting build from ${options.config}...`);
     const outputDir = path.resolve(process.cwd(), options.output);
 
-    // Define paths
+    // Define paths for all generated files
     const serializerPath = path.join(outputDir, "generated-serializers.ts");
+    const typesPath = path.join(outputDir, "generated-types.ts"); // New
     const mutationHelpersPath = path.join(outputDir, "mutation-helpers.ts");
-    const clientPath = path.join(outputDir, "zgdb-client.ts"); // New
+    const clientPath = path.join(outputDir, "zgdb-client.ts");
     const schemaDestPath = path.join(outputDir, "graph-schema.ts");
     const indexPath = path.join(outputDir, "index.ts");
+    const fbsPath = path.join(outputDir, "_schema.fbs");
 
     try {
       const config = await loadConfig(options.config);
       await fs.mkdir(outputDir, { recursive: true });
 
-      // Copy schema
+      // Copy the original schema file
       await fs.copyFile(
         path.resolve(process.cwd(), options.config),
         schemaDestPath
       );
       console.log(`✅ Graph schema copied to ${schemaDestPath}`);
 
-      // Generate FBS and run flatc
+      // Generate FBS from schema and run flatc to compile it
       const fbsSchema = generateFbsSchema(config);
-      await fs.writeFile(
-        path.join(outputDir, "_schema.fbs"),
-        fbsSchema,
-        "utf8"
-      );
-      await runFlatc(outputDir, path.join(outputDir, "_schema.fbs"));
+      await fs.writeFile(fbsPath, fbsSchema, "utf8");
+      await runFlatc(outputDir, fbsPath);
       console.log("✅ FlatBuffers schema compiled.");
 
-      // Generate serializers
+      // Generate Serializers
       const serializerCode = generateSerializer(config);
       await fs.writeFile(serializerPath, serializerCode, "utf8");
       console.log(`✅ Type-safe serializers generated.`);
 
-      // Generate mutation helpers
+      // Generate Types (NodeDataTypeMap)
+      const typesCode = generateTypes(config); // New
+      await fs.writeFile(typesPath, typesCode, "utf8"); // New
+      console.log(`✅ Node data types generated.`); // New
+
+      // Generate Mutation Helpers
       const mutationHelpersCode = generateMutationHelpers(config);
       await fs.writeFile(mutationHelpersPath, mutationHelpersCode, "utf8");
       console.log(`✅ Mutation helpers generated.`);
 
-      // Generate Client
-      const clientCode = generateClient(config); // New
-      await fs.writeFile(clientPath, clientCode, "utf8"); // New
-      console.log(`✅ Store-agnostic client generated.`); // New
+      // Generate the thin ZGDB Client
+      const clientCode = generateClient(); // Updated: no longer needs config
+      await fs.writeFile(clientPath, clientCode, "utf8");
+      console.log(`✅ Store-agnostic client generated.`);
 
-      // Generate main index file
+      // Generate main index file to export everything
       const indexCode = generateIndex();
       await fs.writeFile(indexPath, indexCode, "utf8");
       console.log(`✅ Main index file generated.`);

@@ -1,6 +1,5 @@
 /**
  * @file src/codegen/client-generator.ts
- * @description Generates a type-safe, store-agnostic database client with transaction support.
+ * @description Generates the configured ZGDB client.
  */
-import { Schema } from "./utils.js";
-export declare function generateClient(schema: Schema): string;
+export declare function generateClient(): string;

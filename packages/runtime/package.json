@@ -13,6 +13,7 @@
   "dependencies": {
     "@zgdb/types": "workspace:*",
     "flatbuffers": "^24.3.25",
+    "immer": "^10.1.1",
     "rxjs": "^7.8.2",
     "typescript": "^5.3.3"
   }
