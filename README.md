@@ -19,7 +19,7 @@ ZGDB is a new kind of database for a new kind of application. It's a schema-firs
 ## Install
 
 ```
-npm install @zgdb/cli @zgdb/runtime zod
+npm install @zgdb/cli @zgdb/runtime zod flatbuffers
 ```
 
 ## How it Works
