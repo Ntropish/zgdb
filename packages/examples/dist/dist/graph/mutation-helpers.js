@@ -1,5 +1,6 @@
 import schema from './graph-schema.js';
 import { uuidv7 as uuid } from 'uuidv7';
+import { produce } from 'immer';
 // ============================================
 //  Create Node Data Helpers
 // ============================================
@@ -38,47 +39,55 @@ export const createNodeData = {
     })
 };
 // ============================================
-//  Update Node Data Helpers
+//  Update Node Data Helpers (with Immer)
 // ============================================
 export const updateNodeData = {
-    user: (node, updates) => {
-        const newFields = { ...node.fields, ...updates.fields };
-        const newRelations = { ...node.relationIds, ...updates.relationIds };
+    user: (node, recipe) => {
+        const updatedNode = produce(node, draft => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+        // After mutation, validate the final fields object to ensure consistency.
+        const validatedFields = schema.user.fields.parse(updatedNode.fields);
         return {
-            ...node,
-            fields: schema.user.fields.parse(newFields),
-            relationIds: newRelations,
-            updatedAt: Date.now(),
+            ...updatedNode,
+            fields: validatedFields,
         };
     },
-    familiar: (node, updates) => {
-        const newFields = { ...node.fields, ...updates.fields };
-        const newRelations = { ...node.relationIds, ...updates.relationIds };
+    familiar: (node, recipe) => {
+        const updatedNode = produce(node, draft => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+        // After mutation, validate the final fields object to ensure consistency.
+        const validatedFields = schema.familiar.fields.parse(updatedNode.fields);
         return {
-            ...node,
-            fields: schema.familiar.fields.parse(newFields),
-            relationIds: newRelations,
-            updatedAt: Date.now(),
+            ...updatedNode,
+            fields: validatedFields,
         };
     },
-    post: (node, updates) => {
-        const newFields = { ...node.fields, ...updates.fields };
-        const newRelations = { ...node.relationIds, ...updates.relationIds };
+    post: (node, recipe) => {
+        const updatedNode = produce(node, draft => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+        // After mutation, validate the final fields object to ensure consistency.
+        const validatedFields = schema.post.fields.parse(updatedNode.fields);
         return {
-            ...node,
-            fields: schema.post.fields.parse(newFields),
-            relationIds: newRelations,
-            updatedAt: Date.now(),
+            ...updatedNode,
+            fields: validatedFields,
         };
     },
-    tag: (node, updates) => {
-        const newFields = { ...node.fields, ...updates.fields };
-        const newRelations = { ...node.relationIds, ...updates.relationIds };
+    tag: (node, recipe) => {
+        const updatedNode = produce(node, draft => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+        // After mutation, validate the final fields object to ensure consistency.
+        const validatedFields = schema.tag.fields.parse(updatedNode.fields);
         return {
-            ...node,
-            fields: schema.tag.fields.parse(newFields),
-            relationIds: newRelations,
-            updatedAt: Date.now(),
+            ...updatedNode,
+            fields: validatedFields,
         };
     }
 };

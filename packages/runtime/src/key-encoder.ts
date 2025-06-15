@@ -4,7 +4,7 @@ import type { NodeData, Edge } from "./types";
  * Key encoding schemes for the ProllyTree
  * Using a hierarchical key structure for efficient scans
  */
-export default class KeyEncoder {
+export class KeyEncoder {
   private static encoder = new TextEncoder();
   private static decoder = new TextDecoder();
 

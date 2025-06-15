@@ -4,6 +4,7 @@
  */
 
 import { Schema } from "./utils.js";
+import { produce, type Draft } from "immer";
 
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
@@ -21,6 +22,7 @@ export function generateMutationHelpers(schema: Schema): string {
       .join(", ")} } from './generated-serializers.js';`
   );
   lines.push(`import { uuidv7 as uuid } from 'uuidv7';`);
+  lines.push(`import { produce, Draft } from 'immer';`);
   lines.push("");
 
   // --- Create Helpers ---
@@ -46,9 +48,9 @@ ${createLines.join(",\n")}
 };`);
   lines.push("");
 
-  // --- Update Helpers ---
+  // --- Update Helpers (with Immer) ---
   lines.push("// ============================================");
-  lines.push("//  Update Node Data Helpers");
+  lines.push("//  Update Node Data Helpers (with Immer)");
   lines.push("// ============================================");
   lines.push("");
 
@@ -57,17 +59,20 @@ ${createLines.join(",\n")}
     const dataInterface = `${capitalizedType}Data`;
     return `  ${type}: (
     node: ${dataInterface},
-    updates: Partial<{ fields: Partial<${dataInterface}['fields']>, relationIds: Partial<${dataInterface}['relationIds']> }>
+    recipe: (draft: Draft<${dataInterface}>) => void
   ): ${dataInterface} => {
-    const newFields = { ...node.fields, ...updates.fields };
-    const newRelations = { ...node.relationIds, ...updates.relationIds };
+    const updatedNode = produce(node, draft => {
+      recipe(draft);
+      draft.updatedAt = Date.now();
+    });
+
+    // After mutation, validate the final fields object to ensure consistency.
+    const validatedFields = schema.${type}.fields.parse(updatedNode.fields);
     
     return {
-      ...node,
-      fields: schema.${type}.fields.parse(newFields),
-      relationIds: newRelations,
-      updatedAt: Date.now(),
-    }
+      ...updatedNode,
+      fields: validatedFields,
+    };
   }`;
   });
   lines.push(`export const updateNodeData = {

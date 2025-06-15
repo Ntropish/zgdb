@@ -125,20 +125,27 @@ export function generateSerializer(schema) {
     for (const nodeType of nodeTypes) {
         const { fields, relations } = schema[nodeType];
         const capitalizedName = capitalize(nodeType);
+        const initialRelationValues = Object.entries(relations)
+            .filter(([, def]) => def[0] === "many")
+            .map(([relName]) => `      ${relName}: []`)
+            .join(",\n");
         let deserializerBody = `
     const buf = new flatbuffers.ByteBuffer(buffer);
     const table = ${capitalizedName}.getRootAs${capitalizedName}(buf);
-    const relationIds: any = {};
+    
+    // Initialize relationIds with defaults for 'many' relations to ensure they are always present.
+    const relationIds: any = {
+${initialRelationValues}
+    };
 `;
         for (const [relationName, relationDef] of Object.entries(relations)) {
             const [relationType] = relationDef;
             deserializerBody += `
-    const ${relationName}Length = table.${relationName}IdsLength();
-    if (${relationName}Length > 0) {
-      const ids = Array.from({ length: ${relationName}Length }, (_, i) => table.${relationName}Ids(i)!);
+    // Check if the vector exists in the buffer and has items
+    if (table.${relationName}IdsLength() > 0) {
+      const ids = Array.from({ length: table.${relationName}IdsLength() }, (_, i) => table.${relationName}Ids(i)!);
       relationIds.${relationName} = ${relationType === "one" ? "ids[0]" : "ids"};
-    }
-`;
+    }`;
         }
         const fieldsObject = Object.keys(fields.shape)
             .map((fieldName) => `      ${fieldName}: table.${fieldName}()!`)
@@ -152,6 +159,7 @@ export function generateSerializer(schema) {
       fields: {
 ${fieldsObject}
       },
+      // Cast to the generated interface to ensure type safety.
       relationIds: relationIds as ${capitalizedName}Data['relationIds']
     };
 `;

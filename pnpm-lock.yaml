@@ -25,6 +25,9 @@ importers:
       flatbuffers:
         specifier: ^24.3.25
         version: 24.12.23
+      immer:
+        specifier: ^10.1.1
+        version: 10.1.1
       jest:
         specifier: ^30.0.0
         version: 30.0.0(@types/node@20.19.0)(ts-node@10.9.2(@types/node@20.19.0)(typescript@5.8.3))
@@ -74,6 +77,9 @@ importers:
       flatbuffers:
         specifier: ^24.3.25
         version: 24.12.23
+      immer:
+        specifier: ^10.1.1
+        version: 10.1.1
       jest:
         specifier: ^30.0.0
         version: 30.0.0(@types/node@20.19.0)(ts-node@10.9.2(@types/node@20.19.0)(typescript@5.8.3))
@@ -1123,6 +1129,9 @@ packages:
   human-signals@2.1.0:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
+
+  immer@10.1.1:
+    resolution: {integrity: sha512-s2MPrmjovJcoMaHtx6K11Ra7oD05NT97w1IC5zpMkT6Atjr7H8LjaDd81iIxUYpMKSRRNMJE703M1Fhr/TctHw==}
 
   import-local@3.2.0:
     resolution: {integrity: sha512-2SPlun1JUPWoM6t3F0dw0FkCF/jWY8kttcY4f599GLTSjh2OCuuhdTkJQsEcZzBqbXZGKMK2OqW1oZsjtf/gQA==}
@@ -2800,6 +2809,8 @@ snapshots:
   html-escaper@2.0.2: {}
 
   human-signals@2.1.0: {}
+
+  immer@10.1.1: {}
 
   import-local@3.2.0:
     dependencies:

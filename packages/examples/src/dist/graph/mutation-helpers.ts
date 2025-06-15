@@ -1,6 +1,7 @@
 import schema from './graph-schema.js';
 import type { UserData, FamiliarData, PostData, TagData } from './generated-serializers.js';
 import { uuidv7 as uuid } from 'uuidv7';
+import { produce, Draft } from 'immer';
 
 // ============================================
 //  Create Node Data Helpers
@@ -42,64 +43,76 @@ export const createNodeData = {
 };
 
 // ============================================
-//  Update Node Data Helpers
+//  Update Node Data Helpers (with Immer)
 // ============================================
 
 export const updateNodeData = {
   user: (
     node: UserData,
-    updates: Partial<{ fields: Partial<UserData['fields']>, relationIds: Partial<UserData['relationIds']> }>
+    recipe: (draft: Draft<UserData>) => void
   ): UserData => {
-    const newFields = { ...node.fields, ...updates.fields };
-    const newRelations = { ...node.relationIds, ...updates.relationIds };
+    const updatedNode = produce(node, draft => {
+      recipe(draft);
+      draft.updatedAt = Date.now();
+    });
+
+    // After mutation, validate the final fields object to ensure consistency.
+    const validatedFields = schema.user.fields.parse(updatedNode.fields);
     
     return {
-      ...node,
-      fields: schema.user.fields.parse(newFields),
-      relationIds: newRelations,
-      updatedAt: Date.now(),
-    }
+      ...updatedNode,
+      fields: validatedFields,
+    };
   },
   familiar: (
     node: FamiliarData,
-    updates: Partial<{ fields: Partial<FamiliarData['fields']>, relationIds: Partial<FamiliarData['relationIds']> }>
+    recipe: (draft: Draft<FamiliarData>) => void
   ): FamiliarData => {
-    const newFields = { ...node.fields, ...updates.fields };
-    const newRelations = { ...node.relationIds, ...updates.relationIds };
+    const updatedNode = produce(node, draft => {
+      recipe(draft);
+      draft.updatedAt = Date.now();
+    });
+
+    // After mutation, validate the final fields object to ensure consistency.
+    const validatedFields = schema.familiar.fields.parse(updatedNode.fields);
     
     return {
-      ...node,
-      fields: schema.familiar.fields.parse(newFields),
-      relationIds: newRelations,
-      updatedAt: Date.now(),
-    }
+      ...updatedNode,
+      fields: validatedFields,
+    };
   },
   post: (
     node: PostData,
-    updates: Partial<{ fields: Partial<PostData['fields']>, relationIds: Partial<PostData['relationIds']> }>
+    recipe: (draft: Draft<PostData>) => void
   ): PostData => {
-    const newFields = { ...node.fields, ...updates.fields };
-    const newRelations = { ...node.relationIds, ...updates.relationIds };
+    const updatedNode = produce(node, draft => {
+      recipe(draft);
+      draft.updatedAt = Date.now();
+    });
+
+    // After mutation, validate the final fields object to ensure consistency.
+    const validatedFields = schema.post.fields.parse(updatedNode.fields);
     
     return {
-      ...node,
-      fields: schema.post.fields.parse(newFields),
-      relationIds: newRelations,
-      updatedAt: Date.now(),
-    }
+      ...updatedNode,
+      fields: validatedFields,
+    };
   },
   tag: (
     node: TagData,
-    updates: Partial<{ fields: Partial<TagData['fields']>, relationIds: Partial<TagData['relationIds']> }>
+    recipe: (draft: Draft<TagData>) => void
   ): TagData => {
-    const newFields = { ...node.fields, ...updates.fields };
-    const newRelations = { ...node.relationIds, ...updates.relationIds };
+    const updatedNode = produce(node, draft => {
+      recipe(draft);
+      draft.updatedAt = Date.now();
+    });
+
+    // After mutation, validate the final fields object to ensure consistency.
+    const validatedFields = schema.tag.fields.parse(updatedNode.fields);
     
     return {
-      ...node,
-      fields: schema.tag.fields.parse(newFields),
-      relationIds: newRelations,
-      updatedAt: Date.now(),
-    }
+      ...updatedNode,
+      fields: validatedFields,
+    };
   }
 };

@@ -2,7 +2,7 @@
  * Key encoding schemes for the ProllyTree
  * Using a hierarchical key structure for efficient scans
  */
-export default class KeyEncoder {
+export declare class KeyEncoder {
     private static encoder;
     private static decoder;
     static nodeKey(type: string, id: string): Uint8Array;

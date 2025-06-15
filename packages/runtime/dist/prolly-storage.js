@@ -1,13 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProllyStorage = void 0;
 const prolly_gunna_1 = require("prolly-gunna");
 const rxjs_1 = require("rxjs");
 const operators_1 = require("rxjs/operators");
-const key_encoder_1 = __importDefault(require("./key-encoder"));
+const key_encoder_1 = require("./key-encoder");
 /**
  * Storage layer implementation using ProllyTree with FlatBuffers
  * This is the generic runtime that works with ANY schema
@@ -39,7 +36,7 @@ class ProllyStorage {
     setSchema(schema) {
         this.schema = schema;
         // Store schema in the tree for persistence
-        const schemaKey = key_encoder_1.default.schemaKey();
+        const schemaKey = key_encoder_1.KeyEncoder.schemaKey();
         const schemaValue = new TextEncoder().encode(JSON.stringify(schema));
         this.tree.insertSync(schemaKey, schemaValue);
         // Set up indexes for each type
@@ -47,7 +44,7 @@ class ProllyStorage {
             const indexableFields = this.getIndexableFields(typeDef.fields);
             this.indexedFields.set(type, indexableFields);
             // Store type metadata
-            const metaKey = key_encoder_1.default.typeMetadataKey(type);
+            const metaKey = key_encoder_1.KeyEncoder.typeMetadataKey(type);
             const metaValue = new TextEncoder().encode(JSON.stringify({
                 indexedFields: Array.from(indexableFields),
             }));
@@ -55,13 +52,13 @@ class ProllyStorage {
         }
     }
     loadSchema() {
-        const schemaKey = key_encoder_1.default.schemaKey();
+        const schemaKey = key_encoder_1.KeyEncoder.schemaKey();
         const schemaValue = this.tree.getSync(schemaKey);
         if (schemaValue) {
             this.schema = JSON.parse(new TextDecoder().decode(schemaValue));
             // Load indexed fields for each type
             for (const type of Object.keys(this.schema)) {
-                const metaKey = key_encoder_1.default.typeMetadataKey(type);
+                const metaKey = key_encoder_1.KeyEncoder.typeMetadataKey(type);
                 const metaValue = this.tree.getSync(metaKey);
                 if (metaValue) {
                     const meta = JSON.parse(new TextDecoder().decode(metaValue));
@@ -87,7 +84,7 @@ class ProllyStorage {
         // Try each supported type from the serializers
         const types = this.serializers.getSupportedNodeTypes();
         for (const type of types) {
-            const key = key_encoder_1.default.nodeKey(type, id);
+            const key = key_encoder_1.KeyEncoder.nodeKey(type, id);
             const value = this.tree.getSync(key);
             if (value) {
                 try {
@@ -101,7 +98,7 @@ class ProllyStorage {
         return undefined;
     }
     getNodes(type) {
-        const prefix = key_encoder_1.default.typeScanPrefix(type);
+        const prefix = key_encoder_1.KeyEncoder.typeScanPrefix(type);
         const scanResult = this.tree.scanItemsSync({
             startBound: prefix,
             endBound: this.incrementKey(prefix),
@@ -121,7 +118,7 @@ class ProllyStorage {
             .filter((node) => node !== null);
     }
     setNode(node) {
-        const key = key_encoder_1.default.nodeKey(node.type, node.id);
+        const key = key_encoder_1.KeyEncoder.nodeKey(node.type, node.id);
         const value = this.serializers.serializeNode(node.type, node);
         this.tree.insertSync(key, value);
         // Update indexes
@@ -138,7 +135,7 @@ class ProllyStorage {
         if (!node)
             return;
         // Delete the node
-        const key = key_encoder_1.default.nodeKey(node.type, id);
+        const key = key_encoder_1.KeyEncoder.nodeKey(node.type, id);
         this.tree.deleteSync(key);
         // Delete indexes
         this.deleteNodeIndexes(node);
@@ -158,7 +155,7 @@ class ProllyStorage {
         const edges = [];
         // Get outgoing edges
         if (direction === "out" || direction === "both") {
-            const prefix = key_encoder_1.default.edgeScanPrefix(nodeId, edgeType);
+            const prefix = key_encoder_1.KeyEncoder.edgeScanPrefix(nodeId, edgeType);
             const scanResult = this.tree.scanItemsSync({
                 startBound: prefix,
                 endBound: this.incrementKey(prefix),
@@ -179,7 +176,7 @@ class ProllyStorage {
         }
         // Get incoming edges
         if (direction === "in" || direction === "both") {
-            const prefix = key_encoder_1.default.reverseEdgeScanPrefix(nodeId, edgeType);
+            const prefix = key_encoder_1.KeyEncoder.reverseEdgeScanPrefix(nodeId, edgeType);
             const scanResult = this.tree.scanItemsSync({
                 startBound: prefix,
                 endBound: this.incrementKey(prefix),
@@ -199,7 +196,7 @@ class ProllyStorage {
     }
     createEdge(edge) {
         // Store the edge with FlatBuffers
-        const key = key_encoder_1.default.edgeKey(edge.from, edge.type, edge.to, edge.id);
+        const key = key_encoder_1.KeyEncoder.edgeKey(edge.from, edge.type, edge.to, edge.id);
         const value = this.serializers.serializeEdge(edge);
         // Also store reverse index for incoming edges
         const reverseKey = this.reverseEdgeKey(edge);
@@ -222,7 +219,7 @@ class ProllyStorage {
         if (!edge)
             return;
         // Delete the edge
-        const key = key_encoder_1.default.edgeKey(edge.from, edge.type, edge.to, edge.id);
+        const key = key_encoder_1.KeyEncoder.edgeKey(edge.from, edge.type, edge.to, edge.id);
         this.tree.deleteSync(key);
         // Delete reverse index
         const reverseKey = this.reverseEdgeKey(edge);
@@ -238,8 +235,8 @@ class ProllyStorage {
     // Query Support
     // ============================================
     queryByIndex(type, field, value) {
-        const indexKey = key_encoder_1.default.indexKey(type, field, value, "");
-        const endKey = key_encoder_1.default.indexKey(type, field, value, "\uffff");
+        const indexKey = key_encoder_1.KeyEncoder.indexKey(type, field, value, "");
+        const endKey = key_encoder_1.KeyEncoder.indexKey(type, field, value, "\uffff");
         const scanResult = this.tree.scanItemsSync({
             startBound: indexKey,
             endBound: endKey,
@@ -315,7 +312,7 @@ class ProllyStorage {
             if (diff.leftValue) {
                 try {
                     const keyStr = new TextDecoder().decode(diff.key);
-                    const type = key_encoder_1.default.getTypeFromKey(keyStr);
+                    const type = key_encoder_1.KeyEncoder.getTypeFromKey(keyStr);
                     if (type && this.serializers.getSupportedNodeTypes().includes(type)) {
                         left = this.serializers.deserializeNode(type, diff.leftValue);
                     }
@@ -333,7 +330,7 @@ class ProllyStorage {
             if (diff.rightValue) {
                 try {
                     const keyStr = new TextDecoder().decode(diff.key);
-                    const type = key_encoder_1.default.getTypeFromKey(keyStr);
+                    const type = key_encoder_1.KeyEncoder.getTypeFromKey(keyStr);
                     if (type && this.serializers.getSupportedNodeTypes().includes(type)) {
                         right = this.serializers.deserializeNode(type, diff.rightValue);
                     }
@@ -392,7 +389,7 @@ class ProllyStorage {
         const indexedFields = this.indexedFields.get(node.type) || new Set();
         for (const field of indexedFields) {
             if (field in node.fields) {
-                const key = key_encoder_1.default.indexKey(node.type, field, node.fields[field], node.id);
+                const key = key_encoder_1.KeyEncoder.indexKey(node.type, field, node.fields[field], node.id);
                 const value = new TextEncoder().encode(node.id);
                 this.tree.insertSync(key, value);
             }
@@ -402,7 +399,7 @@ class ProllyStorage {
         const indexedFields = this.indexedFields.get(node.type) || new Set();
         for (const field of indexedFields) {
             if (field in node.fields) {
-                const key = key_encoder_1.default.indexKey(node.type, field, node.fields[field], node.id);
+                const key = key_encoder_1.KeyEncoder.indexKey(node.type, field, node.fields[field], node.id);
                 this.tree.deleteSync(key);
             }
         }

@@ -88,15 +88,19 @@ export const deserializeNode = {
     user: (buffer) => {
         const buf = new flatbuffers.ByteBuffer(buffer);
         const table = User.getRootAsUser(buf);
-        const relationIds = {};
-        const postsLength = table.postsIdsLength();
-        if (postsLength > 0) {
-            const ids = Array.from({ length: postsLength }, (_, i) => table.postsIds(i));
+        // Initialize relationIds with defaults for 'many' relations to ensure they are always present.
+        const relationIds = {
+            posts: [],
+            familiars: []
+        };
+        // Check if the vector exists in the buffer and has items
+        if (table.postsIdsLength() > 0) {
+            const ids = Array.from({ length: table.postsIdsLength() }, (_, i) => table.postsIds(i));
             relationIds.posts = ids;
         }
-        const familiarsLength = table.familiarsIdsLength();
-        if (familiarsLength > 0) {
-            const ids = Array.from({ length: familiarsLength }, (_, i) => table.familiarsIds(i));
+        // Check if the vector exists in the buffer and has items
+        if (table.familiarsIdsLength() > 0) {
+            const ids = Array.from({ length: table.familiarsIdsLength() }, (_, i) => table.familiarsIds(i));
             relationIds.familiars = ids;
         }
         return {
@@ -108,16 +112,18 @@ export const deserializeNode = {
                 name: table.name(),
                 age: table.age()
             },
+            // Cast to the generated interface to ensure type safety.
             relationIds: relationIds
         };
     },
     familiar: (buffer) => {
         const buf = new flatbuffers.ByteBuffer(buffer);
         const table = Familiar.getRootAsFamiliar(buf);
+        // Initialize relationIds with defaults for 'many' relations to ensure they are always present.
         const relationIds = {};
-        const userLength = table.userIdsLength();
-        if (userLength > 0) {
-            const ids = Array.from({ length: userLength }, (_, i) => table.userIds(i));
+        // Check if the vector exists in the buffer and has items
+        if (table.userIdsLength() > 0) {
+            const ids = Array.from({ length: table.userIdsLength() }, (_, i) => table.userIds(i));
             relationIds.user = ids[0];
         }
         return {
@@ -129,21 +135,25 @@ export const deserializeNode = {
                 name: table.name(),
                 age: table.age()
             },
+            // Cast to the generated interface to ensure type safety.
             relationIds: relationIds
         };
     },
     post: (buffer) => {
         const buf = new flatbuffers.ByteBuffer(buffer);
         const table = Post.getRootAsPost(buf);
-        const relationIds = {};
-        const tagsLength = table.tagsIdsLength();
-        if (tagsLength > 0) {
-            const ids = Array.from({ length: tagsLength }, (_, i) => table.tagsIds(i));
+        // Initialize relationIds with defaults for 'many' relations to ensure they are always present.
+        const relationIds = {
+            tags: []
+        };
+        // Check if the vector exists in the buffer and has items
+        if (table.tagsIdsLength() > 0) {
+            const ids = Array.from({ length: table.tagsIdsLength() }, (_, i) => table.tagsIds(i));
             relationIds.tags = ids;
         }
-        const authorLength = table.authorIdsLength();
-        if (authorLength > 0) {
-            const ids = Array.from({ length: authorLength }, (_, i) => table.authorIds(i));
+        // Check if the vector exists in the buffer and has items
+        if (table.authorIdsLength() > 0) {
+            const ids = Array.from({ length: table.authorIdsLength() }, (_, i) => table.authorIds(i));
             relationIds.author = ids[0];
         }
         return {
@@ -157,16 +167,20 @@ export const deserializeNode = {
                 published: table.published(),
                 viewCount: table.viewCount()
             },
+            // Cast to the generated interface to ensure type safety.
             relationIds: relationIds
         };
     },
     tag: (buffer) => {
         const buf = new flatbuffers.ByteBuffer(buffer);
         const table = Tag.getRootAsTag(buf);
-        const relationIds = {};
-        const postsLength = table.postsIdsLength();
-        if (postsLength > 0) {
-            const ids = Array.from({ length: postsLength }, (_, i) => table.postsIds(i));
+        // Initialize relationIds with defaults for 'many' relations to ensure they are always present.
+        const relationIds = {
+            posts: []
+        };
+        // Check if the vector exists in the buffer and has items
+        if (table.postsIdsLength() > 0) {
+            const ids = Array.from({ length: table.postsIdsLength() }, (_, i) => table.postsIds(i));
             relationIds.posts = ids;
         }
         return {
@@ -177,6 +191,7 @@ export const deserializeNode = {
             fields: {
                 name: table.name()
             },
+            // Cast to the generated interface to ensure type safety.
             relationIds: relationIds
         };
     }

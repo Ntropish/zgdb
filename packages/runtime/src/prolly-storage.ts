@@ -4,7 +4,7 @@ import { PTree, TreeConfigOptions, BatchItem, ScanOptions } from "prolly-gunna";
 import { Subject, Observable, from, merge } from "rxjs";
 import { filter, map, debounceTime, buffer } from "rxjs/operators";
 import * as flatbuffers from "flatbuffers";
-import KeyEncoder from "./key-encoder";
+import { KeyEncoder } from "./key-encoder";
 
 /**
  * Storage layer implementation using ProllyTree with FlatBuffers

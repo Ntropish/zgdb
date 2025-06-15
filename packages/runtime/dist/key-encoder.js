@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.KeyEncoder = void 0;
 /**
  * Key encoding schemes for the ProllyTree
  * Using a hierarchical key structure for efficient scans
@@ -80,4 +81,4 @@ class KeyEncoder {
         return match ? match[1] : null;
     }
 }
-exports.default = KeyEncoder;
+exports.KeyEncoder = KeyEncoder;
