@@ -9,19 +9,20 @@ export function generateIndex(): string {
   lines.push(
     "// ==================================================================="
   );
-  lines.push("//  Re-export all generated assets for easy consumption.");
+  lines.push("//  ZGDB: Re-export all generated assets for easy consumption.");
   lines.push(
     "// ==================================================================="
   );
   lines.push("");
 
-  // Re-export the original schema for reference
+  // Export the core client factory and StoreAdapter interface
+  lines.push(`export * from './zgdb-client.js';`);
+
+  // Export the schema for advanced use cases
   lines.push(`export { default as schema } from './graph-schema.js';`);
 
-  // Re-export all the type-safe serializers and data interfaces
+  // Export lower-level tools for users who need them
   lines.push(`export * from './generated-serializers.js';`);
-
-  // Re-export the mutation helpers
   lines.push(`export * from './mutation-helpers.js';`);
   lines.push("");
 

@@ -1,260 +1,65 @@
-import {
-  serializeNode,
-  deserializeNode,
-  createNodeData,
-  updateNodeData,
-  UserData,
-  PostData,
-  FamiliarData,
-  TagData,
-} from "./dist/graph/index.js";
-import { KeyEncoder } from "@zgdb/runtime";
+import { createClient } from "./dist/graph/index.js";
+import { MapStoreAdapter } from "./map-store-adapter.js";
 
-const DB = new Map<string, Uint8Array<ArrayBufferLike>>();
+async function main() {
+  // 1. Create an instance of the client with your chosen store.
+  const db = createClient(new MapStoreAdapter());
 
-let johnDoe: UserData;
-let janeDoe: UserData;
-let post1: PostData;
-let post2: PostData;
-let post3: PostData;
-let post4: PostData;
-let post5: PostData;
-let tag1: TagData;
-let familiar1: FamiliarData;
+  // 2. Create nodes using the high-level API.
+  const janeDoe = await db.createNode("user", {
+    fields: { name: "Jane Doe", age: 30 },
+    relationIds: { posts: [], familiars: [] },
+  });
 
-// ---------------------------------------------- Create a new user
+  const johnDoe = await db.createNode("user", {
+    fields: { name: "John Doe", age: 25 },
+    relationIds: { posts: [], familiars: [] },
+  });
 
-janeDoe = createNodeData.user({
-  fields: { name: "Jane Doe", age: 30 },
-  relationIds: { posts: [], familiars: [] },
-});
-DB.set(
-  KeyEncoder.nodeKey("user", janeDoe.id).toString(),
-  serializeNode.user(janeDoe)
-);
+  const tag1 = await db.createNode("tag", {
+    fields: { name: "Salmon-walker" },
+    relationIds: { posts: [] },
+  });
 
-// ---------------------------------------- Create another new user
+  // 3. Create a post and link it to Jane in a single transaction.
+  const post1 = await db.createNode("post", {
+    fields: {
+      title: "Hello, World!",
+      content: "Hello, World!",
+      published: true,
+      viewCount: 150,
+    },
+    relationIds: { author: janeDoe.id, tags: [] },
+  });
 
-johnDoe = createNodeData.user({
-  fields: { name: "John Doe", age: 25 },
-  relationIds: { posts: [], familiars: [] },
-});
-DB.set(
-  KeyEncoder.nodeKey("user", johnDoe.id).toString(),
-  serializeNode.user(johnDoe)
-);
+  await db.updateNode("user", janeDoe.id, (draft) => {
+    draft.relationIds.posts.push(post1.id);
+  });
 
-// ---------------- Create a new post and link it to the first user
+  // 4. Link a new post to John and a tag simultaneously.
+  const post3 = await db.createNode("post", {
+    fields: {
+      title: "Hola, Amigo!",
+      content: "Hola, Amigo!",
+      published: true,
+      viewCount: 150,
+    },
+    relationIds: { author: johnDoe.id, tags: [tag1.id] },
+  });
 
-post1 = createNodeData.post({
-  fields: {
-    title: "Hello, World!",
-    content: "This is a test post.",
-    published: true,
-    viewCount: 150,
-  },
-  relationIds: { author: janeDoe.id, tags: [] },
-});
-DB.set(
-  KeyEncoder.nodeKey("post", post1.id).toString(),
-  serializeNode.post(post1)
-);
+  await db.updateNode("user", johnDoe.id, (draft) => {
+    draft.relationIds.posts.push(post3.id);
+  });
 
-// Update the latest user1 to establish the other side of the relation.
-DB.set(
-  KeyEncoder.nodeKey("user", janeDoe.id).toString(),
-  serializeNode.user(
-    updateNodeData.user(
-      deserializeNode.user(
-        DB.get(KeyEncoder.nodeKey("user", janeDoe.id).toString())!
-      ),
-      (draft) => {
-        draft.relationIds.posts.push(post1.id);
-      }
-    )
-  )
-);
+  await db.updateNode("tag", tag1.id, (draft) => {
+    draft.relationIds.posts.push(post3.id);
+  });
 
-// --------------- Create a new post and link it to the second user
+  // 5. Read the final state of a node.
+  const finalJohn = await db.getNode("user", johnDoe.id);
 
-post2 = createNodeData.post({
-  fields: {
-    title: "Hello, Salmon-walker!",
-    content: "Welcome to your exciting journey!",
-    published: true,
-    viewCount: 150,
-  },
-  relationIds: { author: johnDoe.id, tags: [] },
-});
-DB.set(
-  KeyEncoder.nodeKey("post", post2.id).toString(),
-  serializeNode.post(post2)
-);
+  console.log("Final User Data:", finalJohn);
+  console.log(`User's post count: ${finalJohn?.relationIds.posts.length}`);
+}
 
-// Update the latest user2 to establish the other side of the relation.
-DB.set(
-  KeyEncoder.nodeKey("user", johnDoe.id).toString(),
-  serializeNode.user(
-    updateNodeData.user(
-      deserializeNode.user(
-        DB.get(KeyEncoder.nodeKey("user", johnDoe.id).toString())!
-      ),
-      (draft) => {
-        draft.relationIds.posts.push(post2.id);
-      }
-    )
-  )
-);
-
-// ---------------------------------------- Create a new tag
-
-tag1 = createNodeData.tag({
-  fields: { name: "Salmon-walker" },
-  relationIds: { posts: [] },
-});
-DB.set(KeyEncoder.nodeKey("tag", tag1.id).toString(), serializeNode.tag(tag1));
-
-// ---------------- Create a new post and link it to the tag
-
-post3 = createNodeData.post({
-  fields: {
-    title: "Hola, Amigo!",
-    content: "Estamos en la playa!",
-    published: true,
-    viewCount: 150,
-  },
-  relationIds: { author: johnDoe.id, tags: [tag1.id] },
-});
-DB.set(
-  KeyEncoder.nodeKey("post", post3.id).toString(),
-  serializeNode.post(post3)
-);
-
-DB.set(
-  KeyEncoder.nodeKey("tag", tag1.id).toString(),
-  serializeNode.tag(
-    updateNodeData.tag(tag1, (draft) => {
-      draft.relationIds.posts.push(post3.id);
-    })
-  )
-);
-
-// ---------------------------------------- Create a new familiar
-
-familiar1 = createNodeData.familiar({
-  fields: { name: "John Doe", age: 25 },
-  relationIds: { user: johnDoe.id },
-});
-DB.set(
-  KeyEncoder.nodeKey("familiar", familiar1.id).toString(),
-  serializeNode.familiar(familiar1)
-);
-
-DB.set(
-  KeyEncoder.nodeKey("user", johnDoe.id).toString(),
-  serializeNode.user(
-    updateNodeData.user(
-      deserializeNode.user(
-        DB.get(KeyEncoder.nodeKey("user", johnDoe.id).toString())!
-      ),
-      (draft) => {
-        draft.relationIds.familiars.push(familiar1.id);
-      }
-    )
-  )
-);
-
-post4 = createNodeData.post({
-  fields: {
-    title: "Hola, Amigo!",
-    content: "Me gusta la playa!",
-    published: true,
-    viewCount: 150,
-  },
-  relationIds: { author: janeDoe.id, tags: [tag1.id] },
-});
-DB.set(
-  KeyEncoder.nodeKey("post", post4.id).toString(),
-  serializeNode.post(post4)
-);
-
-DB.set(
-  KeyEncoder.nodeKey("tag", tag1.id).toString(),
-  serializeNode.tag(
-    updateNodeData.tag(tag1, (draft) => {
-      draft.relationIds.posts.push(post4.id);
-    })
-  )
-);
-
-// ------------------- Add another post to John Doe
-
-post5 = createNodeData.post({
-  fields: {
-    title: "Hola, Amigo!",
-    content: "Me gusta la playa!",
-    published: true,
-    viewCount: 150,
-  },
-  relationIds: { author: johnDoe.id, tags: [tag1.id] },
-});
-DB.set(
-  KeyEncoder.nodeKey("post", post5.id).toString(),
-  serializeNode.post(post5)
-);
-
-DB.set(
-  KeyEncoder.nodeKey("tag", tag1.id).toString(),
-  serializeNode.tag(
-    updateNodeData.tag(tag1, (draft) => {
-      draft.relationIds.posts.push(post5.id);
-    })
-  )
-);
-
-DB.set(
-  KeyEncoder.nodeKey("user", johnDoe.id).toString(),
-  serializeNode.user(
-    updateNodeData.user(
-      deserializeNode.user(
-        DB.get(KeyEncoder.nodeKey("user", johnDoe.id).toString())!
-      ),
-      (draft) => {
-        draft.relationIds.posts.push(post5.id);
-      }
-    )
-  )
-);
-
-// ---------------------------------------- Serialize and deserialize to ensure everything works.
-
-johnDoe = deserializeNode.user(
-  DB.get(KeyEncoder.nodeKey("user", johnDoe.id).toString())!
-);
-janeDoe = deserializeNode.user(
-  DB.get(KeyEncoder.nodeKey("user", janeDoe.id).toString())!
-);
-post1 = deserializeNode.post(
-  DB.get(KeyEncoder.nodeKey("post", post1.id).toString())!
-);
-post2 = deserializeNode.post(
-  DB.get(KeyEncoder.nodeKey("post", post2.id).toString())!
-);
-post3 = deserializeNode.post(
-  DB.get(KeyEncoder.nodeKey("post", post3.id).toString())!
-);
-post4 = deserializeNode.post(
-  DB.get(KeyEncoder.nodeKey("post", post4.id).toString())!
-);
-tag1 = deserializeNode.tag(
-  DB.get(KeyEncoder.nodeKey("tag", tag1.id).toString())!
-);
-
-console.log("Final User Data:", johnDoe);
-console.log(`User's post count: ${johnDoe.relationIds.posts.length}`);
-
-console.log("Final User Data:", janeDoe);
-console.log(`User's post count: ${janeDoe.relationIds.posts.length}`);
-
-console.log("Final Post Data:", post1);
-console.log(`Post's author: ${post1.relationIds.author}`);
+main();
