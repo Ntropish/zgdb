@@ -1,0 +1,45 @@
+namespace GraphDB;
+
+table Portfolio {
+  id: string (key);
+  name: string;
+  cashBalance: float;
+  holdings_ids: [string];
+  trades_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Stock {
+  id: string (key);
+  ticker: string;
+  companyName: string;
+  currentPrice: float;
+  holdings_ids: [string];
+  trades_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Holding {
+  id: string (key);
+  shares: float;
+  portfolio_ids: [string];
+  stock_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Trade {
+  id: string (key);
+  type: string;
+  shares: float;
+  pricePerShare: float;
+  timestamp: float;
+  portfolio_ids: [string];
+  stock_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+root_type Portfolio;

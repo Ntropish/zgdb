@@ -2,55 +2,44 @@ import { produce } from 'immer';
 import { ulid } from 'ulid';
 // --- Async Helpers ---
 export const createNodeData = {
-    department: (data) => {
+    portfolio: (data) => {
         const now = Date.now();
         return {
             id: ulid(),
-            type: 'department',
+            type: 'portfolio',
             createdAt: now,
             updatedAt: now,
             fields: data.fields,
             relationIds: data.relationIds,
         };
     },
-    professor: (data) => {
+    stock: (data) => {
         const now = Date.now();
         return {
             id: ulid(),
-            type: 'professor',
+            type: 'stock',
             createdAt: now,
             updatedAt: now,
             fields: data.fields,
             relationIds: data.relationIds,
         };
     },
-    student: (data) => {
+    holding: (data) => {
         const now = Date.now();
         return {
             id: ulid(),
-            type: 'student',
+            type: 'holding',
             createdAt: now,
             updatedAt: now,
             fields: data.fields,
             relationIds: data.relationIds,
         };
     },
-    course: (data) => {
+    trade: (data) => {
         const now = Date.now();
         return {
             id: ulid(),
-            type: 'course',
-            createdAt: now,
-            updatedAt: now,
-            fields: data.fields,
-            relationIds: data.relationIds,
-        };
-    },
-    enrollment: (data) => {
-        const now = Date.now();
-        return {
-            id: ulid(),
-            type: 'enrollment',
+            type: 'trade',
             createdAt: now,
             updatedAt: now,
             fields: data.fields,
@@ -59,31 +48,25 @@ export const createNodeData = {
     },
 };
 export const updateNodeData = {
-    department: (base, recipe) => {
+    portfolio: (base, recipe) => {
         return produce(base, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
     },
-    professor: (base, recipe) => {
+    stock: (base, recipe) => {
         return produce(base, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
     },
-    student: (base, recipe) => {
+    holding: (base, recipe) => {
         return produce(base, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
     },
-    course: (base, recipe) => {
-        return produce(base, (draft) => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-    },
-    enrollment: (base, recipe) => {
+    trade: (base, recipe) => {
         return produce(base, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
@@ -92,55 +75,44 @@ export const updateNodeData = {
 };
 // --- Sync Helpers ---
 export const createNodeDataSync = {
-    department: (data) => {
+    portfolio: (data) => {
         const now = Date.now();
         return {
             id: ulid(),
-            type: 'department',
+            type: 'portfolio',
             createdAt: now,
             updatedAt: now,
             fields: data.fields,
             relationIds: data.relationIds,
         };
     },
-    professor: (data) => {
+    stock: (data) => {
         const now = Date.now();
         return {
             id: ulid(),
-            type: 'professor',
+            type: 'stock',
             createdAt: now,
             updatedAt: now,
             fields: data.fields,
             relationIds: data.relationIds,
         };
     },
-    student: (data) => {
+    holding: (data) => {
         const now = Date.now();
         return {
             id: ulid(),
-            type: 'student',
+            type: 'holding',
             createdAt: now,
             updatedAt: now,
             fields: data.fields,
             relationIds: data.relationIds,
         };
     },
-    course: (data) => {
+    trade: (data) => {
         const now = Date.now();
         return {
             id: ulid(),
-            type: 'course',
-            createdAt: now,
-            updatedAt: now,
-            fields: data.fields,
-            relationIds: data.relationIds,
-        };
-    },
-    enrollment: (data) => {
-        const now = Date.now();
-        return {
-            id: ulid(),
-            type: 'enrollment',
+            type: 'trade',
             createdAt: now,
             updatedAt: now,
             fields: data.fields,
@@ -149,31 +121,25 @@ export const createNodeDataSync = {
     },
 };
 export const updateNodeDataSync = {
-    department: (base, recipe) => {
+    portfolio: (base, recipe) => {
         return produce(base, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
     },
-    professor: (base, recipe) => {
+    stock: (base, recipe) => {
         return produce(base, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
     },
-    student: (base, recipe) => {
+    holding: (base, recipe) => {
         return produce(base, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
     },
-    course: (base, recipe) => {
-        return produce(base, (draft) => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-    },
-    enrollment: (base, recipe) => {
+    trade: (base, recipe) => {
         return produce(base, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();

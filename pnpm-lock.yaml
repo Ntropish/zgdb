@@ -98,6 +98,9 @@ importers:
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.19.0)(typescript@5.8.3)
+      ulid:
+        specifier: ^3.0.1
+        version: 3.0.1
       uuidv7:
         specifier: ^1.0.2
         version: 1.0.2
@@ -147,6 +150,9 @@ importers:
       typescript:
         specifier: ^5.3.3
         version: 5.8.3
+      ulid:
+        specifier: ^3.0.1
+        version: 3.0.1
 
   packages/types:
     dependencies:
@@ -1719,6 +1725,10 @@ packages:
   typescript@5.8.3:
     resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
     engines: {node: '>=14.17'}
+    hasBin: true
+
+  ulid@3.0.1:
+    resolution: {integrity: sha512-dPJyqPzx8preQhqq24bBG1YNkvigm87K8kVEHCD+ruZg24t6IFEFv00xMWfxcC4djmFtiTLdFuADn4+DOz6R7Q==}
     hasBin: true
 
   undici-types@6.21.0:
@@ -3546,6 +3556,8 @@ snapshots:
   type-fest@4.41.0: {}
 
   typescript@5.8.3: {}
+
+  ulid@3.0.1: {}
 
   undici-types@6.21.0: {}
 

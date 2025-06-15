@@ -14,7 +14,9 @@
     "build-graph:orders": "zg build --config ./src/orders/schema.ts --output ./src/orders/dist/graph",
     "run:orders": "node ./dist/orders/workflow.js",
     "build-graph:university": "zg build --config ./src/university/schema.ts --output ./src/university/dist/graph",
-    "run:university": "node ./dist/university/workflow.js"
+    "run:university": "node ./dist/university/workflow.js",
+    "build-graph:portfolio": "zg build --config ./src/portfolio/schema.ts --output ./src/portfolio/dist/graph",
+    "run:portfolio": "node ./dist/portfolio/workflow.js"
   },
   "keywords": [
     "zgdb",
@@ -42,6 +44,7 @@
     "prolly-gunna": "^5.0.0",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
+    "ulid": "^3.0.1",
     "uuidv7": "^1.0.2",
     "zod": "^3.25.64"
   },

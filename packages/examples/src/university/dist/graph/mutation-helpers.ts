@@ -1,143 +1,221 @@
-import schema from './graph-schema.js';
-import type { DepartmentData, ProfessorData, StudentData, CourseData, EnrollmentData } from './generated-serializers.js';
-import { uuidv7 as uuid } from 'uuidv7';
 import { produce, Draft } from 'immer';
+import { ulid } from 'ulid';
+import { z } from 'zod';
+import GraphSchema from './graph-schema.js';
+import type { DepartmentData, ProfessorData, StudentData, CourseData, EnrollmentData } from './generated-serializers.js';
 
-// ============================================
-//  Create Node Data Helpers
-// ============================================
 
+// --- Async Helpers ---
 export const createNodeData = {
-  department: (data: { fields: DepartmentData['fields'], relationIds: DepartmentData['relationIds'] }): DepartmentData => ({
-    id: uuid(),
-    type: 'department',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    fields: schema.department.fields.parse(data.fields),
-    relationIds: data.relationIds,
-  }),
-  professor: (data: { fields: ProfessorData['fields'], relationIds: ProfessorData['relationIds'] }): ProfessorData => ({
-    id: uuid(),
-    type: 'professor',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    fields: schema.professor.fields.parse(data.fields),
-    relationIds: data.relationIds,
-  }),
-  student: (data: { fields: StudentData['fields'], relationIds: StudentData['relationIds'] }): StudentData => ({
-    id: uuid(),
-    type: 'student',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    fields: schema.student.fields.parse(data.fields),
-    relationIds: data.relationIds,
-  }),
-  course: (data: { fields: CourseData['fields'], relationIds: CourseData['relationIds'] }): CourseData => ({
-    id: uuid(),
-    type: 'course',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    fields: schema.course.fields.parse(data.fields),
-    relationIds: data.relationIds,
-  }),
-  enrollment: (data: { fields: EnrollmentData['fields'], relationIds: EnrollmentData['relationIds'] }): EnrollmentData => ({
-    id: uuid(),
-    type: 'enrollment',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    fields: schema.enrollment.fields.parse(data.fields),
-    relationIds: data.relationIds,
-  })
+  department: (data: { fields: DepartmentData['fields'], relationIds: DepartmentData['relationIds'] }): DepartmentData => {
+    const now = Date.now();
+    return {
+      id: ulid(),
+      type: 'department',
+      createdAt: now,
+      updatedAt: now,
+      fields: data.fields,
+      relationIds: data.relationIds,
+    };
+  },
+  professor: (data: { fields: ProfessorData['fields'], relationIds: ProfessorData['relationIds'] }): ProfessorData => {
+    const now = Date.now();
+    return {
+      id: ulid(),
+      type: 'professor',
+      createdAt: now,
+      updatedAt: now,
+      fields: data.fields,
+      relationIds: data.relationIds,
+    };
+  },
+  student: (data: { fields: StudentData['fields'], relationIds: StudentData['relationIds'] }): StudentData => {
+    const now = Date.now();
+    return {
+      id: ulid(),
+      type: 'student',
+      createdAt: now,
+      updatedAt: now,
+      fields: data.fields,
+      relationIds: data.relationIds,
+    };
+  },
+  course: (data: { fields: CourseData['fields'], relationIds: CourseData['relationIds'] }): CourseData => {
+    const now = Date.now();
+    return {
+      id: ulid(),
+      type: 'course',
+      createdAt: now,
+      updatedAt: now,
+      fields: data.fields,
+      relationIds: data.relationIds,
+    };
+  },
+  enrollment: (data: { fields: EnrollmentData['fields'], relationIds: EnrollmentData['relationIds'] }): EnrollmentData => {
+    const now = Date.now();
+    return {
+      id: ulid(),
+      type: 'enrollment',
+      createdAt: now,
+      updatedAt: now,
+      fields: data.fields,
+      relationIds: data.relationIds,
+    };
+  },
 };
-
-// ============================================
-//  Update Node Data Helpers (with Immer)
-// ============================================
 
 export const updateNodeData = {
   department: (
-    node: DepartmentData,
+    base: DepartmentData,
     recipe: (draft: Draft<DepartmentData>) => void
   ): DepartmentData => {
-    const updatedNode = produce(node, draft => {
+    return produce(base, (draft) => {
       recipe(draft);
       draft.updatedAt = Date.now();
     });
-
-    // After mutation, validate the final fields object to ensure consistency.
-    const validatedFields = schema.department.fields.parse(updatedNode.fields);
-    
-    return {
-      ...updatedNode,
-      fields: validatedFields,
-    };
   },
   professor: (
-    node: ProfessorData,
+    base: ProfessorData,
     recipe: (draft: Draft<ProfessorData>) => void
   ): ProfessorData => {
-    const updatedNode = produce(node, draft => {
+    return produce(base, (draft) => {
       recipe(draft);
       draft.updatedAt = Date.now();
     });
-
-    // After mutation, validate the final fields object to ensure consistency.
-    const validatedFields = schema.professor.fields.parse(updatedNode.fields);
-    
-    return {
-      ...updatedNode,
-      fields: validatedFields,
-    };
   },
   student: (
-    node: StudentData,
+    base: StudentData,
     recipe: (draft: Draft<StudentData>) => void
   ): StudentData => {
-    const updatedNode = produce(node, draft => {
+    return produce(base, (draft) => {
       recipe(draft);
       draft.updatedAt = Date.now();
     });
-
-    // After mutation, validate the final fields object to ensure consistency.
-    const validatedFields = schema.student.fields.parse(updatedNode.fields);
-    
-    return {
-      ...updatedNode,
-      fields: validatedFields,
-    };
   },
   course: (
-    node: CourseData,
+    base: CourseData,
     recipe: (draft: Draft<CourseData>) => void
   ): CourseData => {
-    const updatedNode = produce(node, draft => {
+    return produce(base, (draft) => {
       recipe(draft);
       draft.updatedAt = Date.now();
     });
-
-    // After mutation, validate the final fields object to ensure consistency.
-    const validatedFields = schema.course.fields.parse(updatedNode.fields);
-    
-    return {
-      ...updatedNode,
-      fields: validatedFields,
-    };
   },
   enrollment: (
-    node: EnrollmentData,
+    base: EnrollmentData,
     recipe: (draft: Draft<EnrollmentData>) => void
   ): EnrollmentData => {
-    const updatedNode = produce(node, draft => {
+    return produce(base, (draft) => {
       recipe(draft);
       draft.updatedAt = Date.now();
     });
+  },
+};
 
-    // After mutation, validate the final fields object to ensure consistency.
-    const validatedFields = schema.enrollment.fields.parse(updatedNode.fields);
-    
+
+// --- Sync Helpers ---
+export const createNodeDataSync = {
+  department: (data: { fields: DepartmentData['fields'], relationIds: DepartmentData['relationIds'] }): DepartmentData => {
+    const now = Date.now();
     return {
-      ...updatedNode,
-      fields: validatedFields,
+      id: ulid(),
+      type: 'department',
+      createdAt: now,
+      updatedAt: now,
+      fields: data.fields,
+      relationIds: data.relationIds,
     };
-  }
+  },
+  professor: (data: { fields: ProfessorData['fields'], relationIds: ProfessorData['relationIds'] }): ProfessorData => {
+    const now = Date.now();
+    return {
+      id: ulid(),
+      type: 'professor',
+      createdAt: now,
+      updatedAt: now,
+      fields: data.fields,
+      relationIds: data.relationIds,
+    };
+  },
+  student: (data: { fields: StudentData['fields'], relationIds: StudentData['relationIds'] }): StudentData => {
+    const now = Date.now();
+    return {
+      id: ulid(),
+      type: 'student',
+      createdAt: now,
+      updatedAt: now,
+      fields: data.fields,
+      relationIds: data.relationIds,
+    };
+  },
+  course: (data: { fields: CourseData['fields'], relationIds: CourseData['relationIds'] }): CourseData => {
+    const now = Date.now();
+    return {
+      id: ulid(),
+      type: 'course',
+      createdAt: now,
+      updatedAt: now,
+      fields: data.fields,
+      relationIds: data.relationIds,
+    };
+  },
+  enrollment: (data: { fields: EnrollmentData['fields'], relationIds: EnrollmentData['relationIds'] }): EnrollmentData => {
+    const now = Date.now();
+    return {
+      id: ulid(),
+      type: 'enrollment',
+      createdAt: now,
+      updatedAt: now,
+      fields: data.fields,
+      relationIds: data.relationIds,
+    };
+  },
+};
+
+export const updateNodeDataSync = {
+  department: (
+    base: DepartmentData,
+    recipe: (draft: Draft<DepartmentData>) => void
+  ): DepartmentData => {
+    return produce(base, (draft) => {
+      recipe(draft);
+      draft.updatedAt = Date.now();
+    });
+  },
+  professor: (
+    base: ProfessorData,
+    recipe: (draft: Draft<ProfessorData>) => void
+  ): ProfessorData => {
+    return produce(base, (draft) => {
+      recipe(draft);
+      draft.updatedAt = Date.now();
+    });
+  },
+  student: (
+    base: StudentData,
+    recipe: (draft: Draft<StudentData>) => void
+  ): StudentData => {
+    return produce(base, (draft) => {
+      recipe(draft);
+      draft.updatedAt = Date.now();
+    });
+  },
+  course: (
+    base: CourseData,
+    recipe: (draft: Draft<CourseData>) => void
+  ): CourseData => {
+    return produce(base, (draft) => {
+      recipe(draft);
+      draft.updatedAt = Date.now();
+    });
+  },
+  enrollment: (
+    base: EnrollmentData,
+    recipe: (draft: Draft<EnrollmentData>) => void
+  ): EnrollmentData => {
+    return produce(base, (draft) => {
+      recipe(draft);
+      draft.updatedAt = Date.now();
+    });
+  },
 };

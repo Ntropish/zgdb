@@ -8,30 +8,43 @@ export function generateClient(): string {
 
   // --- Imports ---
   lines.push(
-    `import { createClient as createGenericClient } from '@zgdb/runtime';`
+    `import { createAsyncClient, createSyncClient as createGenericSyncClient, StoreAdapter, SyncStoreAdapter } from '@zgdb/runtime';`
   );
-  lines.push(`import type { StoreAdapter } from '@zgdb/runtime';`);
   lines.push(
     `import { serializeNode, deserializeNode } from "./generated-serializers.js";`
   );
   lines.push(
-    `import { createNodeData, updateNodeData } from "./mutation-helpers.js";`
+    `import { createNodeData, updateNodeData, createNodeDataSync, updateNodeDataSync } from "./mutation-helpers.js";`
   );
   lines.push(`import type { NodeDataTypeMap } from './generated-types.js';`);
   lines.push(``);
 
   // --- Re-exports ---
-  lines.push(`export * from '@zgdb/runtime';`);
+  // We re-export the types from the runtime for convenience.
+  lines.push(
+    `export type { StoreAdapter, SyncStoreAdapter, TransactionClient, TransactionClientSync } from '@zgdb/runtime';`
+  );
   lines.push(`export * from './generated-types.js';`);
   lines.push(``);
 
-  // --- Client Factory ---
+  // --- Async Client Factory ---
   lines.push(`export function createClient(store: StoreAdapter) {`);
-  lines.push(`    return createGenericClient<NodeDataTypeMap>(store, {`);
+  lines.push(`    return createAsyncClient<NodeDataTypeMap>(store, {`);
   lines.push(`        serializeNode,`);
   lines.push(`        deserializeNode,`);
   lines.push(`        createNodeData,`);
   lines.push(`        updateNodeData,`);
+  lines.push(`    });`);
+  lines.push(`}`);
+  lines.push(``);
+
+  // --- Sync Client Factory ---
+  lines.push(`export function createSyncClient(store: SyncStoreAdapter) {`);
+  lines.push(`    return createGenericSyncClient<NodeDataTypeMap>(store, {`);
+  lines.push(`        serializeNode,`);
+  lines.push(`        deserializeNode,`);
+  lines.push(`        createNodeDataSync,`);
+  lines.push(`        updateNodeDataSync,`);
   lines.push(`    });`);
   lines.push(`}`);
   lines.push(``);
