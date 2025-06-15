@@ -9,14 +9,18 @@
     "build": "pnpm zg:all && pnpm tsc",
     "tsc": "tsc",
     "zg:all": "concurrently \"pnpm zg:basic\" \"pnpm zg:orders\" \"pnpm zg:university\" \"pnpm zg:portfolio\"",
-    "zg:basic": "zg build --config ./src/basic/schema.ts --output ./src/basic/dist/graph",
-    "run:basic": "node ./dist/basic/workflow.js",
+    "orders": "pnpm zg:orders && pnpm tsc && pnpm run:orders",
     "zg:orders": "zg build --config ./src/orders/schema.ts --output ./src/orders/dist/graph",
     "run:orders": "node ./dist/orders/workflow.js",
+    "university": "pnpm zg:university && pnpm tsc && pnpm run:university",
     "zg:university": "zg build --config ./src/university/schema.ts --output ./src/university/dist/graph",
     "run:university": "node ./dist/university/workflow.js",
+    "portfolio": "pnpm zg:portfolio && pnpm tsc && pnpm run:portfolio",
     "zg:portfolio": "zg build --config ./src/portfolio/schema.ts --output ./src/portfolio/dist/graph",
-    "run:portfolio": "node ./dist/portfolio/workflow.js"
+    "run:portfolio": "node ./dist/portfolio/workflow.js",
+    "basic": "pnpm zg:basic && pnpm tsc && pnpm run:basic",
+    "zg:basic": "zg build --config ./src/basic/schema.ts --output ./src/basic/dist/graph",
+    "run:basic": "node ./dist/basic/workflow.js"
   },
   "keywords": [
     "zgdb",

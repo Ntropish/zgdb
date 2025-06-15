@@ -12,6 +12,12 @@ ZGDB is a new kind of database for a new kind of application. It's a schema-firs
 
 - **Embeddable**: ZGDB is not a separate server. It's a library that runs within your application, eliminating network latency and simplifying your stack.
 
+## Install
+
+```
+npm install @zgdb/cli @zgdb/runtime
+```
+
 ## How it Works
 
 ### 1. Define Schema
