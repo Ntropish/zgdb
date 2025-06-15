@@ -6,9 +6,9 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "zg:all && tsc",
+    "build": "pnpm zg:all && pnpm tsc",
     "tsc": "tsc",
-    "zg:all": "concurrently \"zg:basic\" \"zg:orders\" \"zg:university\" \"zg:portfolio\"",
+    "zg:all": "concurrently \"pnpm zg:basic\" \"pnpm zg:orders\" \"pnpm zg:university\" \"pnpm zg:portfolio\"",
     "zg:basic": "zg build --config ./src/basic/schema.ts --output ./src/basic/dist/graph",
     "run:basic": "node ./dist/basic/workflow.js",
     "zg:orders": "zg build --config ./src/orders/schema.ts --output ./src/orders/dist/graph",

@@ -1,233 +1,386 @@
-import schema from './graph-schema.js';
-import { uuidv7 as uuid } from 'uuidv7';
 import { produce } from 'immer';
-// ============================================
-//  Create Node Data Helpers
-// ============================================
+import { ulid } from 'ulid';
+// --- Async Helpers ---
 export const createNodeData = {
-    customer: (data) => ({
-        id: uuid(),
-        type: 'customer',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.customer.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    }),
-    address: (data) => ({
-        id: uuid(),
-        type: 'address',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.address.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    }),
-    warehouse: (data) => ({
-        id: uuid(),
-        type: 'warehouse',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.warehouse.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    }),
-    product: (data) => ({
-        id: uuid(),
-        type: 'product',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.product.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    }),
-    cart: (data) => ({
-        id: uuid(),
-        type: 'cart',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.cart.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    }),
-    order: (data) => ({
-        id: uuid(),
-        type: 'order',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.order.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    }),
-    lineItem: (data) => ({
-        id: uuid(),
-        type: 'lineItem',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.lineItem.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    }),
-    discount: (data) => ({
-        id: uuid(),
-        type: 'discount',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.discount.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    }),
-    payment: (data) => ({
-        id: uuid(),
-        type: 'payment',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.payment.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    }),
-    shipment: (data) => ({
-        id: uuid(),
-        type: 'shipment',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.shipment.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    }),
-    notification: (data) => ({
-        id: uuid(),
-        type: 'notification',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        fields: schema.notification.fields.parse(data.fields),
-        relationIds: data.relationIds,
-    })
+    customer: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'customer',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+    address: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'address',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+    warehouse: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'warehouse',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+    product: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'product',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+    cart: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'cart',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+    order: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'order',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+    lineItem: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'lineItem',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+    discount: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'discount',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+    payment: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'payment',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+    shipment: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'shipment',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+    notification: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'notification',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
 };
-// ============================================
-//  Update Node Data Helpers (with Immer)
-// ============================================
 export const updateNodeData = {
-    customer: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+    customer: (base, recipe) => {
+        return produce(base, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.customer.fields.parse(updatedNode.fields);
+    },
+    address: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    warehouse: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    product: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    cart: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    order: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    lineItem: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    discount: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    payment: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    shipment: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    notification: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+};
+// --- Sync Helpers ---
+export const createNodeDataSync = {
+    customer: (data) => {
+        const now = Date.now();
         return {
-            ...updatedNode,
-            fields: validatedFields,
+            id: ulid(),
+            type: 'customer',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
         };
     },
-    address: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.address.fields.parse(updatedNode.fields);
+    address: (data) => {
+        const now = Date.now();
         return {
-            ...updatedNode,
-            fields: validatedFields,
+            id: ulid(),
+            type: 'address',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
         };
     },
-    warehouse: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.warehouse.fields.parse(updatedNode.fields);
+    warehouse: (data) => {
+        const now = Date.now();
         return {
-            ...updatedNode,
-            fields: validatedFields,
+            id: ulid(),
+            type: 'warehouse',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
         };
     },
-    product: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.product.fields.parse(updatedNode.fields);
+    product: (data) => {
+        const now = Date.now();
         return {
-            ...updatedNode,
-            fields: validatedFields,
+            id: ulid(),
+            type: 'product',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
         };
     },
-    cart: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.cart.fields.parse(updatedNode.fields);
+    cart: (data) => {
+        const now = Date.now();
         return {
-            ...updatedNode,
-            fields: validatedFields,
+            id: ulid(),
+            type: 'cart',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
         };
     },
-    order: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.order.fields.parse(updatedNode.fields);
+    order: (data) => {
+        const now = Date.now();
         return {
-            ...updatedNode,
-            fields: validatedFields,
+            id: ulid(),
+            type: 'order',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
         };
     },
-    lineItem: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.lineItem.fields.parse(updatedNode.fields);
+    lineItem: (data) => {
+        const now = Date.now();
         return {
-            ...updatedNode,
-            fields: validatedFields,
+            id: ulid(),
+            type: 'lineItem',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
         };
     },
-    discount: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.discount.fields.parse(updatedNode.fields);
+    discount: (data) => {
+        const now = Date.now();
         return {
-            ...updatedNode,
-            fields: validatedFields,
+            id: ulid(),
+            type: 'discount',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
         };
     },
-    payment: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.payment.fields.parse(updatedNode.fields);
+    payment: (data) => {
+        const now = Date.now();
         return {
-            ...updatedNode,
-            fields: validatedFields,
+            id: ulid(),
+            type: 'payment',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
         };
     },
-    shipment: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
-            recipe(draft);
-            draft.updatedAt = Date.now();
-        });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.shipment.fields.parse(updatedNode.fields);
+    shipment: (data) => {
+        const now = Date.now();
         return {
-            ...updatedNode,
-            fields: validatedFields,
+            id: ulid(),
+            type: 'shipment',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
         };
     },
-    notification: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+    notification: (data) => {
+        const now = Date.now();
+        return {
+            id: ulid(),
+            type: 'notification',
+            createdAt: now,
+            updatedAt: now,
+            fields: data.fields,
+            relationIds: data.relationIds,
+        };
+    },
+};
+export const updateNodeDataSync = {
+    customer: (base, recipe) => {
+        return produce(base, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
-        // After mutation, validate the final fields object to ensure consistency.
-        const validatedFields = schema.notification.fields.parse(updatedNode.fields);
-        return {
-            ...updatedNode,
-            fields: validatedFields,
-        };
-    }
+    },
+    address: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    warehouse: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    product: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    cart: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    order: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    lineItem: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    discount: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    payment: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    shipment: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
+    notification: (base, recipe) => {
+        return produce(base, (draft) => {
+            recipe(draft);
+            draft.updatedAt = Date.now();
+        });
+    },
 };
