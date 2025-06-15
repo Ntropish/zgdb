@@ -6,6 +6,9 @@
   "bin": {
     "zg": "dist/main.js"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "mv:interfaces": "mv src/interfaces.ts dist/interfaces.ts",
