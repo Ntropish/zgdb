@@ -43,42 +43,54 @@ cashBalance():number {
   return offset ? this.bb!.readFloat32(this.bb_pos + offset) : 0.0;
 }
 
+riskProfile():string|null
+riskProfile(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+riskProfile(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+totalInvested():number {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.readFloat32(this.bb_pos + offset) : 0.0;
+}
+
 holdingsIds(index: number):string
 holdingsIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
 holdingsIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
 holdingsIdsLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 tradesIds(index: number):string
 tradesIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
 tradesIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
 tradesIdsLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 createdAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 updatedAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
+  const offset = this.bb!.__offset(this.bb_pos, 20);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 static startPortfolio(builder:flatbuffers.Builder) {
-  builder.startObject(7);
+  builder.startObject(9);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -93,8 +105,16 @@ static addCashBalance(builder:flatbuffers.Builder, cashBalance:number) {
   builder.addFieldFloat32(2, cashBalance, 0.0);
 }
 
+static addRiskProfile(builder:flatbuffers.Builder, riskProfileOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, riskProfileOffset, 0);
+}
+
+static addTotalInvested(builder:flatbuffers.Builder, totalInvested:number) {
+  builder.addFieldFloat32(4, totalInvested, 0.0);
+}
+
 static addHoldingsIds(builder:flatbuffers.Builder, holdingsIdsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, holdingsIdsOffset, 0);
+  builder.addFieldOffset(5, holdingsIdsOffset, 0);
 }
 
 static createHoldingsIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -110,7 +130,7 @@ static startHoldingsIdsVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addTradesIds(builder:flatbuffers.Builder, tradesIdsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, tradesIdsOffset, 0);
+  builder.addFieldOffset(6, tradesIdsOffset, 0);
 }
 
 static createTradesIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -126,11 +146,11 @@ static startTradesIdsVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(5, createdAt, BigInt('0'));
+  builder.addFieldInt64(7, createdAt, BigInt('0'));
 }
 
 static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
-  builder.addFieldInt64(6, updatedAt, BigInt('0'));
+  builder.addFieldInt64(8, updatedAt, BigInt('0'));
 }
 
 static endPortfolio(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -147,11 +167,13 @@ static finishSizePrefixedPortfolioBuffer(builder:flatbuffers.Builder, offset:fla
   builder.finish(offset, undefined, true);
 }
 
-static createPortfolio(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset, cashBalance:number, holdingsIdsOffset:flatbuffers.Offset, tradesIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
+static createPortfolio(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset, cashBalance:number, riskProfileOffset:flatbuffers.Offset, totalInvested:number, holdingsIdsOffset:flatbuffers.Offset, tradesIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   Portfolio.startPortfolio(builder);
   Portfolio.addId(builder, idOffset);
   Portfolio.addName(builder, nameOffset);
   Portfolio.addCashBalance(builder, cashBalance);
+  Portfolio.addRiskProfile(builder, riskProfileOffset);
+  Portfolio.addTotalInvested(builder, totalInvested);
   Portfolio.addHoldingsIds(builder, holdingsIdsOffset);
   Portfolio.addTradesIds(builder, tradesIdsOffset);
   Portfolio.addCreatedAt(builder, createdAt);

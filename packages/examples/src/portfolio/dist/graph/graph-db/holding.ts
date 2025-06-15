@@ -34,42 +34,47 @@ shares():number {
   return offset ? this.bb!.readFloat32(this.bb_pos + offset) : 0.0;
 }
 
+costBasis():number {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.readFloat32(this.bb_pos + offset) : 0.0;
+}
+
 portfolioIds(index: number):string
 portfolioIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
 portfolioIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
 portfolioIdsLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 stockIds(index: number):string
 stockIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
 stockIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
 stockIdsLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 createdAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
-}
-
-updatedAt():bigint {
   const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
+updatedAt():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 16);
+  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+}
+
 static startHolding(builder:flatbuffers.Builder) {
-  builder.startObject(6);
+  builder.startObject(7);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -80,8 +85,12 @@ static addShares(builder:flatbuffers.Builder, shares:number) {
   builder.addFieldFloat32(1, shares, 0.0);
 }
 
+static addCostBasis(builder:flatbuffers.Builder, costBasis:number) {
+  builder.addFieldFloat32(2, costBasis, 0.0);
+}
+
 static addPortfolioIds(builder:flatbuffers.Builder, portfolioIdsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, portfolioIdsOffset, 0);
+  builder.addFieldOffset(3, portfolioIdsOffset, 0);
 }
 
 static createPortfolioIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -97,7 +106,7 @@ static startPortfolioIdsVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addStockIds(builder:flatbuffers.Builder, stockIdsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, stockIdsOffset, 0);
+  builder.addFieldOffset(4, stockIdsOffset, 0);
 }
 
 static createStockIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -113,11 +122,11 @@ static startStockIdsVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(4, createdAt, BigInt('0'));
+  builder.addFieldInt64(5, createdAt, BigInt('0'));
 }
 
 static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
-  builder.addFieldInt64(5, updatedAt, BigInt('0'));
+  builder.addFieldInt64(6, updatedAt, BigInt('0'));
 }
 
 static endHolding(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -126,10 +135,11 @@ static endHolding(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createHolding(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, shares:number, portfolioIdsOffset:flatbuffers.Offset, stockIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
+static createHolding(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, shares:number, costBasis:number, portfolioIdsOffset:flatbuffers.Offset, stockIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   Holding.startHolding(builder);
   Holding.addId(builder, idOffset);
   Holding.addShares(builder, shares);
+  Holding.addCostBasis(builder, costBasis);
   Holding.addPortfolioIds(builder, portfolioIdsOffset);
   Holding.addStockIds(builder, stockIdsOffset);
   Holding.addCreatedAt(builder, createdAt);

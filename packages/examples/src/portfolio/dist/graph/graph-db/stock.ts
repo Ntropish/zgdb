@@ -48,42 +48,52 @@ currentPrice():number {
   return offset ? this.bb!.readFloat32(this.bb_pos + offset) : 0.0;
 }
 
+volatility():number {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.readFloat32(this.bb_pos + offset) : 0.0;
+}
+
+growthTrend():number {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.readFloat32(this.bb_pos + offset) : 0.0;
+}
+
 holdingsIds(index: number):string
 holdingsIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
 holdingsIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
 holdingsIdsLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 tradesIds(index: number):string
 tradesIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
 tradesIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
 tradesIdsLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 createdAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
+  const offset = this.bb!.__offset(this.bb_pos, 20);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 updatedAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 18);
+  const offset = this.bb!.__offset(this.bb_pos, 22);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 static startStock(builder:flatbuffers.Builder) {
-  builder.startObject(8);
+  builder.startObject(10);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -102,8 +112,16 @@ static addCurrentPrice(builder:flatbuffers.Builder, currentPrice:number) {
   builder.addFieldFloat32(3, currentPrice, 0.0);
 }
 
+static addVolatility(builder:flatbuffers.Builder, volatility:number) {
+  builder.addFieldFloat32(4, volatility, 0.0);
+}
+
+static addGrowthTrend(builder:flatbuffers.Builder, growthTrend:number) {
+  builder.addFieldFloat32(5, growthTrend, 0.0);
+}
+
 static addHoldingsIds(builder:flatbuffers.Builder, holdingsIdsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, holdingsIdsOffset, 0);
+  builder.addFieldOffset(6, holdingsIdsOffset, 0);
 }
 
 static createHoldingsIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -119,7 +137,7 @@ static startHoldingsIdsVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addTradesIds(builder:flatbuffers.Builder, tradesIdsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(5, tradesIdsOffset, 0);
+  builder.addFieldOffset(7, tradesIdsOffset, 0);
 }
 
 static createTradesIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -135,11 +153,11 @@ static startTradesIdsVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(6, createdAt, BigInt('0'));
+  builder.addFieldInt64(8, createdAt, BigInt('0'));
 }
 
 static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
-  builder.addFieldInt64(7, updatedAt, BigInt('0'));
+  builder.addFieldInt64(9, updatedAt, BigInt('0'));
 }
 
 static endStock(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -148,12 +166,14 @@ static endStock(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createStock(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, tickerOffset:flatbuffers.Offset, companyNameOffset:flatbuffers.Offset, currentPrice:number, holdingsIdsOffset:flatbuffers.Offset, tradesIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
+static createStock(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, tickerOffset:flatbuffers.Offset, companyNameOffset:flatbuffers.Offset, currentPrice:number, volatility:number, growthTrend:number, holdingsIdsOffset:flatbuffers.Offset, tradesIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   Stock.startStock(builder);
   Stock.addId(builder, idOffset);
   Stock.addTicker(builder, tickerOffset);
   Stock.addCompanyName(builder, companyNameOffset);
   Stock.addCurrentPrice(builder, currentPrice);
+  Stock.addVolatility(builder, volatility);
+  Stock.addGrowthTrend(builder, growthTrend);
   Stock.addHoldingsIds(builder, holdingsIdsOffset);
   Stock.addTradesIds(builder, tradesIdsOffset);
   Stock.addCreatedAt(builder, createdAt);

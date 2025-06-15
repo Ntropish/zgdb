@@ -28,32 +28,40 @@ export class Portfolio {
         const offset = this.bb.__offset(this.bb_pos, 8);
         return offset ? this.bb.readFloat32(this.bb_pos + offset) : 0.0;
     }
-    holdingsIds(index, optionalEncoding) {
+    riskProfile(optionalEncoding) {
         const offset = this.bb.__offset(this.bb_pos, 10);
+        return offset ? this.bb.__string(this.bb_pos + offset, optionalEncoding) : null;
+    }
+    totalInvested() {
+        const offset = this.bb.__offset(this.bb_pos, 12);
+        return offset ? this.bb.readFloat32(this.bb_pos + offset) : 0.0;
+    }
+    holdingsIds(index, optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 14);
         return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
     }
     holdingsIdsLength() {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 14);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     tradesIds(index, optionalEncoding) {
-        const offset = this.bb.__offset(this.bb_pos, 12);
+        const offset = this.bb.__offset(this.bb_pos, 16);
         return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
     }
     tradesIdsLength() {
-        const offset = this.bb.__offset(this.bb_pos, 12);
+        const offset = this.bb.__offset(this.bb_pos, 16);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     createdAt() {
-        const offset = this.bb.__offset(this.bb_pos, 14);
+        const offset = this.bb.__offset(this.bb_pos, 18);
         return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
     }
     updatedAt() {
-        const offset = this.bb.__offset(this.bb_pos, 16);
+        const offset = this.bb.__offset(this.bb_pos, 20);
         return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
     }
     static startPortfolio(builder) {
-        builder.startObject(7);
+        builder.startObject(9);
     }
     static addId(builder, idOffset) {
         builder.addFieldOffset(0, idOffset, 0);
@@ -64,8 +72,14 @@ export class Portfolio {
     static addCashBalance(builder, cashBalance) {
         builder.addFieldFloat32(2, cashBalance, 0.0);
     }
+    static addRiskProfile(builder, riskProfileOffset) {
+        builder.addFieldOffset(3, riskProfileOffset, 0);
+    }
+    static addTotalInvested(builder, totalInvested) {
+        builder.addFieldFloat32(4, totalInvested, 0.0);
+    }
     static addHoldingsIds(builder, holdingsIdsOffset) {
-        builder.addFieldOffset(3, holdingsIdsOffset, 0);
+        builder.addFieldOffset(5, holdingsIdsOffset, 0);
     }
     static createHoldingsIdsVector(builder, data) {
         builder.startVector(4, data.length, 4);
@@ -78,7 +92,7 @@ export class Portfolio {
         builder.startVector(4, numElems, 4);
     }
     static addTradesIds(builder, tradesIdsOffset) {
-        builder.addFieldOffset(4, tradesIdsOffset, 0);
+        builder.addFieldOffset(6, tradesIdsOffset, 0);
     }
     static createTradesIdsVector(builder, data) {
         builder.startVector(4, data.length, 4);
@@ -91,10 +105,10 @@ export class Portfolio {
         builder.startVector(4, numElems, 4);
     }
     static addCreatedAt(builder, createdAt) {
-        builder.addFieldInt64(5, createdAt, BigInt('0'));
+        builder.addFieldInt64(7, createdAt, BigInt('0'));
     }
     static addUpdatedAt(builder, updatedAt) {
-        builder.addFieldInt64(6, updatedAt, BigInt('0'));
+        builder.addFieldInt64(8, updatedAt, BigInt('0'));
     }
     static endPortfolio(builder) {
         const offset = builder.endObject();
@@ -107,11 +121,13 @@ export class Portfolio {
     static finishSizePrefixedPortfolioBuffer(builder, offset) {
         builder.finish(offset, undefined, true);
     }
-    static createPortfolio(builder, idOffset, nameOffset, cashBalance, holdingsIdsOffset, tradesIdsOffset, createdAt, updatedAt) {
+    static createPortfolio(builder, idOffset, nameOffset, cashBalance, riskProfileOffset, totalInvested, holdingsIdsOffset, tradesIdsOffset, createdAt, updatedAt) {
         Portfolio.startPortfolio(builder);
         Portfolio.addId(builder, idOffset);
         Portfolio.addName(builder, nameOffset);
         Portfolio.addCashBalance(builder, cashBalance);
+        Portfolio.addRiskProfile(builder, riskProfileOffset);
+        Portfolio.addTotalInvested(builder, totalInvested);
         Portfolio.addHoldingsIds(builder, holdingsIdsOffset);
         Portfolio.addTradesIds(builder, tradesIdsOffset);
         Portfolio.addCreatedAt(builder, createdAt);

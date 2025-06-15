@@ -71,6 +71,7 @@ export const serializeNode = {
     const builder = new Builder(1024);
     const idOffset = builder.createString(node.id);
     const nameOffset = builder.createString(node.fields.name || '');
+    const riskProfileOffset = builder.createString(node.fields.riskProfile || '');
     const holdingsIdOffsets = (node.relationIds.holdings || []).map(id => builder.createString(id));
     const holdingsIdsVectorOffset = Portfolio.createHoldingsIdsVector(builder, holdingsIdOffsets);
     const tradesIdOffsets = (node.relationIds.trades || []).map(id => builder.createString(id));
@@ -82,6 +83,8 @@ export const serializeNode = {
     Portfolio.addUpdatedAt(builder, BigInt(node.updatedAt));
     Portfolio.addName(builder, nameOffset);
     Portfolio.addCashBalance(builder, node.fields.cashBalance);
+    Portfolio.addRiskProfile(builder, riskProfileOffset);
+    Portfolio.addTotalInvested(builder, node.fields.totalInvested);
     Portfolio.addHoldingsIds(builder, holdingsIdsVectorOffset);
     Portfolio.addTradesIds(builder, tradesIdsVectorOffset);
     const portfolioOffset = Portfolio.endPortfolio(builder);
@@ -105,6 +108,8 @@ export const serializeNode = {
     Stock.addTicker(builder, tickerOffset);
     Stock.addCompanyName(builder, companyNameOffset);
     Stock.addCurrentPrice(builder, node.fields.currentPrice);
+    Stock.addVolatility(builder, node.fields.volatility);
+    Stock.addGrowthTrend(builder, node.fields.growthTrend);
     Stock.addHoldingsIds(builder, holdingsIdsVectorOffset);
     Stock.addTradesIds(builder, tradesIdsVectorOffset);
     const stockOffset = Stock.endStock(builder);
@@ -124,6 +129,7 @@ export const serializeNode = {
     Holding.addCreatedAt(builder, BigInt(node.createdAt));
     Holding.addUpdatedAt(builder, BigInt(node.updatedAt));
     Holding.addShares(builder, node.fields.shares);
+    Holding.addCostBasis(builder, node.fields.costBasis);
     Holding.addPortfolioIds(builder, portfolioIdsVectorOffset);
     Holding.addStockIds(builder, stockIdsVectorOffset);
     const holdingOffset = Holding.endHolding(builder);
@@ -165,6 +171,8 @@ export const deserializeNode = {
     const fields: any = {};
     fields.name = node.name();
     fields.cashBalance = node.cashBalance();
+    fields.riskProfile = node.riskProfile();
+    fields.totalInvested = node.totalInvested();
     const relationIds: any = {};
     const holdingsIds = Array.from({ length: node.holdingsIdsLength() }, (_, i) => node.holdingsIds(i));
     relationIds.holdings = holdingsIds;
@@ -186,6 +194,8 @@ export const deserializeNode = {
     fields.ticker = node.ticker();
     fields.companyName = node.companyName();
     fields.currentPrice = node.currentPrice();
+    fields.volatility = node.volatility();
+    fields.growthTrend = node.growthTrend();
     const relationIds: any = {};
     const holdingsIds = Array.from({ length: node.holdingsIdsLength() }, (_, i) => node.holdingsIds(i));
     relationIds.holdings = holdingsIds;
@@ -205,6 +215,7 @@ export const deserializeNode = {
     const node = Holding.getRootAsHolding(byteBuffer);
     const fields: any = {};
     fields.shares = node.shares();
+    fields.costBasis = node.costBasis();
     const relationIds: any = {};
     const portfolioIds = Array.from({ length: node.portfolioIdsLength() }, (_, i) => node.portfolioIds(i));
     relationIds.portfolio = portfolioIds[0] || '';

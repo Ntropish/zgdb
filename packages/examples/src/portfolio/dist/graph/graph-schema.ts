@@ -6,6 +6,9 @@ const schema = {
     fields: z.object({
       name: z.string(),
       cashBalance: z.number(),
+      riskProfile: z.enum(["Conservative", "Moderate", "Aggressive"]),
+      // The total amount of cash ever added to this portfolio
+      totalInvested: z.number(),
     }),
     relations: {
       holdings: ["many", "holding"],
@@ -19,6 +22,10 @@ const schema = {
       ticker: z.string().toUpperCase(),
       companyName: z.string(),
       currentPrice: z.number(),
+      // Represents the stock's inherent volatility as a standard deviation
+      volatility: z.number(),
+      // Represents the stock's natural growth trend (or decay) per month
+      growthTrend: z.number(),
     }),
     relations: {
       holdings: ["many", "holding"],
@@ -30,6 +37,8 @@ const schema = {
   holding: {
     fields: z.object({
       shares: z.number(),
+      // The average price paid for the shares in this holding
+      costBasis: z.number(),
     }),
     relations: {
       portfolio: ["one", "portfolio"],

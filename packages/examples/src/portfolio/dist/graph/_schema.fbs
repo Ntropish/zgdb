@@ -4,6 +4,8 @@ table Portfolio {
   id: string (key);
   name: string;
   cashBalance: float;
+  riskProfile: string;
+  totalInvested: float;
   holdings_ids: [string];
   trades_ids: [string];
   created_at: int64;
@@ -15,6 +17,8 @@ table Stock {
   ticker: string;
   companyName: string;
   currentPrice: float;
+  volatility: float;
+  growthTrend: float;
   holdings_ids: [string];
   trades_ids: [string];
   created_at: int64;
@@ -24,6 +28,7 @@ table Stock {
 table Holding {
   id: string (key);
   shares: float;
+  costBasis: float;
   portfolio_ids: [string];
   stock_ids: [string];
   created_at: int64;

@@ -24,32 +24,36 @@ export class Holding {
         const offset = this.bb.__offset(this.bb_pos, 6);
         return offset ? this.bb.readFloat32(this.bb_pos + offset) : 0.0;
     }
-    portfolioIds(index, optionalEncoding) {
+    costBasis() {
         const offset = this.bb.__offset(this.bb_pos, 8);
+        return offset ? this.bb.readFloat32(this.bb_pos + offset) : 0.0;
+    }
+    portfolioIds(index, optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 10);
         return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
     }
     portfolioIdsLength() {
-        const offset = this.bb.__offset(this.bb_pos, 8);
+        const offset = this.bb.__offset(this.bb_pos, 10);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     stockIds(index, optionalEncoding) {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 12);
         return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
     }
     stockIdsLength() {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 12);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     createdAt() {
-        const offset = this.bb.__offset(this.bb_pos, 12);
-        return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
-    }
-    updatedAt() {
         const offset = this.bb.__offset(this.bb_pos, 14);
         return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
     }
+    updatedAt() {
+        const offset = this.bb.__offset(this.bb_pos, 16);
+        return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
+    }
     static startHolding(builder) {
-        builder.startObject(6);
+        builder.startObject(7);
     }
     static addId(builder, idOffset) {
         builder.addFieldOffset(0, idOffset, 0);
@@ -57,8 +61,11 @@ export class Holding {
     static addShares(builder, shares) {
         builder.addFieldFloat32(1, shares, 0.0);
     }
+    static addCostBasis(builder, costBasis) {
+        builder.addFieldFloat32(2, costBasis, 0.0);
+    }
     static addPortfolioIds(builder, portfolioIdsOffset) {
-        builder.addFieldOffset(2, portfolioIdsOffset, 0);
+        builder.addFieldOffset(3, portfolioIdsOffset, 0);
     }
     static createPortfolioIdsVector(builder, data) {
         builder.startVector(4, data.length, 4);
@@ -71,7 +78,7 @@ export class Holding {
         builder.startVector(4, numElems, 4);
     }
     static addStockIds(builder, stockIdsOffset) {
-        builder.addFieldOffset(3, stockIdsOffset, 0);
+        builder.addFieldOffset(4, stockIdsOffset, 0);
     }
     static createStockIdsVector(builder, data) {
         builder.startVector(4, data.length, 4);
@@ -84,20 +91,21 @@ export class Holding {
         builder.startVector(4, numElems, 4);
     }
     static addCreatedAt(builder, createdAt) {
-        builder.addFieldInt64(4, createdAt, BigInt('0'));
+        builder.addFieldInt64(5, createdAt, BigInt('0'));
     }
     static addUpdatedAt(builder, updatedAt) {
-        builder.addFieldInt64(5, updatedAt, BigInt('0'));
+        builder.addFieldInt64(6, updatedAt, BigInt('0'));
     }
     static endHolding(builder) {
         const offset = builder.endObject();
         builder.requiredField(offset, 4); // id
         return offset;
     }
-    static createHolding(builder, idOffset, shares, portfolioIdsOffset, stockIdsOffset, createdAt, updatedAt) {
+    static createHolding(builder, idOffset, shares, costBasis, portfolioIdsOffset, stockIdsOffset, createdAt, updatedAt) {
         Holding.startHolding(builder);
         Holding.addId(builder, idOffset);
         Holding.addShares(builder, shares);
+        Holding.addCostBasis(builder, costBasis);
         Holding.addPortfolioIds(builder, portfolioIdsOffset);
         Holding.addStockIds(builder, stockIdsOffset);
         Holding.addCreatedAt(builder, createdAt);

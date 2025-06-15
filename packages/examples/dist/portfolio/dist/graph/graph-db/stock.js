@@ -32,32 +32,40 @@ export class Stock {
         const offset = this.bb.__offset(this.bb_pos, 10);
         return offset ? this.bb.readFloat32(this.bb_pos + offset) : 0.0;
     }
-    holdingsIds(index, optionalEncoding) {
+    volatility() {
         const offset = this.bb.__offset(this.bb_pos, 12);
+        return offset ? this.bb.readFloat32(this.bb_pos + offset) : 0.0;
+    }
+    growthTrend() {
+        const offset = this.bb.__offset(this.bb_pos, 14);
+        return offset ? this.bb.readFloat32(this.bb_pos + offset) : 0.0;
+    }
+    holdingsIds(index, optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 16);
         return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
     }
     holdingsIdsLength() {
-        const offset = this.bb.__offset(this.bb_pos, 12);
+        const offset = this.bb.__offset(this.bb_pos, 16);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     tradesIds(index, optionalEncoding) {
-        const offset = this.bb.__offset(this.bb_pos, 14);
+        const offset = this.bb.__offset(this.bb_pos, 18);
         return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
     }
     tradesIdsLength() {
-        const offset = this.bb.__offset(this.bb_pos, 14);
+        const offset = this.bb.__offset(this.bb_pos, 18);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     createdAt() {
-        const offset = this.bb.__offset(this.bb_pos, 16);
+        const offset = this.bb.__offset(this.bb_pos, 20);
         return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
     }
     updatedAt() {
-        const offset = this.bb.__offset(this.bb_pos, 18);
+        const offset = this.bb.__offset(this.bb_pos, 22);
         return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
     }
     static startStock(builder) {
-        builder.startObject(8);
+        builder.startObject(10);
     }
     static addId(builder, idOffset) {
         builder.addFieldOffset(0, idOffset, 0);
@@ -71,8 +79,14 @@ export class Stock {
     static addCurrentPrice(builder, currentPrice) {
         builder.addFieldFloat32(3, currentPrice, 0.0);
     }
+    static addVolatility(builder, volatility) {
+        builder.addFieldFloat32(4, volatility, 0.0);
+    }
+    static addGrowthTrend(builder, growthTrend) {
+        builder.addFieldFloat32(5, growthTrend, 0.0);
+    }
     static addHoldingsIds(builder, holdingsIdsOffset) {
-        builder.addFieldOffset(4, holdingsIdsOffset, 0);
+        builder.addFieldOffset(6, holdingsIdsOffset, 0);
     }
     static createHoldingsIdsVector(builder, data) {
         builder.startVector(4, data.length, 4);
@@ -85,7 +99,7 @@ export class Stock {
         builder.startVector(4, numElems, 4);
     }
     static addTradesIds(builder, tradesIdsOffset) {
-        builder.addFieldOffset(5, tradesIdsOffset, 0);
+        builder.addFieldOffset(7, tradesIdsOffset, 0);
     }
     static createTradesIdsVector(builder, data) {
         builder.startVector(4, data.length, 4);
@@ -98,22 +112,24 @@ export class Stock {
         builder.startVector(4, numElems, 4);
     }
     static addCreatedAt(builder, createdAt) {
-        builder.addFieldInt64(6, createdAt, BigInt('0'));
+        builder.addFieldInt64(8, createdAt, BigInt('0'));
     }
     static addUpdatedAt(builder, updatedAt) {
-        builder.addFieldInt64(7, updatedAt, BigInt('0'));
+        builder.addFieldInt64(9, updatedAt, BigInt('0'));
     }
     static endStock(builder) {
         const offset = builder.endObject();
         builder.requiredField(offset, 4); // id
         return offset;
     }
-    static createStock(builder, idOffset, tickerOffset, companyNameOffset, currentPrice, holdingsIdsOffset, tradesIdsOffset, createdAt, updatedAt) {
+    static createStock(builder, idOffset, tickerOffset, companyNameOffset, currentPrice, volatility, growthTrend, holdingsIdsOffset, tradesIdsOffset, createdAt, updatedAt) {
         Stock.startStock(builder);
         Stock.addId(builder, idOffset);
         Stock.addTicker(builder, tickerOffset);
         Stock.addCompanyName(builder, companyNameOffset);
         Stock.addCurrentPrice(builder, currentPrice);
+        Stock.addVolatility(builder, volatility);
+        Stock.addGrowthTrend(builder, growthTrend);
         Stock.addHoldingsIds(builder, holdingsIdsOffset);
         Stock.addTradesIds(builder, tradesIdsOffset);
         Stock.addCreatedAt(builder, createdAt);
