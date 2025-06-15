@@ -4,7 +4,7 @@ import {
   TransactionClientSync,
   NodeDataTypeMap,
 } from "./dist/graph/zgdb-client.js";
-import { MapStoreAdapterSync } from "../map-store-adapter-sync.js";
+import { MapStoreAdapterSync } from "@zgdb/runtime";
 
 // ============================================
 //  Setup & Configuration

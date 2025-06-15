@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
 import { createClient } from "./dist/graph/zgdb-client.js";
-import { MapStoreAdapter } from "../map-store-adapter.js";
+import { MapStoreAdapter } from "@zgdb/runtime";
 const db = createClient(new MapStoreAdapter());
 const NUM_STUDENTS = 50;
 const SEMESTER = "Fall 2025";

@@ -17,3 +17,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./types"), exports);
 __exportStar(require("./key-encoder"), exports);
 __exportStar(require("./client"), exports);
+__exportStar(require("./map-store-adapter"), exports);
+__exportStar(require("./map-store-adapter-sync"), exports);

@@ -1,3 +1,5 @@
+import { Draft } from "immer";
+
 // ============================================
 // FlatBuffers Serializer Interface
 // ============================================

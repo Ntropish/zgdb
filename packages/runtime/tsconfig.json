@@ -12,6 +12,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "../examples/src/map-store-adapter-sync.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules"]
 }
