@@ -132,6 +132,7 @@ importers:
       ulid:
         specifier: ^3.0.1
         version: 3.0.1
+    devDependencies:
       zod:
         specifier: ^3.25.64
         version: 3.25.64
