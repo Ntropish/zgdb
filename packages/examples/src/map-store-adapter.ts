@@ -1,4 +1,4 @@
-import type { StoreAdapter } from "./dist/graph/index.js";
+import type { StoreAdapter } from "./dist/graph/zgdb-client.js";
 
 /**
  * An in-memory store adapter that supports atomic transactions.

@@ -75,7 +75,6 @@ async function main() {
   );
 
   console.log("Final User Data:", finalJane);
-  console.log(`User's post count: ${finalJane?.relationIds.posts.length}`);
 }
 
 main();

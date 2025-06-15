@@ -55,6 +55,5 @@ async function main() {
     console.log(`User's post count: ${finalJohn?.relationIds.posts.length}`);
     const finalJane = await db.transact(async (tx) => tx.getNode("user", janeDoe.id));
     console.log("Final User Data:", finalJane);
-    console.log(`User's post count: ${finalJane?.relationIds.posts.length}`);
 }
 main();
