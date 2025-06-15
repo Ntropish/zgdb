@@ -1,6 +1,7 @@
 {
   "name": "@zgdb/examples",
   "version": "0.1.0",
+  "private": true,
   "description": "A synchronous, in-memory graph database client generated from Zod schemas.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
