@@ -29,7 +29,6 @@ npm install @zgdb/cli @zgdb/runtime zod
 Create a schema file (e.g., schema.ts) to define your data model using Zod. Each key in the schema object represents a node type.
 
 ```ts
-// ./src/portfolio/schema.ts
 import { z } from "zod";
 
 const schema = {
