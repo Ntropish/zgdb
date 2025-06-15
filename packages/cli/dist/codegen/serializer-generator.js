@@ -24,7 +24,7 @@ export function generateSerializer(schema) {
     const lines = [];
     const nodeTypes = Object.keys(schema);
     // --- Imports ---
-    lines.push(`import { Builder, ByteBuffer } from 'flatbuffers';`);
+    lines.push(`import { Builder, ByteBuffer } from '@zgdb/runtime';`);
     lines.push(`import { z } from 'zod';`);
     lines.push(...nodeTypes.map((t) => `import { ${capitalize(t)} } from './graph-db/${toKebabCase(t)}.js';`));
     lines.push(`import GraphSchema from './graph-schema.js';`);

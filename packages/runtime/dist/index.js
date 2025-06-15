@@ -14,8 +14,12 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ByteBuffer = exports.Builder = void 0;
 __exportStar(require("./types"), exports);
 __exportStar(require("./key-encoder"), exports);
 __exportStar(require("./client"), exports);
 __exportStar(require("./map-store-adapter"), exports);
 __exportStar(require("./map-store-adapter-sync"), exports);
+var flatbuffers_1 = require("flatbuffers");
+Object.defineProperty(exports, "Builder", { enumerable: true, get: function () { return flatbuffers_1.Builder; } });
+Object.defineProperty(exports, "ByteBuffer", { enumerable: true, get: function () { return flatbuffers_1.ByteBuffer; } });
