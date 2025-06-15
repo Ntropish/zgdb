@@ -1,0 +1,54 @@
+namespace GraphDB;
+
+table Department {
+  id: string (key);
+  name: string;
+  professors_ids: [string];
+  courses_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Professor {
+  id: string (key);
+  name: string;
+  email: string;
+  department_ids: [string];
+  courses_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Student {
+  id: string (key);
+  name: string;
+  email: string;
+  major: string;
+  enrollments_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Course {
+  id: string (key);
+  title: string;
+  courseCode: string;
+  credits: int32;
+  department_ids: [string];
+  professor_ids: [string];
+  enrollments_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Enrollment {
+  id: string (key);
+  grade: string;
+  semester: string;
+  student_ids: [string];
+  course_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+root_type Department;

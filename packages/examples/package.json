@@ -12,7 +12,9 @@
     "run:2": "node ./dist/02-graph-analysis.js",
     "run:3": "node ./dist/03-instant-search.js",
     "build-graph:orders": "zg build --config ./src/orders/schema.ts --output ./src/orders/dist/graph",
-    "run:orders:1": "node ./dist/orders/workflow.js"
+    "run:orders": "node ./dist/orders/workflow.js",
+    "build-graph:university": "zg build --config ./src/university/schema.ts --output ./src/university/dist/graph",
+    "run:university": "node ./dist/university/workflow.js"
   },
   "keywords": [
     "zgdb",
@@ -27,6 +29,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@faker-js/faker": "^9.8.0",
     "@types/jest": "^29.5.14",
     "@zgdb/cli": "workspace:*",
     "@zgdb/runtime": "workspace:*",
