@@ -1,50 +1,66 @@
-import { produce, Draft } from 'immer';
-import { ulid } from 'ulid';
-import { z } from 'zod';
-import GraphSchema from './graph-schema.js';
-import type { PortfolioData, StockData, HoldingData, TradeData } from './generated-serializers.js';
-
+import { produce, Draft } from "@zgdb/runtime";
+import { ulid } from "@zgdb/runtime";
+import { z } from "@zgdb/runtime";
+import GraphSchema from "./graph-schema.js";
+import type {
+  PortfolioData,
+  StockData,
+  HoldingData,
+  TradeData,
+} from "./generated-serializers.js";
 
 // --- Async Helpers ---
 export const createNodeData = {
-  portfolio: (data: { fields: PortfolioData['fields'], relationIds: PortfolioData['relationIds'] }): PortfolioData => {
+  portfolio: (data: {
+    fields: PortfolioData["fields"];
+    relationIds: PortfolioData["relationIds"];
+  }): PortfolioData => {
     const now = Date.now();
     return {
       id: ulid(),
-      type: 'portfolio',
+      type: "portfolio",
       createdAt: now,
       updatedAt: now,
       fields: data.fields,
       relationIds: data.relationIds,
     };
   },
-  stock: (data: { fields: StockData['fields'], relationIds: StockData['relationIds'] }): StockData => {
+  stock: (data: {
+    fields: StockData["fields"];
+    relationIds: StockData["relationIds"];
+  }): StockData => {
     const now = Date.now();
     return {
       id: ulid(),
-      type: 'stock',
+      type: "stock",
       createdAt: now,
       updatedAt: now,
       fields: data.fields,
       relationIds: data.relationIds,
     };
   },
-  holding: (data: { fields: HoldingData['fields'], relationIds: HoldingData['relationIds'] }): HoldingData => {
+  holding: (data: {
+    fields: HoldingData["fields"];
+    relationIds: HoldingData["relationIds"];
+  }): HoldingData => {
     const now = Date.now();
     return {
       id: ulid(),
-      type: 'holding',
+      type: "holding",
       createdAt: now,
       updatedAt: now,
       fields: data.fields,
       relationIds: data.relationIds,
     };
   },
-  trade: (data: { fields: TradeData['fields'], relationIds: TradeData['relationIds'] }): TradeData => {
+  trade: (data: {
+    fields: TradeData["fields"];
+    relationIds: TradeData["relationIds"];
+  }): TradeData => {
     const now = Date.now();
     return {
       id: ulid(),
-      type: 'trade',
+      type: "trade",
       createdAt: now,
       updatedAt: now,
       fields: data.fields,
@@ -92,47 +108,58 @@ export const updateNodeData = {
   },
 };
 
-
 // --- Sync Helpers ---
 export const createNodeDataSync = {
-  portfolio: (data: { fields: PortfolioData['fields'], relationIds: PortfolioData['relationIds'] }): PortfolioData => {
+  portfolio: (data: {
+    fields: PortfolioData["fields"];
+    relationIds: PortfolioData["relationIds"];
+  }): PortfolioData => {
     const now = Date.now();
     return {
       id: ulid(),
-      type: 'portfolio',
+      type: "portfolio",
       createdAt: now,
       updatedAt: now,
       fields: data.fields,
       relationIds: data.relationIds,
     };
   },
-  stock: (data: { fields: StockData['fields'], relationIds: StockData['relationIds'] }): StockData => {
+  stock: (data: {
+    fields: StockData["fields"];
+    relationIds: StockData["relationIds"];
+  }): StockData => {
     const now = Date.now();
     return {
       id: ulid(),
-      type: 'stock',
+      type: "stock",
       createdAt: now,
       updatedAt: now,
       fields: data.fields,
       relationIds: data.relationIds,
     };
   },
-  holding: (data: { fields: HoldingData['fields'], relationIds: HoldingData['relationIds'] }): HoldingData => {
+  holding: (data: {
+    fields: HoldingData["fields"];
+    relationIds: HoldingData["relationIds"];
+  }): HoldingData => {
     const now = Date.now();
     return {
       id: ulid(),
-      type: 'holding',
+      type: "holding",
       createdAt: now,
       updatedAt: now,
       fields: data.fields,
       relationIds: data.relationIds,
     };
   },
-  trade: (data: { fields: TradeData['fields'], relationIds: TradeData['relationIds'] }): TradeData => {
+  trade: (data: {
+    fields: TradeData["fields"];
+    relationIds: TradeData["relationIds"];
+  }): TradeData => {
     const now = Date.now();
     return {
       id: ulid(),
-      type: 'trade',
+      type: "trade",
       createdAt: now,
       updatedAt: now,
       fields: data.fields,

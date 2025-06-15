@@ -1,4 +1,4 @@
-import { Builder, ByteBuffer } from 'flatbuffers';
+import { Builder, ByteBuffer } from '@zgdb/runtime';
 import { Portfolio } from './graph-db/portfolio.js';
 import { Stock } from './graph-db/stock.js';
 import { Holding } from './graph-db/holding.js';

@@ -13,9 +13,9 @@ export function generateMutationHelpers(schema: Schema): string {
   const lines: string[] = [];
   const nodeTypes = Object.keys(schema);
 
-  lines.push(`import { produce, Draft } from 'immer';`);
-  lines.push(`import { ulid } from 'ulid';`);
-  lines.push(`import { z } from 'zod';`);
+  lines.push(`import { produce, Draft } from '@zgdb/runtime';`);
+  lines.push(`import { ulid } from '@zgdb/runtime';`);
+  lines.push(`import { z } from '@zgdb/runtime';`);
   lines.push(`import GraphSchema from './graph-schema.js';`);
   lines.push(
     `import type { ${nodeTypes

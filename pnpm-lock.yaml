@@ -120,19 +120,18 @@ importers:
 
   packages/runtime:
     dependencies:
-      typescript:
-        specifier: ^5.3.3
-        version: 5.8.3
-      ulid:
-        specifier: ^3.0.1
-        version: 3.0.1
-    devDependencies:
       flatbuffers:
         specifier: ^24.12.23
         version: 24.12.23
       immer:
         specifier: ^10.1.1
         version: 10.1.1
+      typescript:
+        specifier: ^5.3.3
+        version: 5.8.3
+      ulid:
+        specifier: ^3.0.1
+        version: 3.0.1
       zod:
         specifier: ^3.25.64
         version: 3.25.64
