@@ -1,13 +1,13 @@
-import schema from './graph-schema.js';
-import { uuidv7 as uuid } from 'uuidv7';
-import { produce } from 'immer';
+import schema from "./graph-schema.js";
+import { uuidv7 as uuid } from "uuidv7";
+import { produce } from "immer";
 // ============================================
 //  Create Node Data Helpers
 // ============================================
 export const createNodeData = {
     customer: (data) => ({
         id: uuid(),
-        type: 'customer',
+        type: "customer",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.customer.fields.parse(data.fields),
@@ -15,7 +15,7 @@ export const createNodeData = {
     }),
     address: (data) => ({
         id: uuid(),
-        type: 'address',
+        type: "address",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.address.fields.parse(data.fields),
@@ -23,7 +23,7 @@ export const createNodeData = {
     }),
     warehouse: (data) => ({
         id: uuid(),
-        type: 'warehouse',
+        type: "warehouse",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.warehouse.fields.parse(data.fields),
@@ -31,7 +31,7 @@ export const createNodeData = {
     }),
     product: (data) => ({
         id: uuid(),
-        type: 'product',
+        type: "product",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.product.fields.parse(data.fields),
@@ -39,7 +39,7 @@ export const createNodeData = {
     }),
     cart: (data) => ({
         id: uuid(),
-        type: 'cart',
+        type: "cart",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.cart.fields.parse(data.fields),
@@ -47,7 +47,7 @@ export const createNodeData = {
     }),
     order: (data) => ({
         id: uuid(),
-        type: 'order',
+        type: "order",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.order.fields.parse(data.fields),
@@ -55,7 +55,7 @@ export const createNodeData = {
     }),
     lineItem: (data) => ({
         id: uuid(),
-        type: 'lineItem',
+        type: "lineItem",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.lineItem.fields.parse(data.fields),
@@ -63,7 +63,7 @@ export const createNodeData = {
     }),
     discount: (data) => ({
         id: uuid(),
-        type: 'discount',
+        type: "discount",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.discount.fields.parse(data.fields),
@@ -71,7 +71,7 @@ export const createNodeData = {
     }),
     payment: (data) => ({
         id: uuid(),
-        type: 'payment',
+        type: "payment",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.payment.fields.parse(data.fields),
@@ -79,7 +79,7 @@ export const createNodeData = {
     }),
     shipment: (data) => ({
         id: uuid(),
-        type: 'shipment',
+        type: "shipment",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.shipment.fields.parse(data.fields),
@@ -87,19 +87,19 @@ export const createNodeData = {
     }),
     notification: (data) => ({
         id: uuid(),
-        type: 'notification',
+        type: "notification",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         fields: schema.notification.fields.parse(data.fields),
         relationIds: data.relationIds,
-    })
+    }),
 };
 // ============================================
 //  Update Node Data Helpers (with Immer)
 // ============================================
 export const updateNodeData = {
     customer: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
@@ -111,7 +111,7 @@ export const updateNodeData = {
         };
     },
     address: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
@@ -123,7 +123,7 @@ export const updateNodeData = {
         };
     },
     warehouse: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
@@ -135,7 +135,7 @@ export const updateNodeData = {
         };
     },
     product: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
@@ -147,10 +147,12 @@ export const updateNodeData = {
         };
     },
     cart: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        console.log("cart", node);
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
+        console.log("updatedNode", updatedNode);
         // After mutation, validate the final fields object to ensure consistency.
         const validatedFields = schema.cart.fields.parse(updatedNode.fields);
         return {
@@ -159,7 +161,7 @@ export const updateNodeData = {
         };
     },
     order: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
@@ -171,7 +173,7 @@ export const updateNodeData = {
         };
     },
     lineItem: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
@@ -183,7 +185,7 @@ export const updateNodeData = {
         };
     },
     discount: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
@@ -195,7 +197,7 @@ export const updateNodeData = {
         };
     },
     payment: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
@@ -207,7 +209,7 @@ export const updateNodeData = {
         };
     },
     shipment: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
@@ -219,7 +221,7 @@ export const updateNodeData = {
         };
     },
     notification: (node, recipe) => {
-        const updatedNode = produce(node, draft => {
+        const updatedNode = produce(node, (draft) => {
             recipe(draft);
             draft.updatedAt = Date.now();
         });
@@ -229,5 +231,5 @@ export const updateNodeData = {
             ...updatedNode,
             fields: validatedFields,
         };
-    }
+    },
 };
