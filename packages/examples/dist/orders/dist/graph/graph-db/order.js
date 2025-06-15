@@ -44,16 +44,40 @@ export class Order {
         const offset = this.bb.__offset(this.bb_pos, 12);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
-    createdAt() {
+    paymentIds(index, optionalEncoding) {
         const offset = this.bb.__offset(this.bb_pos, 14);
+        return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+    }
+    paymentIdsLength() {
+        const offset = this.bb.__offset(this.bb_pos, 14);
+        return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+    }
+    shipmentIds(index, optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 16);
+        return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+    }
+    shipmentIdsLength() {
+        const offset = this.bb.__offset(this.bb_pos, 16);
+        return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+    }
+    notificationsIds(index, optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 18);
+        return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+    }
+    notificationsIdsLength() {
+        const offset = this.bb.__offset(this.bb_pos, 18);
+        return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+    }
+    createdAt() {
+        const offset = this.bb.__offset(this.bb_pos, 20);
         return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
     }
     updatedAt() {
-        const offset = this.bb.__offset(this.bb_pos, 16);
+        const offset = this.bb.__offset(this.bb_pos, 22);
         return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
     }
     static startOrder(builder) {
-        builder.startObject(7);
+        builder.startObject(10);
     }
     static addId(builder, idOffset) {
         builder.addFieldOffset(0, idOffset, 0);
@@ -90,24 +114,66 @@ export class Order {
     static startLineItemsIdsVector(builder, numElems) {
         builder.startVector(4, numElems, 4);
     }
+    static addPaymentIds(builder, paymentIdsOffset) {
+        builder.addFieldOffset(5, paymentIdsOffset, 0);
+    }
+    static createPaymentIdsVector(builder, data) {
+        builder.startVector(4, data.length, 4);
+        for (let i = data.length - 1; i >= 0; i--) {
+            builder.addOffset(data[i]);
+        }
+        return builder.endVector();
+    }
+    static startPaymentIdsVector(builder, numElems) {
+        builder.startVector(4, numElems, 4);
+    }
+    static addShipmentIds(builder, shipmentIdsOffset) {
+        builder.addFieldOffset(6, shipmentIdsOffset, 0);
+    }
+    static createShipmentIdsVector(builder, data) {
+        builder.startVector(4, data.length, 4);
+        for (let i = data.length - 1; i >= 0; i--) {
+            builder.addOffset(data[i]);
+        }
+        return builder.endVector();
+    }
+    static startShipmentIdsVector(builder, numElems) {
+        builder.startVector(4, numElems, 4);
+    }
+    static addNotificationsIds(builder, notificationsIdsOffset) {
+        builder.addFieldOffset(7, notificationsIdsOffset, 0);
+    }
+    static createNotificationsIdsVector(builder, data) {
+        builder.startVector(4, data.length, 4);
+        for (let i = data.length - 1; i >= 0; i--) {
+            builder.addOffset(data[i]);
+        }
+        return builder.endVector();
+    }
+    static startNotificationsIdsVector(builder, numElems) {
+        builder.startVector(4, numElems, 4);
+    }
     static addCreatedAt(builder, createdAt) {
-        builder.addFieldInt64(5, createdAt, BigInt('0'));
+        builder.addFieldInt64(8, createdAt, BigInt('0'));
     }
     static addUpdatedAt(builder, updatedAt) {
-        builder.addFieldInt64(6, updatedAt, BigInt('0'));
+        builder.addFieldInt64(9, updatedAt, BigInt('0'));
     }
     static endOrder(builder) {
         const offset = builder.endObject();
         builder.requiredField(offset, 4); // id
         return offset;
     }
-    static createOrder(builder, idOffset, total, statusOffset, customerIdsOffset, lineItemsIdsOffset, createdAt, updatedAt) {
+    static createOrder(builder, idOffset, total, statusOffset, customerIdsOffset, lineItemsIdsOffset, paymentIdsOffset, shipmentIdsOffset, notificationsIdsOffset, createdAt, updatedAt) {
         Order.startOrder(builder);
         Order.addId(builder, idOffset);
         Order.addTotal(builder, total);
         Order.addStatus(builder, statusOffset);
         Order.addCustomerIds(builder, customerIdsOffset);
         Order.addLineItemsIds(builder, lineItemsIdsOffset);
+        Order.addPaymentIds(builder, paymentIdsOffset);
+        Order.addShipmentIds(builder, shipmentIdsOffset);
+        Order.addNotificationsIds(builder, notificationsIdsOffset);
         Order.addCreatedAt(builder, createdAt);
         Order.addUpdatedAt(builder, updatedAt);
         return Order.endOrder(builder);

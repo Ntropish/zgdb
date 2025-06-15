@@ -1,96 +1,300 @@
-import { createClient } from "./dist/graph/zgdb-client.js";
+import { createClient, NodeDataTypeMap } from "./dist/graph/zgdb-client.js";
 import { MapStoreAdapter } from "../map-store-adapter.js";
+
+type DbClient = ReturnType<typeof createClient>;
+type CartItem = { productId: string; quantity: number };
+
+// STAGE 1: Reserve stock and lock the cart
+async function reserveStockAndBeginCheckout(db: DbClient, cartId: string) {
+  return db.transact(async (tx) => {
+    const cart = await tx.getNode("cart", cartId);
+    if (!cart || cart.fields.status !== "active")
+      throw new Error("Cart is not active.");
+
+    const cartItems: CartItem[] = JSON.parse(cart.fields.itemsJson);
+    if (cartItems.length === 0)
+      throw new Error("Cannot checkout an empty cart.");
+
+    for (const item of cartItems) {
+      const product = await tx.getNode("product", item.productId);
+      if (!product) throw new Error(`Product ${item.productId} not found.`);
+      if (product.fields.stock - product.fields.reserved < item.quantity) {
+        throw new Error(`Not enough stock for ${product.fields.name}.`);
+      }
+      await tx.updateNode("product", product.id, (d) => {
+        d.fields.reserved += item.quantity;
+      });
+    }
+
+    // Lock the cart to prevent changes during checkout
+    return await tx.updateNode("cart", cartId, (d) => {
+      d.fields.status = "processing";
+    });
+  });
+}
+
+// STAGE 2: Simulate processing payment
+async function processPayment(
+  db: DbClient,
+  cartId: string
+): Promise<{ success: boolean; gatewayId?: string; finalTotal?: number }> {
+  return db.transact(async (tx) => {
+    const cart = await tx.getNode("cart", cartId);
+    if (!cart) throw new Error("Cart not found.");
+
+    let subTotal = 0;
+    for (const item of JSON.parse(cart.fields.itemsJson)) {
+      const product = await tx.getNode("product", item.productId);
+      subTotal += (product?.fields.price || 0) * item.quantity;
+    }
+
+    const discount = cart.relationIds.discount
+      ? await tx.getNode("discount", cart.relationIds.discount)
+      : null;
+    const finalTotal =
+      subTotal * (1 - (discount?.fields.percentage || 0) / 100);
+
+    // Simulate API call to payment gateway
+    const paymentSuccess = Math.random() > 0.1; // 90% success rate
+    if (!paymentSuccess) {
+      await tx.updateNode("cart", cartId, (d) => {
+        d.fields.status = "failed";
+      });
+      return { success: false };
+    }
+
+    return { success: true, gatewayId: `ch_${Date.now()}`, finalTotal };
+  });
+}
+
+// STAGE 3: Finalize the order after successful payment
+async function finalizeOrder(
+  db: DbClient,
+  cartId: string,
+  paymentGatewayId: string,
+  finalTotal: number
+) {
+  return db.transact(async (tx) => {
+    const cart = await tx.getNode("cart", cartId);
+    const customer = await tx.getNode("customer", cart!.relationIds.customer);
+    const shippingAddress = (await tx.getNode(
+      "address",
+      customer!.relationIds.addresses[0]!
+    ))!;
+    const cartItems: CartItem[] = JSON.parse(cart!.fields.itemsJson);
+
+    // Create line items, shipments, and notifications
+    const lineItems: NodeDataTypeMap["lineItem"][] = [];
+    const shipments: Record<
+      string,
+      {
+        warehouseId: string;
+        address: string;
+        lineItems: NodeDataTypeMap["lineItem"][];
+      }
+    > = {};
+    for (const item of cartItems) {
+      const product = await tx.getNode("product", item.productId);
+      const lineItem = await tx.createNode("lineItem", {
+        fields: {
+          quantity: item.quantity,
+          purchasePrice: product!.fields.price,
+          status: "fulfilled",
+        },
+        relationIds: { product: product!.id, order: "" },
+      });
+      lineItems.push(lineItem);
+
+      // Group line items by warehouse for shipment
+      const whId = product!.relationIds.warehouse;
+      if (!shipments[whId]) {
+        shipments[whId] = {
+          warehouseId: whId,
+          address: `${shippingAddress.fields.street}, ${shippingAddress.fields.city}`,
+          lineItems: [],
+        };
+      }
+      shipments[whId].lineItems.push(lineItem);
+
+      // Convert reservation to sale
+      await tx.updateNode("product", product!.id, (d) => {
+        d.fields.stock -= item.quantity;
+        d.fields.reserved -= item.quantity;
+      });
+    }
+
+    // Create a shipment record for each warehouse involved
+    const shipmentIds = (
+      await Promise.all(
+        Object.values(shipments).map((s) =>
+          tx.createNode("shipment", {
+            fields: { address: s.address, status: "preparing" },
+            relationIds: { order: "", warehouse: s.warehouseId },
+          })
+        )
+      )
+    ).map((s) => s.id);
+
+    // Create payment and notification records
+    const payment = await tx.createNode("payment", {
+      fields: {
+        amount: finalTotal,
+        status: "succeeded",
+        gatewayId: paymentGatewayId,
+      },
+      relationIds: { order: "" },
+    });
+    const notifications = [
+      await tx.createNode("notification", {
+        fields: { type: "order_confirmation", status: "pending" },
+        relationIds: { order: "" },
+      }),
+    ];
+    if (Object.keys(shipments).length > 0) {
+      notifications.push(
+        await tx.createNode("notification", {
+          fields: { type: "warehouse_fulfillment", status: "pending" },
+          relationIds: { order: "" },
+        })
+      );
+    }
+
+    // CREATE THE MASTER ORDER RECORD
+    const order = await tx.createNode("order", {
+      fields: { total: finalTotal, status: "pending_fulfillment" },
+      relationIds: {
+        customer: customer!.id,
+        lineItems: lineItems.map((li) => li.id),
+        payment: payment.id,
+        shipment: shipmentIds[0]!,
+        notifications: notifications.map((n) => n.id),
+      },
+    });
+
+    // Link everything back to the order
+    const subDocs = [
+      ...lineItems.map((li) => ({ type: "lineItem", id: li.id })),
+      ...shipmentIds.map((id) => ({ type: "shipment", id })),
+      ...notifications.map((n) => ({ type: "notification", id: n.id })),
+      { type: "payment", id: payment.id },
+    ];
+    for (const doc of subDocs)
+      await (tx.updateNode as any)(doc.type, doc.id, (d: any) => {
+        d.relationIds.order = order.id;
+      });
+
+    // Update customer and mark cart as completed
+    await tx.updateNode("customer", customer!.id, (d) => {
+      d.fields.loyaltyPoints += Math.floor(finalTotal);
+      d.relationIds.orders.push(order.id);
+    });
+    await tx.updateNode("cart", cart!.id, (d) => {
+      d.fields.itemsJson = "[]";
+      d.fields.status = "completed";
+    });
+
+    return order;
+  });
+}
 
 async function main() {
   const db = createClient(new MapStoreAdapter());
 
-  // Setup: Create a customer and some products
-  const { customer, products } = await db.transact(async (tx) => {
-    const customer = await tx.createNode("customer", {
-      fields: { name: "John Doe", email: "john.doe@example.com" },
-      relationIds: { orders: [] },
+  // Setup: A warehouse, a customer with an address, a cart, and some products.
+  const { customer, warehouse, cart, product1, product2 } = await db.transact(
+    async (tx) => {
+      const warehouse = await tx.createNode("warehouse", {
+        fields: { name: "Main Warehouse" },
+        relationIds: { products: [] },
+      });
+      const product1 = await tx.createNode("product", {
+        fields: { name: "Laptop", price: 1200, stock: 5, reserved: 0 },
+        relationIds: { warehouse: warehouse.id },
+      });
+      const product2 = await tx.createNode("product", {
+        fields: { name: "Mouse", price: 75, stock: 50, reserved: 0 },
+        relationIds: { warehouse: warehouse.id },
+      });
+
+      const address = await tx.createNode("address", {
+        fields: {
+          type: "shipping",
+          street: "123 Main St",
+          city: "Anytown",
+          zip: "12345",
+        },
+        relationIds: { customer: "" },
+      });
+      const cart = await tx.createNode("cart", {
+        fields: { itemsJson: "[]", status: "active" },
+        relationIds: { customer: "", discount: "" },
+      });
+      const customer = await tx.createNode("customer", {
+        fields: {
+          name: "Jane Doe",
+          email: "jane.doe@example.com",
+          loyaltyPoints: 100,
+        },
+        relationIds: { orders: [], cart: cart.id, addresses: [address.id] },
+      });
+
+      await tx.updateNode("cart", cart.id, (d) => {
+        d.relationIds.customer = customer.id;
+      });
+      await tx.updateNode("address", address.id, (d) => {
+        d.relationIds.customer = customer.id;
+      });
+      await tx.updateNode("warehouse", warehouse.id, (d) => {
+        d.relationIds.products.push(product1.id, product2.id);
+      });
+
+      return { customer, warehouse, cart, product1, product2 };
+    }
+  );
+
+  // Action 1: Customer adds items to cart
+  await db.transact(async (tx) => {
+    const cartItems = JSON.stringify([
+      { productId: product1.id, quantity: 1 },
+      { productId: product2.id, quantity: 2 },
+    ]);
+    await tx.updateNode("cart", cart.id, (d) => {
+      d.fields.itemsJson = cartItems;
     });
-    const product1 = await tx.createNode("product", {
-      fields: { name: "Laptop", price: 1200, stock: 10 },
-      relationIds: {},
-    });
-    const product2 = await tx.createNode("product", {
-      fields: { name: "Mouse", price: 75, stock: 50 },
-      relationIds: {},
-    });
-    return { customer, products: [product1, product2] };
   });
 
-  // --- The Main Transaction ---
-  // Create an order for 2 laptops and 1 mouse.
-  const shoppingCart = [
-    { productId: products[0]?.id, quantity: 2 },
-    { productId: products[1]?.id, quantity: 1 },
-  ];
-
+  // --- The Main Checkout Saga ---
   try {
-    const newOrder = await db.transact(async (tx) => {
-      let orderTotal = 0;
-      const lineItemIds: string[] = [];
+    console.log("Beginning checkout...");
+    await reserveStockAndBeginCheckout(db, cart.id);
+    console.log("✅ Stock reserved, cart is now processing.");
 
-      // 1. Create a LineItem for each item in the cart
-      for (const item of shoppingCart) {
-        const product = await tx.getNode("product", item.productId!);
-        if (!product || product.fields.stock < item.quantity) {
-          throw new Error(
-            `Not enough stock for product: ${product?.fields.name}`
-          );
-        }
+    const { success, gatewayId, finalTotal } = await processPayment(
+      db,
+      cart.id
+    );
+    if (!success) throw new Error("Payment failed. Please try again.");
+    console.log(`✅ Payment successful (Gateway ID: ${gatewayId}).`);
 
-        // 2. Decrement stock
-        await tx.updateNode("product", product.id, (draft) => {
-          draft.fields.stock -= item.quantity;
-        });
+    const finalOrder = await finalizeOrder(
+      db,
+      cart.id,
+      gatewayId!,
+      finalTotal!
+    );
+    console.log(`✅ Order ${finalOrder.id} finalized successfully!`);
 
-        // 3. Create the line item, capturing the price at time of sale
-        const lineItem = await tx.createNode("lineItem", {
-          fields: {
-            quantity: item.quantity,
-            purchasePrice: product.fields.price,
-          },
-          relationIds: { order: "", product: product.id }, // Order ID is temporary
-        });
-
-        orderTotal += product.fields.price * item.quantity;
-        lineItemIds.push(lineItem.id);
-      }
-
-      // 4. Create the final order
-      const order = await tx.createNode("order", {
-        fields: { total: orderTotal, status: "pending" },
-        relationIds: { customer: customer.id, lineItems: lineItemIds },
-      });
-
-      // 5. Link the line items back to the order
-      for (const id of lineItemIds) {
-        await tx.updateNode("lineItem", id, (draft) => {
-          draft.relationIds.order = order.id;
-        });
-      }
-
-      // 6. Link the order to the customer
-      await tx.updateNode("customer", customer.id, (draft) => {
-        draft.relationIds.orders.push(order.id);
-      });
-
-      return order;
-    });
-
-    console.log("Successfully created order:", newOrder);
-    const finalProduct = await db.transact((tx) =>
-      tx.getNode("product", products[0]!.id)
+    const finalCustomer = await db.transact((tx) =>
+      tx.getNode("customer", customer.id)
     );
     console.log(
-      `Final stock for ${finalProduct?.fields.name}:`,
-      finalProduct?.fields.stock
+      `\nFinal loyalty points for ${finalCustomer!.fields.name}: ${
+        finalCustomer!.fields.loyaltyPoints
+      }`
     );
   } catch (e: any) {
-    console.error("Order failed:", e.message);
+    console.error("\n❌ Checkout Saga Failed:", e.message);
+    // In a real app, you would add logic here to un-reserve the stock.
   }
 }
 

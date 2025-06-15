@@ -1,7 +1,7 @@
 import { KeyEncoder } from '@zgdb/runtime';
 import { serializeNode, deserializeNode, supportedNodeTypes } from './generated-serializers.js';
 import { createNodeData, updateNodeData } from './mutation-helpers.js';
-import type { CustomerData, ProductData, OrderData, LineItemData } from './generated-serializers.js';
+import type { CustomerData, AddressData, WarehouseData, ProductData, CartData, OrderData, LineItemData, DiscountData, PaymentData, ShipmentData, NotificationData } from './generated-serializers.js';
 import type { Draft } from 'immer';
 
 // ============================================
@@ -21,9 +21,16 @@ export interface StoreAdapter {
 
 export type NodeDataTypeMap = {
   'customer': CustomerData;
+  'address': AddressData;
+  'warehouse': WarehouseData;
   'product': ProductData;
+  'cart': CartData;
   'order': OrderData;
   'lineItem': LineItemData;
+  'discount': DiscountData;
+  'payment': PaymentData;
+  'shipment': ShipmentData;
+  'notification': NotificationData;
 };
     
 type ClientNodeType = keyof NodeDataTypeMap;

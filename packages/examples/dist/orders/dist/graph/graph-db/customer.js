@@ -28,24 +28,44 @@ export class Customer {
         const offset = this.bb.__offset(this.bb_pos, 8);
         return offset ? this.bb.__string(this.bb_pos + offset, optionalEncoding) : null;
     }
-    ordersIds(index, optionalEncoding) {
+    loyaltyPoints() {
         const offset = this.bb.__offset(this.bb_pos, 10);
+        return offset ? this.bb.readInt32(this.bb_pos + offset) : 0;
+    }
+    ordersIds(index, optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 12);
         return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
     }
     ordersIdsLength() {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 12);
+        return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+    }
+    cartIds(index, optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 14);
+        return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+    }
+    cartIdsLength() {
+        const offset = this.bb.__offset(this.bb_pos, 14);
+        return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+    }
+    addressesIds(index, optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 16);
+        return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+    }
+    addressesIdsLength() {
+        const offset = this.bb.__offset(this.bb_pos, 16);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     createdAt() {
-        const offset = this.bb.__offset(this.bb_pos, 12);
+        const offset = this.bb.__offset(this.bb_pos, 18);
         return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
     }
     updatedAt() {
-        const offset = this.bb.__offset(this.bb_pos, 14);
+        const offset = this.bb.__offset(this.bb_pos, 20);
         return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
     }
     static startCustomer(builder) {
-        builder.startObject(6);
+        builder.startObject(9);
     }
     static addId(builder, idOffset) {
         builder.addFieldOffset(0, idOffset, 0);
@@ -56,8 +76,11 @@ export class Customer {
     static addEmail(builder, emailOffset) {
         builder.addFieldOffset(2, emailOffset, 0);
     }
+    static addLoyaltyPoints(builder, loyaltyPoints) {
+        builder.addFieldInt32(3, loyaltyPoints, 0);
+    }
     static addOrdersIds(builder, ordersIdsOffset) {
-        builder.addFieldOffset(3, ordersIdsOffset, 0);
+        builder.addFieldOffset(4, ordersIdsOffset, 0);
     }
     static createOrdersIdsVector(builder, data) {
         builder.startVector(4, data.length, 4);
@@ -69,11 +92,37 @@ export class Customer {
     static startOrdersIdsVector(builder, numElems) {
         builder.startVector(4, numElems, 4);
     }
+    static addCartIds(builder, cartIdsOffset) {
+        builder.addFieldOffset(5, cartIdsOffset, 0);
+    }
+    static createCartIdsVector(builder, data) {
+        builder.startVector(4, data.length, 4);
+        for (let i = data.length - 1; i >= 0; i--) {
+            builder.addOffset(data[i]);
+        }
+        return builder.endVector();
+    }
+    static startCartIdsVector(builder, numElems) {
+        builder.startVector(4, numElems, 4);
+    }
+    static addAddressesIds(builder, addressesIdsOffset) {
+        builder.addFieldOffset(6, addressesIdsOffset, 0);
+    }
+    static createAddressesIdsVector(builder, data) {
+        builder.startVector(4, data.length, 4);
+        for (let i = data.length - 1; i >= 0; i--) {
+            builder.addOffset(data[i]);
+        }
+        return builder.endVector();
+    }
+    static startAddressesIdsVector(builder, numElems) {
+        builder.startVector(4, numElems, 4);
+    }
     static addCreatedAt(builder, createdAt) {
-        builder.addFieldInt64(4, createdAt, BigInt('0'));
+        builder.addFieldInt64(7, createdAt, BigInt('0'));
     }
     static addUpdatedAt(builder, updatedAt) {
-        builder.addFieldInt64(5, updatedAt, BigInt('0'));
+        builder.addFieldInt64(8, updatedAt, BigInt('0'));
     }
     static endCustomer(builder) {
         const offset = builder.endObject();
@@ -86,12 +135,15 @@ export class Customer {
     static finishSizePrefixedCustomerBuffer(builder, offset) {
         builder.finish(offset, undefined, true);
     }
-    static createCustomer(builder, idOffset, nameOffset, emailOffset, ordersIdsOffset, createdAt, updatedAt) {
+    static createCustomer(builder, idOffset, nameOffset, emailOffset, loyaltyPoints, ordersIdsOffset, cartIdsOffset, addressesIdsOffset, createdAt, updatedAt) {
         Customer.startCustomer(builder);
         Customer.addId(builder, idOffset);
         Customer.addName(builder, nameOffset);
         Customer.addEmail(builder, emailOffset);
+        Customer.addLoyaltyPoints(builder, loyaltyPoints);
         Customer.addOrdersIds(builder, ordersIdsOffset);
+        Customer.addCartIds(builder, cartIdsOffset);
+        Customer.addAddressesIds(builder, addressesIdsOffset);
         Customer.addCreatedAt(builder, createdAt);
         Customer.addUpdatedAt(builder, updatedAt);
         return Customer.endCustomer(builder);

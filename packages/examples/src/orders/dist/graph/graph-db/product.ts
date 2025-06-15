@@ -46,18 +46,35 @@ stock():number {
   return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
-createdAt():bigint {
+reserved():number {
   const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
+}
+
+warehouseIds(index: number):string
+warehouseIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+warehouseIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+}
+
+warehouseIdsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+createdAt():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 updatedAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 static startProduct(builder:flatbuffers.Builder) {
-  builder.startObject(6);
+  builder.startObject(8);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -76,12 +93,32 @@ static addStock(builder:flatbuffers.Builder, stock:number) {
   builder.addFieldInt32(3, stock, 0);
 }
 
+static addReserved(builder:flatbuffers.Builder, reserved:number) {
+  builder.addFieldInt32(4, reserved, 0);
+}
+
+static addWarehouseIds(builder:flatbuffers.Builder, warehouseIdsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(5, warehouseIdsOffset, 0);
+}
+
+static createWarehouseIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startWarehouseIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
 static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(4, createdAt, BigInt('0'));
+  builder.addFieldInt64(6, createdAt, BigInt('0'));
 }
 
 static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
-  builder.addFieldInt64(5, updatedAt, BigInt('0'));
+  builder.addFieldInt64(7, updatedAt, BigInt('0'));
 }
 
 static endProduct(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -90,12 +127,14 @@ static endProduct(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createProduct(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset, price:number, stock:number, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
+static createProduct(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset, price:number, stock:number, reserved:number, warehouseIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   Product.startProduct(builder);
   Product.addId(builder, idOffset);
   Product.addName(builder, nameOffset);
   Product.addPrice(builder, price);
   Product.addStock(builder, stock);
+  Product.addReserved(builder, reserved);
+  Product.addWarehouseIds(builder, warehouseIdsOffset);
   Product.addCreatedAt(builder, createdAt);
   Product.addUpdatedAt(builder, updatedAt);
   return Product.endProduct(builder);

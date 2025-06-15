@@ -65,18 +65,54 @@ lineItemsIdsLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-createdAt():bigint {
+paymentIds(index: number):string
+paymentIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+paymentIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+}
+
+paymentIdsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+shipmentIds(index: number):string
+shipmentIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+shipmentIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 16);
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+}
+
+shipmentIdsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 16);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+notificationsIds(index: number):string
+notificationsIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+notificationsIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 18);
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+}
+
+notificationsIdsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 18);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+createdAt():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 20);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 updatedAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
+  const offset = this.bb!.__offset(this.bb_pos, 22);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 static startOrder(builder:flatbuffers.Builder) {
-  builder.startObject(7);
+  builder.startObject(10);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -123,12 +159,60 @@ static startLineItemsIdsVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
+static addPaymentIds(builder:flatbuffers.Builder, paymentIdsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(5, paymentIdsOffset, 0);
+}
+
+static createPaymentIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startPaymentIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
+static addShipmentIds(builder:flatbuffers.Builder, shipmentIdsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(6, shipmentIdsOffset, 0);
+}
+
+static createShipmentIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startShipmentIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
+static addNotificationsIds(builder:flatbuffers.Builder, notificationsIdsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(7, notificationsIdsOffset, 0);
+}
+
+static createNotificationsIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startNotificationsIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
 static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(5, createdAt, BigInt('0'));
+  builder.addFieldInt64(8, createdAt, BigInt('0'));
 }
 
 static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
-  builder.addFieldInt64(6, updatedAt, BigInt('0'));
+  builder.addFieldInt64(9, updatedAt, BigInt('0'));
 }
 
 static endOrder(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -137,13 +221,16 @@ static endOrder(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createOrder(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, total:number, statusOffset:flatbuffers.Offset, customerIdsOffset:flatbuffers.Offset, lineItemsIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
+static createOrder(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, total:number, statusOffset:flatbuffers.Offset, customerIdsOffset:flatbuffers.Offset, lineItemsIdsOffset:flatbuffers.Offset, paymentIdsOffset:flatbuffers.Offset, shipmentIdsOffset:flatbuffers.Offset, notificationsIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   Order.startOrder(builder);
   Order.addId(builder, idOffset);
   Order.addTotal(builder, total);
   Order.addStatus(builder, statusOffset);
   Order.addCustomerIds(builder, customerIdsOffset);
   Order.addLineItemsIds(builder, lineItemsIdsOffset);
+  Order.addPaymentIds(builder, paymentIdsOffset);
+  Order.addShipmentIds(builder, shipmentIdsOffset);
+  Order.addNotificationsIds(builder, notificationsIdsOffset);
   Order.addCreatedAt(builder, createdAt);
   Order.addUpdatedAt(builder, updatedAt);
   return Order.endOrder(builder);

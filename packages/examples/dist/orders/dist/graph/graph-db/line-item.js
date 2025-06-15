@@ -28,13 +28,9 @@ export class LineItem {
         const offset = this.bb.__offset(this.bb_pos, 8);
         return offset ? this.bb.readFloat32(this.bb_pos + offset) : 0.0;
     }
-    orderIds(index, optionalEncoding) {
+    status(optionalEncoding) {
         const offset = this.bb.__offset(this.bb_pos, 10);
-        return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
-    }
-    orderIdsLength() {
-        const offset = this.bb.__offset(this.bb_pos, 10);
-        return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+        return offset ? this.bb.__string(this.bb_pos + offset, optionalEncoding) : null;
     }
     productIds(index, optionalEncoding) {
         const offset = this.bb.__offset(this.bb_pos, 12);
@@ -44,16 +40,24 @@ export class LineItem {
         const offset = this.bb.__offset(this.bb_pos, 12);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
-    createdAt() {
+    orderIds(index, optionalEncoding) {
         const offset = this.bb.__offset(this.bb_pos, 14);
-        return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
+        return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
     }
-    updatedAt() {
+    orderIdsLength() {
+        const offset = this.bb.__offset(this.bb_pos, 14);
+        return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+    }
+    createdAt() {
         const offset = this.bb.__offset(this.bb_pos, 16);
         return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
     }
+    updatedAt() {
+        const offset = this.bb.__offset(this.bb_pos, 18);
+        return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
+    }
     static startLineItem(builder) {
-        builder.startObject(7);
+        builder.startObject(8);
     }
     static addId(builder, idOffset) {
         builder.addFieldOffset(0, idOffset, 0);
@@ -64,18 +68,8 @@ export class LineItem {
     static addPurchasePrice(builder, purchasePrice) {
         builder.addFieldFloat32(2, purchasePrice, 0.0);
     }
-    static addOrderIds(builder, orderIdsOffset) {
-        builder.addFieldOffset(3, orderIdsOffset, 0);
-    }
-    static createOrderIdsVector(builder, data) {
-        builder.startVector(4, data.length, 4);
-        for (let i = data.length - 1; i >= 0; i--) {
-            builder.addOffset(data[i]);
-        }
-        return builder.endVector();
-    }
-    static startOrderIdsVector(builder, numElems) {
-        builder.startVector(4, numElems, 4);
+    static addStatus(builder, statusOffset) {
+        builder.addFieldOffset(3, statusOffset, 0);
     }
     static addProductIds(builder, productIdsOffset) {
         builder.addFieldOffset(4, productIdsOffset, 0);
@@ -90,24 +84,38 @@ export class LineItem {
     static startProductIdsVector(builder, numElems) {
         builder.startVector(4, numElems, 4);
     }
+    static addOrderIds(builder, orderIdsOffset) {
+        builder.addFieldOffset(5, orderIdsOffset, 0);
+    }
+    static createOrderIdsVector(builder, data) {
+        builder.startVector(4, data.length, 4);
+        for (let i = data.length - 1; i >= 0; i--) {
+            builder.addOffset(data[i]);
+        }
+        return builder.endVector();
+    }
+    static startOrderIdsVector(builder, numElems) {
+        builder.startVector(4, numElems, 4);
+    }
     static addCreatedAt(builder, createdAt) {
-        builder.addFieldInt64(5, createdAt, BigInt('0'));
+        builder.addFieldInt64(6, createdAt, BigInt('0'));
     }
     static addUpdatedAt(builder, updatedAt) {
-        builder.addFieldInt64(6, updatedAt, BigInt('0'));
+        builder.addFieldInt64(7, updatedAt, BigInt('0'));
     }
     static endLineItem(builder) {
         const offset = builder.endObject();
         builder.requiredField(offset, 4); // id
         return offset;
     }
-    static createLineItem(builder, idOffset, quantity, purchasePrice, orderIdsOffset, productIdsOffset, createdAt, updatedAt) {
+    static createLineItem(builder, idOffset, quantity, purchasePrice, statusOffset, productIdsOffset, orderIdsOffset, createdAt, updatedAt) {
         LineItem.startLineItem(builder);
         LineItem.addId(builder, idOffset);
         LineItem.addQuantity(builder, quantity);
         LineItem.addPurchasePrice(builder, purchasePrice);
-        LineItem.addOrderIds(builder, orderIdsOffset);
+        LineItem.addStatus(builder, statusOffset);
         LineItem.addProductIds(builder, productIdsOffset);
+        LineItem.addOrderIds(builder, orderIdsOffset);
         LineItem.addCreatedAt(builder, createdAt);
         LineItem.addUpdatedAt(builder, updatedAt);
         return LineItem.endLineItem(builder);

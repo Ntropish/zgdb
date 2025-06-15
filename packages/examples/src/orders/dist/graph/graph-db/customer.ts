@@ -45,30 +45,59 @@ email(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
+loyaltyPoints():number {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
+}
+
 ordersIds(index: number):string
 ordersIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
 ordersIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
 ordersIdsLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+cartIds(index: number):string
+cartIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+cartIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+}
+
+cartIdsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+addressesIds(index: number):string
+addressesIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+addressesIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 16);
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+}
+
+addressesIdsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 createdAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 updatedAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 20);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 static startCustomer(builder:flatbuffers.Builder) {
-  builder.startObject(6);
+  builder.startObject(9);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -83,8 +112,12 @@ static addEmail(builder:flatbuffers.Builder, emailOffset:flatbuffers.Offset) {
   builder.addFieldOffset(2, emailOffset, 0);
 }
 
+static addLoyaltyPoints(builder:flatbuffers.Builder, loyaltyPoints:number) {
+  builder.addFieldInt32(3, loyaltyPoints, 0);
+}
+
 static addOrdersIds(builder:flatbuffers.Builder, ordersIdsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, ordersIdsOffset, 0);
+  builder.addFieldOffset(4, ordersIdsOffset, 0);
 }
 
 static createOrdersIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -99,12 +132,44 @@ static startOrdersIdsVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
+static addCartIds(builder:flatbuffers.Builder, cartIdsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(5, cartIdsOffset, 0);
+}
+
+static createCartIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startCartIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
+static addAddressesIds(builder:flatbuffers.Builder, addressesIdsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(6, addressesIdsOffset, 0);
+}
+
+static createAddressesIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startAddressesIdsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+}
+
 static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(4, createdAt, BigInt('0'));
+  builder.addFieldInt64(7, createdAt, BigInt('0'));
 }
 
 static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
-  builder.addFieldInt64(5, updatedAt, BigInt('0'));
+  builder.addFieldInt64(8, updatedAt, BigInt('0'));
 }
 
 static endCustomer(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -121,12 +186,15 @@ static finishSizePrefixedCustomerBuffer(builder:flatbuffers.Builder, offset:flat
   builder.finish(offset, undefined, true);
 }
 
-static createCustomer(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset, emailOffset:flatbuffers.Offset, ordersIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
+static createCustomer(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, nameOffset:flatbuffers.Offset, emailOffset:flatbuffers.Offset, loyaltyPoints:number, ordersIdsOffset:flatbuffers.Offset, cartIdsOffset:flatbuffers.Offset, addressesIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   Customer.startCustomer(builder);
   Customer.addId(builder, idOffset);
   Customer.addName(builder, nameOffset);
   Customer.addEmail(builder, emailOffset);
+  Customer.addLoyaltyPoints(builder, loyaltyPoints);
   Customer.addOrdersIds(builder, ordersIdsOffset);
+  Customer.addCartIds(builder, cartIdsOffset);
+  Customer.addAddressesIds(builder, addressesIdsOffset);
   Customer.addCreatedAt(builder, createdAt);
   Customer.addUpdatedAt(builder, updatedAt);
   return Customer.endCustomer(builder);

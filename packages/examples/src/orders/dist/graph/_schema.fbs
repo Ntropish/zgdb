@@ -4,7 +4,29 @@ table Customer {
   id: string (key);
   name: string;
   email: string;
+  loyaltyPoints: int32;
   orders_ids: [string];
+  cart_ids: [string];
+  addresses_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Address {
+  id: string (key);
+  type: string;
+  street: string;
+  city: string;
+  zip: string;
+  customer_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Warehouse {
+  id: string (key);
+  name: string;
+  products_ids: [string];
   created_at: int64;
   updated_at: int64;
 }
@@ -14,6 +36,18 @@ table Product {
   name: string;
   price: float;
   stock: int32;
+  reserved: int32;
+  warehouse_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Cart {
+  id: string (key);
+  itemsJson: string;
+  status: string;
+  customer_ids: [string];
+  discount_ids: [string];
   created_at: int64;
   updated_at: int64;
 }
@@ -24,6 +58,9 @@ table Order {
   status: string;
   customer_ids: [string];
   lineItems_ids: [string];
+  payment_ids: [string];
+  shipment_ids: [string];
+  notifications_ids: [string];
   created_at: int64;
   updated_at: int64;
 }
@@ -32,8 +69,46 @@ table LineItem {
   id: string (key);
   quantity: int32;
   purchasePrice: float;
-  order_ids: [string];
+  status: string;
   product_ids: [string];
+  order_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Discount {
+  id: string (key);
+  code: string;
+  percentage: float;
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Payment {
+  id: string (key);
+  amount: float;
+  status: string;
+  gatewayId: string;
+  order_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Shipment {
+  id: string (key);
+  address: string;
+  status: string;
+  order_ids: [string];
+  warehouse_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Notification {
+  id: string (key);
+  type: string;
+  status: string;
+  order_ids: [string];
   created_at: int64;
   updated_at: int64;
 }
