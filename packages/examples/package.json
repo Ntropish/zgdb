@@ -6,10 +6,11 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
+    "build": "tsc",
     "build-graph": "zg build --config ./src/graph.config.ts --output ./src/dist/graph",
-    "run:1": "node --experimental-strip-types ./01-basic-queries.ts",
-    "run:2": "node --loader ts-node/esm ./02-graph-analysis.ts",
-    "run:3": "node --loader ts-node/esm ./03-instant-search.ts"
+    "run:1": "node ./dist/01-basic-queries.js",
+    "run:2": "node ./dist/02-graph-analysis.js",
+    "run:3": "node ./dist/03-instant-search.js"
   },
   "keywords": [
     "zgdb",

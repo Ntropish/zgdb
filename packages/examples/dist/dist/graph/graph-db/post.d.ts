@@ -1,0 +1,37 @@
+import * as flatbuffers from 'flatbuffers';
+export declare class Post {
+    bb: flatbuffers.ByteBuffer | null;
+    bb_pos: number;
+    __init(i: number, bb: flatbuffers.ByteBuffer): Post;
+    static getRootAsPost(bb: flatbuffers.ByteBuffer, obj?: Post): Post;
+    static getSizePrefixedRootAsPost(bb: flatbuffers.ByteBuffer, obj?: Post): Post;
+    id(): string | null;
+    id(optionalEncoding: flatbuffers.Encoding): string | Uint8Array | null;
+    title(): string | null;
+    title(optionalEncoding: flatbuffers.Encoding): string | Uint8Array | null;
+    published(): boolean;
+    viewCount(): number;
+    tagsIds(index: number): string;
+    tagsIds(index: number, optionalEncoding: flatbuffers.Encoding): string | Uint8Array;
+    tagsIdsLength(): number;
+    authorIds(index: number): string;
+    authorIds(index: number, optionalEncoding: flatbuffers.Encoding): string | Uint8Array;
+    authorIdsLength(): number;
+    createdAt(): bigint;
+    updatedAt(): bigint;
+    static startPost(builder: flatbuffers.Builder): void;
+    static addId(builder: flatbuffers.Builder, idOffset: flatbuffers.Offset): void;
+    static addTitle(builder: flatbuffers.Builder, titleOffset: flatbuffers.Offset): void;
+    static addPublished(builder: flatbuffers.Builder, published: boolean): void;
+    static addViewCount(builder: flatbuffers.Builder, viewCount: number): void;
+    static addTagsIds(builder: flatbuffers.Builder, tagsIdsOffset: flatbuffers.Offset): void;
+    static createTagsIdsVector(builder: flatbuffers.Builder, data: flatbuffers.Offset[]): flatbuffers.Offset;
+    static startTagsIdsVector(builder: flatbuffers.Builder, numElems: number): void;
+    static addAuthorIds(builder: flatbuffers.Builder, authorIdsOffset: flatbuffers.Offset): void;
+    static createAuthorIdsVector(builder: flatbuffers.Builder, data: flatbuffers.Offset[]): flatbuffers.Offset;
+    static startAuthorIdsVector(builder: flatbuffers.Builder, numElems: number): void;
+    static addCreatedAt(builder: flatbuffers.Builder, createdAt: bigint): void;
+    static addUpdatedAt(builder: flatbuffers.Builder, updatedAt: bigint): void;
+    static endPost(builder: flatbuffers.Builder): flatbuffers.Offset;
+    static createPost(builder: flatbuffers.Builder, idOffset: flatbuffers.Offset, titleOffset: flatbuffers.Offset, published: boolean, viewCount: number, tagsIdsOffset: flatbuffers.Offset, authorIdsOffset: flatbuffers.Offset, createdAt: bigint, updatedAt: bigint): flatbuffers.Offset;
+}

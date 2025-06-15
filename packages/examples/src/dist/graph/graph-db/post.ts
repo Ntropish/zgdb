@@ -36,52 +36,59 @@ title(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-published():boolean {
+content():string|null
+content(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+content(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+published():boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
 viewCount():number {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
 tagsIds(index: number):string
 tagsIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
 tagsIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
 tagsIdsLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 authorIds(index: number):string
 authorIds(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
 authorIds(index: number,optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
 }
 
 authorIdsLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 createdAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
-  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
-}
-
-updatedAt():bigint {
   const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
+updatedAt():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 20);
+  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+}
+
 static startPost(builder:flatbuffers.Builder) {
-  builder.startObject(8);
+  builder.startObject(9);
 }
 
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
@@ -92,16 +99,20 @@ static addTitle(builder:flatbuffers.Builder, titleOffset:flatbuffers.Offset) {
   builder.addFieldOffset(1, titleOffset, 0);
 }
 
+static addContent(builder:flatbuffers.Builder, contentOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, contentOffset, 0);
+}
+
 static addPublished(builder:flatbuffers.Builder, published:boolean) {
-  builder.addFieldInt8(2, +published, +false);
+  builder.addFieldInt8(3, +published, +false);
 }
 
 static addViewCount(builder:flatbuffers.Builder, viewCount:number) {
-  builder.addFieldInt32(3, viewCount, 0);
+  builder.addFieldInt32(4, viewCount, 0);
 }
 
 static addTagsIds(builder:flatbuffers.Builder, tagsIdsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, tagsIdsOffset, 0);
+  builder.addFieldOffset(5, tagsIdsOffset, 0);
 }
 
 static createTagsIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -117,7 +128,7 @@ static startTagsIdsVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addAuthorIds(builder:flatbuffers.Builder, authorIdsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(5, authorIdsOffset, 0);
+  builder.addFieldOffset(6, authorIdsOffset, 0);
 }
 
 static createAuthorIdsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -133,11 +144,11 @@ static startAuthorIdsVector(builder:flatbuffers.Builder, numElems:number) {
 }
 
 static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(6, createdAt, BigInt('0'));
+  builder.addFieldInt64(7, createdAt, BigInt('0'));
 }
 
 static addUpdatedAt(builder:flatbuffers.Builder, updatedAt:bigint) {
-  builder.addFieldInt64(7, updatedAt, BigInt('0'));
+  builder.addFieldInt64(8, updatedAt, BigInt('0'));
 }
 
 static endPost(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -146,10 +157,11 @@ static endPost(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createPost(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, titleOffset:flatbuffers.Offset, published:boolean, viewCount:number, tagsIdsOffset:flatbuffers.Offset, authorIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
+static createPost(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, titleOffset:flatbuffers.Offset, contentOffset:flatbuffers.Offset, published:boolean, viewCount:number, tagsIdsOffset:flatbuffers.Offset, authorIdsOffset:flatbuffers.Offset, createdAt:bigint, updatedAt:bigint):flatbuffers.Offset {
   Post.startPost(builder);
   Post.addId(builder, idOffset);
   Post.addTitle(builder, titleOffset);
+  Post.addContent(builder, contentOffset);
   Post.addPublished(builder, published);
   Post.addViewCount(builder, viewCount);
   Post.addTagsIds(builder, tagsIdsOffset);

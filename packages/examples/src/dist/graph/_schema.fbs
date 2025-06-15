@@ -22,6 +22,7 @@ table Familiar {
 table Post {
   id: string (key);
   title: string;
+  content: string;
   published: bool;
   viewCount: int32;
   tags_ids: [string];
