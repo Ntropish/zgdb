@@ -1,6 +1,6 @@
-import { produce, Draft } from 'immer';
-import { ulid } from 'ulid';
-import { z } from 'zod';
+import { produce, Draft } from '@zgdb/runtime';
+import { ulid } from '@zgdb/runtime';
+import { z } from '@zgdb/runtime';
 import GraphSchema from './graph-schema.js';
 import type { DepartmentData, ProfessorData, StudentData, CourseData, EnrollmentData } from './generated-serializers.js';
 

@@ -1,5 +1,5 @@
-import { produce } from 'immer';
-import { ulid } from 'ulid';
+import { produce } from '@zgdb/runtime';
+import { ulid } from '@zgdb/runtime';
 // --- Async Helpers ---
 export const createNodeData = {
     department: (data) => {

@@ -1,4 +1,4 @@
-import { Builder, ByteBuffer } from 'flatbuffers';
+import { Builder, ByteBuffer } from '@zgdb/runtime';
 import { z } from 'zod';
 import { Department } from './graph-db/department.js';
 import { Professor } from './graph-db/professor.js';
