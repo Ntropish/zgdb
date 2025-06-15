@@ -95,6 +95,9 @@ importers:
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.19.0)(typescript@5.8.3)
+      tsx:
+        specifier: ^4.20.3
+        version: 4.20.3
       uuidv7:
         specifier: ^1.0.2
         version: 1.0.2
@@ -135,9 +138,6 @@ importers:
       flatbuffers:
         specifier: ^24.3.25
         version: 24.12.23
-      prolly-gunna:
-        specifier: ^5.0.0
-        version: 5.0.0
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
