@@ -1,6 +1,5 @@
 /**
  * @file src/codegen/serializer-generator.ts
- * @description Generates the type-safe FlatBuffers serializers and data interfaces.
+ * @description Generates type-safe serializers and deserializers for the graph schema.
  */
-import { Schema } from "./utils.js";
-export declare function generateSerializer(schema: Schema): string;
+export declare function generateSerializer(schema: any): string;
