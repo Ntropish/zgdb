@@ -220,12 +220,10 @@ export const updateNodeData = {
     node: CartData,
     recipe: (draft: Draft<CartData>) => void
   ): CartData => {
-    console.log("cart", node);
     const updatedNode = produce(node, (draft) => {
       recipe(draft);
       draft.updatedAt = Date.now();
     });
-    console.log("updatedNode", updatedNode);
 
     // After mutation, validate the final fields object to ensure consistency.
     const validatedFields = schema.cart.fields.parse(updatedNode.fields);
