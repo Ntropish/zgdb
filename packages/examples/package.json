@@ -10,7 +10,9 @@
     "build-graph": "zg build --config ./src/graph.config.ts --output ./src/dist/graph",
     "run:1": "node ./dist/01-basic-queries.js",
     "run:2": "node ./dist/02-graph-analysis.js",
-    "run:3": "node ./dist/03-instant-search.js"
+    "run:3": "node ./dist/03-instant-search.js",
+    "build-graph:orders": "zg build --config ./src/orders/schema.ts --output ./src/orders/dist/graph",
+    "run:orders:1": "node ./dist/orders/workflow.js"
   },
   "keywords": [
     "zgdb",

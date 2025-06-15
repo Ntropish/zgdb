@@ -1,0 +1,41 @@
+namespace GraphDB;
+
+table Customer {
+  id: string (key);
+  name: string;
+  email: string;
+  orders_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Product {
+  id: string (key);
+  name: string;
+  price: float;
+  stock: int32;
+  created_at: int64;
+  updated_at: int64;
+}
+
+table Order {
+  id: string (key);
+  total: float;
+  status: string;
+  customer_ids: [string];
+  lineItems_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+table LineItem {
+  id: string (key);
+  quantity: int32;
+  purchasePrice: float;
+  order_ids: [string];
+  product_ids: [string];
+  created_at: int64;
+  updated_at: int64;
+}
+
+root_type Customer;
