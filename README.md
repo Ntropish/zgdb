@@ -1,5 +1,9 @@
 # ZGDB: The Zero-Latency Graph Database
 
+> ⚠️ **Early Development Notice**
+>
+> This project is in **early development**. The API is **unstable** and may change **drastically** between versions. Use at your own risk and expect breaking changes.
+
 ZGDB is a new kind of database for a new kind of application. It's a schema-first, embeddable, transactional graph database for TypeScript/JavaScript that you generate from your Zod schemas. It lives inside your application's process, providing zero-latency data access and a developer experience that feels less like a database and more like a native data structure.
 
 - **Schema First**: Use the power and safety of Zod to define your data graph's nodes and their relationships.
