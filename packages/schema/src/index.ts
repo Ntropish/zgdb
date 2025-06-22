@@ -1,4 +1,9 @@
-import { Orchestrator, Reactor, StepHandler } from "@tsmk/kernel";
+import {
+  Orchestrator,
+  Reactor,
+  StepHandler,
+  PipelineContext,
+} from "@tsmk/kernel";
 
 export type Schema<TInput, TOutput> = Reactor.Kernel<
   SchemaContextMap<TOutput>
@@ -46,8 +51,7 @@ export type ValidationIssue = {
 /**
  * The internal context object that is passed through the validation pipeline.
  */
-export interface ValidationPipelineContext
-  extends Orchestrator.PipelineContext {
+export interface ValidationPipelineContext extends PipelineContext {
   value: unknown;
   issues: ValidationIssue[];
   path: (string | number)[];
