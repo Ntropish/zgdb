@@ -8,6 +8,9 @@ describe("Logger", () => {
 
     const infoOrchestratorSteps = plugins.info;
     const infoContext = { message: "Hello world", data: { custom: "data" } };
+    if (!infoOrchestratorSteps) {
+      throw new Error("infoOrchestratorSteps is undefined");
+    }
     await Orchestrator.create(infoOrchestratorSteps).run(infoContext);
 
     const messages = transport.getMessages();
@@ -41,6 +44,9 @@ describe("Logger", () => {
       message: "A critical error occurred",
       error: error,
     };
+    if (!errorOrchestratorSteps) {
+      throw new Error("errorOrchestratorSteps is undefined");
+    }
     await Orchestrator.create(errorOrchestratorSteps).run(errorContext);
 
     const messages = transport.getMessages();

@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Ensure any console commands are suitable for PowerShell on Windows 11

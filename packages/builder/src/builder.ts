@@ -1,4 +1,9 @@
-import { Orchestrator, StepHandler, OrchestratorKernel } from "@tsmk/kernel";
+import {
+  Orchestrator,
+  StepHandler,
+  OrchestratorKernel,
+  PipelineContext,
+} from "@tsmk/kernel";
 
 /**
  * Defines the handler for the 'apply' phase of a capability.
@@ -43,7 +48,7 @@ export type CapabilityMap<TProduct> = {
  * Creates a new builder instance, configured with a set of available capabilities.
  * The builder is used to assemble a build process by applying these capabilities.
  */
-export function createBuilder<TProduct extends Orchestrator.PipelineContext>(
+export function createBuilder<TProduct extends PipelineContext>(
   capabilities: CapabilityMap<TProduct>
 ) {
   const steps: StepHandler<TProduct>[] = [];

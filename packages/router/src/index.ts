@@ -16,17 +16,13 @@ type RouteProps = {
 export const Route: ComponentFactory<RouteProps> = (props) => {
   const { component, ...rest } = props;
   return {
-    eventMap: {},
-    commands: {},
-    render: () => ({
-      factory: "route",
-      props: {
-        ...rest,
-        // The component factory itself is passed to the host config,
-        // which will instantiate it when the route is matched.
-        component: component,
-      },
-    }),
+    factory: "route",
+    props: {
+      ...rest,
+      // The component factory itself is passed to the host config,
+      // which will instantiate it when the route is matched.
+      component: component,
+    },
   };
 };
 
@@ -35,8 +31,7 @@ function buildRouteTree(vnode: VNode, parent: RouteNode): void {
 
   // Render functional components to find nested Routes
   if (typeof factory === "function" && factory !== Route) {
-    const blueprint = factory(vnode.props);
-    const rendered = blueprint.render?.(vnode.props);
+    const rendered = factory(vnode.props);
     if (rendered) {
       buildRouteTree(rendered, parent);
     }

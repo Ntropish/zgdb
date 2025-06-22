@@ -41,7 +41,7 @@ describe("Reconciler", () => {
         children: [{ factory: "text", props: { children: ["Hello"] } }],
       },
     };
-    render(node, rootContainer, mockHostConfig);
+    render(node, rootContainer, mockHostConfig, jest.fn());
 
     expect(mockHostConfig.createInstance).toHaveBeenCalledWith("box", {
       children: [{ factory: "text", props: { children: ["Hello"] } }],
@@ -58,7 +58,7 @@ describe("Reconciler", () => {
       props: { id: "inner" },
     });
     const node: VNode = { factory: Comp, props: { id: "outer" } };
-    render(node, rootContainer, mockHostConfig);
+    render(node, rootContainer, mockHostConfig, jest.fn());
 
     expect(mockHostConfig.createInstance).toHaveBeenCalledWith("box", {
       id: "inner",
@@ -71,13 +71,13 @@ describe("Reconciler", () => {
       factory: "box",
       props: { id: 1, children: [] },
     };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
 
     const updatedNode: VNode = {
       factory: "box",
       props: { id: 2, children: [] },
     };
-    render(updatedNode, rootContainer, mockHostConfig);
+    render(updatedNode, rootContainer, mockHostConfig, jest.fn());
 
     const instance = (mockHostConfig.createInstance as jest.Mock).mock
       .results[0].value;
@@ -95,7 +95,7 @@ describe("Reconciler", () => {
         children: [{ factory: "text", props: { children: ["child"] } }],
       },
     };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
 
     const textInstance = (mockHostConfig.createInstance as jest.Mock).mock
       .results[1].value;
@@ -107,7 +107,7 @@ describe("Reconciler", () => {
       factory: "box",
       props: { children: [] },
     };
-    render(updatedNode, rootContainer, mockHostConfig);
+    render(updatedNode, rootContainer, mockHostConfig, jest.fn());
 
     expect(mockHostConfig.removeChild).toHaveBeenCalledWith(
       boxInstance,
@@ -123,13 +123,13 @@ describe("Reconciler", () => {
       factory: "box",
       props: { children: [text1, text2] },
     };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
 
     const updatedNode: VNode = {
       factory: "box",
       props: { children: [text2, text1] },
     };
-    render(updatedNode, rootContainer, mockHostConfig);
+    render(updatedNode, rootContainer, mockHostConfig, jest.fn());
 
     const text1Instance = (mockHostConfig.createInstance as jest.Mock).mock
       .results[1].value;
@@ -147,11 +147,11 @@ describe("Reconciler", () => {
 
   it("should handle unmounting a component by rendering null", () => {
     const initialNode: VNode = { factory: "box", props: { children: [] } };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
     const instance = (mockHostConfig.createInstance as jest.Mock).mock
       .results[0].value;
 
-    render(null as any, rootContainer, mockHostConfig);
+    render(null as any, rootContainer, mockHostConfig, jest.fn());
 
     expect(mockHostConfig.removeChild).toHaveBeenCalledWith(
       rootContainer,
@@ -161,7 +161,7 @@ describe("Reconciler", () => {
 
   it("should replace a component with a different type", () => {
     const initialNode: VNode = { factory: "box", props: { children: [] } };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
     const boxInstance = (mockHostConfig.createInstance as jest.Mock).mock
       .results[0].value;
 
@@ -169,7 +169,7 @@ describe("Reconciler", () => {
       factory: "text",
       props: { children: ["Hello"] },
     };
-    render(updatedNode, rootContainer, mockHostConfig);
+    render(updatedNode, rootContainer, mockHostConfig, jest.fn());
     const textInstance = (mockHostConfig.createInstance as jest.Mock).mock
       .results[1].value;
 
@@ -194,10 +194,10 @@ describe("Reconciler", () => {
     });
 
     const initialNode: VNode = { factory: Parent, props: { text: "initial" } };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
 
     const updatedNode: VNode = { factory: Parent, props: { text: "updated" } };
-    render(updatedNode, rootContainer, mockHostConfig);
+    render(updatedNode, rootContainer, mockHostConfig, jest.fn());
 
     const textInstance = (mockHostConfig.createInstance as jest.Mock).mock
       .results[1].value;
@@ -214,7 +214,7 @@ describe("Reconciler", () => {
     });
     const Outer: ComponentFactory = () => ({ factory: Inner, props: {} });
 
-    render({ factory: Outer }, rootContainer, mockHostConfig);
+    render({ factory: Outer }, rootContainer, mockHostConfig, jest.fn());
     expect(mockHostConfig.createInstance).toHaveBeenCalledWith("text", {
       children: ["inner"],
     });
@@ -233,7 +233,12 @@ describe("Reconciler", () => {
       props: { onClick: handlerOuter },
     });
 
-    render({ factory: Outer, props: {} }, rootContainer, mockHostConfig);
+    render(
+      { factory: Outer, props: {} },
+      rootContainer,
+      mockHostConfig,
+      jest.fn()
+    );
 
     const buttonInstance = (mockHostConfig.createInstance as jest.Mock).mock
       .results[0].value;
@@ -257,7 +262,12 @@ describe("Reconciler", () => {
       props: { onClick: handler },
     });
 
-    render({ factory: App, props: {} }, rootContainer, mockHostConfig);
+    render(
+      { factory: App, props: {} },
+      rootContainer,
+      mockHostConfig,
+      jest.fn()
+    );
 
     const buttonInstance = (mockHostConfig.createInstance as jest.Mock).mock
       .results[0].value;

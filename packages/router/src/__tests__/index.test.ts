@@ -3,24 +3,18 @@ import { VNode, ComponentFactory } from "@tsmk/kernel";
 
 describe("Component Router", () => {
   const Home: ComponentFactory = () => ({
-    eventMap: {},
-    commands: {},
-    render: () => ({ factory: "h1", props: { children: ["Home"] } }),
+    factory: "h1",
+    props: { children: ["Home"] },
   });
 
   const UserList: ComponentFactory = () => ({
-    eventMap: {},
-    commands: {},
-    render: () => ({ factory: "h1", props: { children: ["Users"] } }),
+    factory: "h1",
+    props: { children: ["Users"] },
   });
 
-  const UserProfile: ComponentFactory = (props: { id: string }) => ({
-    eventMap: {},
-    commands: {},
-    render: () => ({
-      factory: "h1",
-      props: { children: [`User ${props.id}`] },
-    }),
+  const UserProfile: ComponentFactory<{ id: string }> = ({ id }) => ({
+    factory: "h1",
+    props: { children: [`User ${id}`] },
   });
 
   const app: VNode = {
@@ -76,9 +70,8 @@ describe("Component Router", () => {
   describe("Edge Cases", () => {
     it("should prioritize static routes over dynamic ones", () => {
       const NewUser: ComponentFactory = () => ({
-        eventMap: {},
-        commands: {},
-        render: () => ({ factory: "h1", props: { children: ["New User"] } }),
+        factory: "h1",
+        props: { children: ["New User"] },
       });
 
       const appWithPrecedence: VNode = {
@@ -130,16 +123,14 @@ describe("Component Router", () => {
 
     it("should not match handlerless routes but should match their children", () => {
       const AdminDashboard: ComponentFactory = () => ({
-        eventMap: {},
-        commands: {},
-        render: () => ({ factory: "h1", props: { children: ["Dashboard"] } }),
+        factory: "h1",
+        props: { children: ["Dashboard"] },
       });
 
       const appWithHandlerless: VNode = {
         factory: Route,
         props: {
           path: "/admin",
-          // No component/handler here
           children: [
             {
               factory: Route,
@@ -161,12 +152,8 @@ describe("Component Router", () => {
 
     it("should handle multi-segment static routes", () => {
       const AdminProfile: ComponentFactory = () => ({
-        eventMap: {},
-        commands: {},
-        render: () => ({
-          factory: "h1",
-          props: { children: ["Admin Profile"] },
-        }),
+        factory: "h1",
+        props: { children: ["Admin Profile"] },
       });
 
       const appWithMultiSegment: VNode = {
@@ -185,9 +172,8 @@ describe("Component Router", () => {
 
     it("should handle wildcard/catch-all routes", () => {
       const NotFound: ComponentFactory = () => ({
-        eventMap: {},
-        commands: {},
-        render: () => ({ factory: "h1", props: { children: ["Not Found"] } }),
+        factory: "h1",
+        props: { children: ["Not Found"] },
       });
 
       const appWithWildcard: VNode = {
@@ -216,9 +202,8 @@ describe("Component Router", () => {
 
     it("should prioritize static routes regardless of definition order", () => {
       const NewUser: ComponentFactory = () => ({
-        eventMap: {},
-        commands: {},
-        render: () => ({ factory: "h1", props: { children: ["New User"] } }),
+        factory: "h1",
+        props: { children: ["New User"] },
       });
 
       const appWithReversed: VNode = {
@@ -227,7 +212,6 @@ describe("Component Router", () => {
           path: "/users",
           component: UserList,
           children: [
-            // Dynamic route is defined FIRST
             {
               factory: Route,
               props: { path: ":id", component: UserProfile },
@@ -255,9 +239,8 @@ describe("Component Router", () => {
 
     it("should handle optional parameters", () => {
       const UserOrNew: ComponentFactory = () => ({
-        eventMap: {},
-        commands: {},
-        render: () => ({ factory: "h1", props: { children: ["User or New"] } }),
+        factory: "h1",
+        props: { children: ["User or New"] },
       });
 
       const appWithOptional: VNode = {
