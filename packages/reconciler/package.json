@@ -1,0 +1,30 @@
+{
+  "name": "@tsmk/reconciler",
+  "version": "1.0.0",
+  "description": "The generic reconciler for the TSMK framework",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "run-s build test:jest",
+    "test:all": "run-p test test:types",
+    "test:jest": "jest",
+    "test:types": "tsd -f src/index.test-d.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@tsmk/kernel": "workspace:*",
+    "@tsmk/signals": "workspace:*",
+    "@tsmk/log": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.3",
+    "jest": "^29.7.0",
+    "run-p": "^0.0.0",
+    "run-s": "^0.0.0",
+    "typescript": "^5.8.3"
+  }
+}

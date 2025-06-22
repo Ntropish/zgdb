@@ -1,0 +1,29 @@
+{
+  "name": "@tsmk/kernel",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "tsc": "tsc",
+    "build": "tsc -b",
+    "test": "run-s build test:jest",
+    "test:all": "run-p test test:types",
+    "test:jest": "jest --detectOpenHandles --verbose",
+    "test:types": "tsd -f src/index.test-d.ts"
+  },
+  "devDependencies": {
+    "run-p": "^0.0.0",
+    "run-s": "^0.0.0",
+    "typescript": "^5.4.5"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "tsd": "^0.32.0"
+  }
+}

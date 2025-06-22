@@ -1,0 +1,59 @@
+{
+  "name": "@tsmk/tui",
+  "version": "1.0.0",
+  "description": "A component-based UI framework for the command line.",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "concurrently \"npm run test:jest\" \"npm run test:types\"",
+    "test:jest": "jest --verbose",
+    "test:types": "tsd -f src/index.test-d.ts",
+    "run:simple": "node dist/examples/simple.js",
+    "example:simple": "run-s build run:simple",
+    "run:layouts": "node dist/examples/layouts.js",
+    "example:layouts": "run-s build run:layouts",
+    "run:terminal-diagnostics": "node dist/terminal-diagnostics.js",
+    "terminal-diagnostics": "run-s build run:terminal-diagnostics",
+    "example:explorer": "run-s build run:explorer",
+    "run:explorer": "node dist/examples/file-explorer/index.js",
+    "debug:explorer": "run-s build debug:run:explorer",
+    "debug:run:explorer": "node --inspect-brk dist/examples/file-explorer/index.js",
+    "run:git-client": "node dist/examples/git-client/index.js",
+    "example:git-client": "run-s build run:git-client",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "@tsmk/kernel": "workspace:*",
+    "@tsmk/reconciler": "workspace:*",
+    "@tsmk/signals": "workspace:^",
+    "@tsmk/tint": "workspace:*",
+    "@tsmk/tty": "workspace:^",
+    "ansi-escapes": "^6.2.1",
+    "yoga-layout": "^3.2.1",
+    "yoga-layout-prebuilt": "^1.10.0"
+  },
+  "devDependencies": {
+    "@tsmk/schema": "workspace:*",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.12.12",
+    "@types/node-fetch": "^2.6.11",
+    "@types/supertest": "^6.0.2",
+    "axios": "^1.10.0",
+    "concurrently": "^8.2.2",
+    "jest": "^29.7.0",
+    "node-fetch": "^2.6.7",
+    "npm-run-all": "^4.1.5",
+    "run-s": "^0.0.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.1.2",
+    "tsd": "^0.31.0",
+    "typescript": "^5.4.5"
+  },
+  "tsd": {
+    "directory": "src"
+  }
+}

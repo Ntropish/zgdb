@@ -1,0 +1,17 @@
+{
+  "name": "@tsmk/tty",
+  "version": "1.0.0",
+  "description": "TSMK primitives for low-level TTY event handling",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@tsmk/kernel": "workspace:^"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^20.12.12"
+  }
+}
