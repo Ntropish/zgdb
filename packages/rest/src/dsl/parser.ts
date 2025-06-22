@@ -1,9 +1,5 @@
-import {
-  ServerDefinition,
-  RouteDefinition,
-  GroupDefinition,
-  StepHandler,
-} from "./types";
+import { VNode, AsyncComponentFactory, StepHandler } from "@tsmk/kernel";
+import { Route } from "@tsmk/router";
 
 const PLACEHOLDER_PREFIX = "__VALUE_";
 const getPlaceholder = (index: number) => `${PLACEHOLDER_PREFIX}${index}__`;
@@ -11,7 +7,7 @@ const getPlaceholder = (index: number) => `${PLACEHOLDER_PREFIX}${index}__`;
 export function parseDsl(
   strings: TemplateStringsArray,
   ...values: any[]
-): ServerDefinition {
+): VNode {
   let fullString = strings[0];
   for (let i = 0; i < values.length; i++) {
     fullString += getPlaceholder(i) + strings[i + 1];
@@ -20,12 +16,9 @@ export function parseDsl(
   return parse(fullString, values);
 }
 
-function parse(dsl: string, values: any[]): ServerDefinition {
-  const serverDef: ServerDefinition = {
-    type: "server",
-    middleware: [],
-    items: [],
-  };
+function parse(dsl: string, values: any[]): VNode {
+  const children: VNode[] = [];
+  const middleware: StepHandler<any>[] = [];
 
   let remainingDsl = dsl.replace(/#.*$/gm, "").trim();
 
@@ -51,7 +44,7 @@ function parse(dsl: string, values: any[]): ServerDefinition {
       if (typeof handler !== "function")
         throw new Error("Expected a function for @use");
 
-      serverDef.middleware.push(handler);
+      middleware.push(handler);
       remainingDsl = remainingDsl.substring(placeholderMatch[0].length).trim();
     } else if (keyword === "group") {
       const pathMatch = remainingDsl.match(/^(\S+)/);
@@ -60,42 +53,80 @@ function parse(dsl: string, values: any[]): ServerDefinition {
       remainingDsl = remainingDsl.substring(path.length).trim();
 
       const { body, remaining } = extractBlock(remainingDsl);
-      const parsedGroup = parse(body, values);
-      const groupDef: GroupDefinition = {
-        type: "group",
-        path: path,
-        middleware: parsedGroup.middleware,
-        items: parsedGroup.items,
-      };
-      serverDef.items.push(groupDef);
+      const groupVNode = parse(body, values);
+
+      // We need to prepend the group's path to all child routes
+      const childRoutes = (groupVNode.props?.children as VNode[]).map(
+        (child: VNode) => {
+          return {
+            ...child,
+            props: {
+              ...child.props,
+              path: `${path}${child.props?.path}`,
+            },
+          };
+        }
+      );
+
+      children.push(...childRoutes);
       remainingDsl = remaining;
     } else {
-      const method = keyword as RouteDefinition["method"];
+      const method = keyword as "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
       const pathMatch = remainingDsl.match(/^(\S+)/);
       if (!pathMatch) throw new Error(`Expected path after '${method}'`);
       const path = pathMatch[1];
       remainingDsl = remainingDsl.substring(path.length).trim();
 
       const { body, remaining } = extractBlock(remainingDsl);
-      const routeDef = parseRouteBody(body, values);
-      routeDef.method = method;
-      routeDef.path = path;
-      serverDef.items.push(routeDef);
+      const handler = parseRouteBody(body, values);
+
+      const component: AsyncComponentFactory<any> = async (ctx) => {
+        if (ctx.req.method !== method) {
+          return {
+            factory: "div",
+            props: { children: ["Method Not Allowed"] },
+          };
+        }
+
+        for (const mw of middleware) {
+          await mw(ctx);
+          if (ctx.res.writableEnded) {
+            return { factory: "div", props: {} };
+          }
+        }
+
+        const result = await handler(ctx);
+
+        if (!ctx.res.writableEnded) {
+          ctx.res.statusCode = 200;
+          ctx.res.setHeader("Content-Type", "application/json");
+          ctx.res.end(JSON.stringify(result));
+        }
+        return { factory: "div", props: {} };
+      };
+
+      children.push({
+        factory: Route,
+        props: {
+          path,
+          component,
+        },
+      });
       remainingDsl = remaining;
     }
   }
 
-  return serverDef;
+  return {
+    factory: "div",
+    props: {
+      children,
+    },
+  };
 }
 
-function parseRouteBody(body: string, values: any[]): RouteDefinition {
-  const routeDef: RouteDefinition = {
-    type: "route",
-    method: "GET",
-    path: "",
-    handler: () => {
-      throw new Error("Handler not implemented");
-    },
+function parseRouteBody(body: string, values: any[]): StepHandler<any> {
+  let handler: StepHandler<any> = () => {
+    throw new Error("Handler not implemented");
   };
 
   const lines = body.split("\n").filter((l) => l.trim().length > 0);
@@ -110,11 +141,11 @@ function parseRouteBody(body: string, values: any[]): RouteDefinition {
       if (!placeholderMatch) continue;
 
       const valueIndex = parseInt(placeholderMatch[1], 10);
-      routeDef.handler = values[valueIndex];
+      handler = values[valueIndex];
     }
   }
 
-  return routeDef;
+  return handler;
 }
 
 function extractBlock(dsl: string): { body: string; remaining: string } {

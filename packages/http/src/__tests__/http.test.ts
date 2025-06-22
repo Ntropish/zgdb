@@ -1,8 +1,7 @@
 import * as http from "http";
-import fetch from "node-fetch";
 import { createHttpServer, HttpContext } from "../http";
-import { s, validate, Schema } from "@tsmk/schema";
-import { StepHandler, BREAK } from "@tsmk/kernel";
+import { Route } from "@tsmk/router";
+import { VNode, ComponentFactory } from "@tsmk/kernel";
 import axios from "axios";
 
 const getPort = async () => {
@@ -15,33 +14,17 @@ const getPort = async () => {
   });
 };
 
-const createValidationStep = <T>(
-  schema: Schema<any, any>,
-  getTarget: (ctx: HttpContext) => T
-): StepHandler<HttpContext> => {
-  return async (ctx) => {
-    const target = getTarget(ctx);
-    const result = await validate(schema, target);
-    if (!result.success) {
-      ctx.res.statusCode = 400;
-      ctx.res.setHeader("Content-Type", "application/json");
-      ctx.res.end(JSON.stringify({ errors: result.error }));
-      return BREAK; // Stop processing
-    }
-    // Mutate context with validated (and possibly coerced) data
-    ctx.body = result.data;
-  };
-};
-
-function createTestHandler(
+const createTestHandler = (
   responseBody: any,
   statusCode = 200
-): StepHandler<HttpContext> {
-  return async (ctx) => {
+): ComponentFactory<HttpContext> => {
+  return (ctx) => {
     ctx.res.statusCode = statusCode;
-    ctx.body = responseBody;
+    ctx.res.setHeader("Content-Type", "application/json");
+    ctx.res.end(JSON.stringify(responseBody));
+    return { factory: "handler", props: {} };
   };
-}
+};
 
 describe("HTTP Server", () => {
   let serverInstance: http.Server | null = null;
@@ -61,9 +44,11 @@ describe("HTTP Server", () => {
 
   it("should create a server and respond to a GET request", async () => {
     const handler = createTestHandler({ message: "Hello, world!" });
-    const server = createHttpServer((router) => {
-      router.all("/", [handler]);
-    });
+    const app: VNode = {
+      factory: Route,
+      props: { path: "/", component: handler },
+    };
+    const server = await createHttpServer(app);
     serverInstance = server.listen(port);
 
     const response = await axios.get(baseURL);
@@ -72,13 +57,18 @@ describe("HTTP Server", () => {
   });
 
   it("should correctly parse JSON body for POST requests", async () => {
-    const server = createHttpServer((router) => {
-      router.all("/", [
-        (ctx: HttpContext) => {
-          ctx.res.statusCode = 200;
-        },
-      ]);
-    });
+    const handler: ComponentFactory<HttpContext> = (ctx) => {
+      ctx.res.statusCode = 200;
+      ctx.res.setHeader("Content-Type", "application/json");
+      ctx.res.end(JSON.stringify(ctx.body));
+      return { factory: "handler", props: {} };
+    };
+
+    const app: VNode = {
+      factory: Route,
+      props: { path: "/", component: handler },
+    };
+    const server = await createHttpServer(app);
     serverInstance = server.listen(port);
 
     const postData = { a: 1, b: "test" };
@@ -90,9 +80,12 @@ describe("HTTP Server", () => {
   });
 
   it("should return a 404 for a route that does not exist", async () => {
-    const server = createHttpServer((router) => {
-      router.all("/exists", [createTestHandler({})]);
-    });
+    const handler = createTestHandler({});
+    const app: VNode = {
+      factory: Route,
+      props: { path: "/exists", component: handler },
+    };
+    const server = await createHttpServer(app);
     serverInstance = server.listen(port);
 
     await expect(axios.get(`${baseURL}/does-not-exist`)).rejects.toThrow(
@@ -101,21 +94,19 @@ describe("HTTP Server", () => {
   });
 
   it("should handle different HTTP methods on the same route", async () => {
-    const getHandler = createTestHandler({ method: "GET" });
-    const postHandler = createTestHandler({ method: "POST" });
+    const handler: ComponentFactory<HttpContext> = (ctx) => {
+      const method = ctx.req.method;
+      ctx.res.statusCode = 200;
+      ctx.res.setHeader("Content-Type", "application/json");
+      ctx.res.end(JSON.stringify({ method }));
+      return { factory: "handler", props: {} };
+    };
 
-    const server = createHttpServer((router) => {
-      router.all("/", [
-        (ctx) => {
-          if (ctx.req.method === "GET") {
-            return getHandler(ctx);
-          }
-          if (ctx.req.method === "POST") {
-            return postHandler(ctx);
-          }
-        },
-      ]);
-    });
+    const app: VNode = {
+      factory: Route,
+      props: { path: "/", component: handler },
+    };
+    const server = await createHttpServer(app);
     serverInstance = server.listen(port);
 
     const getResponse = await axios.get(baseURL);
@@ -126,14 +117,19 @@ describe("HTTP Server", () => {
   });
 
   it("should correctly handle query parameters", async () => {
-    const server = createHttpServer((router) => {
-      router.all("/", [
-        (ctx) => {
-          ctx.body = { query: Object.fromEntries(ctx.query.entries()) };
-          ctx.res.statusCode = 200;
-        },
-      ]);
-    });
+    const handler: ComponentFactory<HttpContext> = (ctx) => {
+      const query = Object.fromEntries(ctx.query.entries());
+      ctx.res.statusCode = 200;
+      ctx.res.setHeader("Content-Type", "application/json");
+      ctx.res.end(JSON.stringify({ query }));
+      return { factory: "handler", props: {} };
+    };
+
+    const app: VNode = {
+      factory: Route,
+      props: { path: "/", component: handler },
+    };
+    const server = await createHttpServer(app);
     serverInstance = server.listen(port);
 
     const response = await axios.get(`${baseURL}?foo=bar&baz=qux`);

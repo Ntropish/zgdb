@@ -3,7 +3,7 @@
  * It represents a component to be mounted, including its factory, props, and any children.
  */
 export type VNode = {
-  factory: ComponentFactory<any> | string;
+  factory: AnyComponentFactory<any> | string;
   props?: {
     children?: (VNode | string)[];
     [key: string]: any;
@@ -17,3 +17,16 @@ export type VNode = {
  * that uses hooks for state and side effects.
  */
 export type ComponentFactory<P = {}> = (props: P) => VNode;
+
+/**
+ * An AsyncComponentFactory is a function that takes props and returns a Promise of a VNode.
+ * This is used for components that need to perform asynchronous operations.
+ */
+export type AsyncComponentFactory<P = {}> = (props: P) => Promise<VNode>;
+
+/**
+ * A union of ComponentFactory and AsyncComponentFactory.
+ */
+export type AnyComponentFactory<P = {}> =
+  | ComponentFactory<P>
+  | AsyncComponentFactory<P>;

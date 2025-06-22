@@ -1,31 +1,25 @@
-import { Orchestrator, LoggerPlugins, StepHandler, BREAK } from "@tsmk/kernel";
-import { HttpContext } from "@tsmk/server";
-import { Schema } from "@tsmk/schema";
-import { createRouter, RouteContext } from "@tsmk/router";
-import { createValidateStep, createResponseStep } from "./low-level";
+import {
+  AsyncComponentFactory,
+  LoggerPlugins,
+  StepHandler,
+  VNode,
+} from "@tsmk/kernel";
+import { HttpContext } from "@tsmk/http";
+import { Schema, validate } from "@tsmk/schema";
+import { Route } from "@tsmk/router";
 
-type BaseContext = HttpContext & RouteContext;
-type Handler<TContext extends BaseContext> = StepHandler<TContext>;
-
-type RouterConfigurator<TContext extends BaseContext> = (
-  router: ReturnType<typeof createRouter<TContext>>
-) => void;
-
-interface Route<TContext extends BaseContext> {
-  method: string;
-  path: string;
-  pipeline: Handler<TContext>[];
-}
+type BaseContext = HttpContext;
+type Handler<TContext extends BaseContext> = (ctx: TContext) => any;
 
 interface RouteBuilder<TContext extends BaseContext> {
   body(schema: Schema<any, any>): RouteBuilder<TContext>;
   query(schema: Schema<any, any>): RouteBuilder<TContext>;
   params(schema: Schema<any, any>): RouteBuilder<TContext>;
-  handler(handler: (ctx: TContext) => any): void;
+  handler(handler: Handler<TContext>): void;
 }
 
 class RestBuilder<TContext extends BaseContext> {
-  private routes: Route<TContext>[] = [];
+  private routes: VNode[] = [];
   private logger?: LoggerPlugins;
 
   constructor(logger?: LoggerPlugins) {
@@ -37,51 +31,101 @@ class RestBuilder<TContext extends BaseContext> {
     path: string,
     builderCallback: (builder: RouteBuilder<TContext>) => void
   ) {
-    const route: Route<TContext> = {
-      method,
-      path,
-      pipeline: [],
-    };
-    this.routes.push(route);
+    const pipeline: StepHandler<TContext>[] = [];
+    let routeHandler: Handler<TContext> = () => {};
 
     const routeBuilder: RouteBuilder<TContext> = {
-      body: (schema: Schema<any, any>) => {
-        route.pipeline.push(
-          createValidateStep(
-            schema,
-            (ctx: TContext) => (ctx as any).body,
-            this.logger
-          )
-        );
-        return routeBuilder;
-      },
-      query: (schema: Schema<any, any>) => {
-        route.pipeline.push(
-          createValidateStep(
-            schema,
-            (ctx: TContext) => (ctx as any).query,
-            this.logger
-          )
-        );
-        return routeBuilder;
-      },
-      params: (schema: Schema<any, any>) => {
-        route.pipeline.push(
-          createValidateStep(
-            schema,
-            (ctx: TContext) => (ctx as any).params,
-            this.logger
-          )
-        );
-        return routeBuilder;
-      },
-      handler: (handler: (ctx: TContext) => any) => {
-        route.pipeline.push(async (ctx: TContext) => {
-          (ctx as any).handlerResult = await handler(ctx);
+      body: (schema) => {
+        pipeline.push(async (ctx) => {
+          const result = await validate(schema, (ctx as any).body);
+          if (!result.success) {
+            ctx.res.statusCode = 400;
+            ctx.res.setHeader("Content-Type", "application/json");
+            ctx.res.end(
+              JSON.stringify({
+                error: "Body validation failed",
+                details: result.error,
+              })
+            );
+            return;
+          }
+          (ctx as any).body = result.data;
         });
+        return routeBuilder;
+      },
+      query: (schema) => {
+        pipeline.push(async (ctx) => {
+          const result = await validate(schema, (ctx as any).query);
+          if (!result.success) {
+            ctx.res.statusCode = 400;
+            ctx.res.setHeader("Content-Type", "application/json");
+            ctx.res.end(
+              JSON.stringify({
+                error: "Query validation failed",
+                details: result.error,
+              })
+            );
+            return;
+          }
+          (ctx as any).query = result.data;
+        });
+        return routeBuilder;
+      },
+      params: (schema) => {
+        pipeline.push(async (ctx) => {
+          const result = await validate(schema, (ctx as any).params);
+          if (!result.success) {
+            ctx.res.statusCode = 400;
+            ctx.res.setHeader("Content-Type", "application/json");
+            ctx.res.end(
+              JSON.stringify({
+                error: "Params validation failed",
+                details: result.error,
+              })
+            );
+            return;
+          }
+          (ctx as any).params = result.data;
+        });
+        return routeBuilder;
+      },
+      handler: (handler) => {
+        routeHandler = handler;
       },
     };
+
     builderCallback(routeBuilder);
+
+    const component: AsyncComponentFactory<TContext> = async (ctx) => {
+      if (ctx.req.method !== method) {
+        return { factory: "div", props: { children: ["Method Not Allowed"] } };
+      }
+
+      for (const step of pipeline) {
+        await step(ctx);
+        if (ctx.res.writableEnded) {
+          return { factory: "div", props: {} };
+        }
+      }
+
+      const result = await routeHandler(ctx);
+
+      if (!ctx.res.writableEnded) {
+        ctx.res.statusCode = 200;
+        ctx.res.setHeader("Content-Type", "application/json");
+        ctx.res.end(JSON.stringify(result));
+      }
+      return { factory: "div", props: {} };
+    };
+
+    this.routes.push({
+      factory: Route,
+      props: {
+        path,
+        component,
+      },
+    });
+
     return this;
   }
 
@@ -101,21 +145,12 @@ class RestBuilder<TContext extends BaseContext> {
 
   // ... other HTTP methods ...
 
-  build(): RouterConfigurator<TContext> {
-    return (router: ReturnType<typeof createRouter<TContext>>) => {
-      for (const route of this.routes) {
-        const methodCheck: Handler<TContext> = (ctx) => {
-          if (ctx.req.method !== route.method) return BREAK;
-        };
-
-        const pipeline: StepHandler<TContext>[] = [
-          methodCheck,
-          ...route.pipeline,
-          createResponseStep(this.logger),
-        ];
-
-        router.all(route.path, pipeline);
-      }
+  build(): VNode {
+    return {
+      factory: "div",
+      props: {
+        children: this.routes,
+      },
     };
   }
 }

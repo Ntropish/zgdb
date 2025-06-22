@@ -42,7 +42,9 @@ export function createTuiApp(
   const tuiHostConfig = createTuiHostConfig(null as any, logger);
 
   function rerender() {
-    reconcile(currentVNode, rootContainer, tuiHostConfig, { logger });
+    reconcile(currentVNode, rootContainer, tuiHostConfig, rerender, {
+      logger,
+    });
     const rootNode = rootContainer.children[0];
     if (rootNode) {
       renderTui(rootNode, logger);

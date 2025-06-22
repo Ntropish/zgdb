@@ -1,19 +1,19 @@
-import { VNode, ComponentFactory } from "@tsmk/kernel";
+import { VNode, AnyComponentFactory } from "@tsmk/kernel";
 
 type RouteNode = {
   path: string;
   children: RouteNode[];
   parent?: RouteNode;
-  handler?: ComponentFactory;
+  handler?: AnyComponentFactory;
 };
 
 type RouteProps = {
   path: string;
-  component: ComponentFactory;
+  component: AnyComponentFactory;
   children?: VNode[];
 };
 
-export const Route: ComponentFactory<RouteProps> = (props) => {
+export const Route: AnyComponentFactory<RouteProps> = (props) => {
   const { component, ...rest } = props;
   return {
     factory: "route",
@@ -26,14 +26,14 @@ export const Route: ComponentFactory<RouteProps> = (props) => {
   };
 };
 
-function buildRouteTree(vnode: VNode, parent: RouteNode): void {
+async function buildRouteTree(vnode: VNode, parent: RouteNode): Promise<void> {
   const factory = vnode.factory;
 
   // Render functional components to find nested Routes
   if (typeof factory === "function" && factory !== Route) {
-    const rendered = factory(vnode.props);
+    const rendered = await factory(vnode.props);
     if (rendered) {
-      buildRouteTree(rendered, parent);
+      await buildRouteTree(rendered, parent);
     }
     return;
   }
@@ -55,7 +55,7 @@ function buildRouteTree(vnode: VNode, parent: RouteNode): void {
     if (props.children) {
       for (const child of props.children) {
         if (typeof child === "object") {
-          buildRouteTree(child, routeNode);
+          await buildRouteTree(child, routeNode);
         }
       }
     }
@@ -63,7 +63,7 @@ function buildRouteTree(vnode: VNode, parent: RouteNode): void {
 }
 
 type MatchResult = {
-  handler: ComponentFactory;
+  handler: AnyComponentFactory;
   params: Record<string, string>;
 } | null;
 
@@ -170,9 +170,9 @@ function findMatch(node: RouteNode, segments: string[]): MatchResult {
   return null;
 }
 
-export function createRouter(app: VNode) {
+export async function createRouter(app: VNode) {
   const root: RouteNode = { path: "/", children: [] };
-  buildRouteTree(app, root);
+  await buildRouteTree(app, root);
 
   return {
     tree: root,

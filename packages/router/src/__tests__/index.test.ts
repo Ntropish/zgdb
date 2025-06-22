@@ -40,7 +40,11 @@ describe("Component Router", () => {
     },
   };
 
-  const router = createRouter(app);
+  let router: Awaited<ReturnType<typeof createRouter>>;
+
+  beforeEach(async () => {
+    router = await createRouter(app);
+  });
 
   it("should handle the root path", () => {
     const match = router.handle("/");
@@ -68,7 +72,7 @@ describe("Component Router", () => {
   });
 
   describe("Edge Cases", () => {
-    it("should prioritize static routes over dynamic ones", () => {
+    it("should prioritize static routes over dynamic ones", async () => {
       const NewUser: ComponentFactory = () => ({
         factory: "h1",
         props: { children: ["New User"] },
@@ -92,7 +96,7 @@ describe("Component Router", () => {
         },
       };
 
-      const routerWithPrecedence = createRouter(appWithPrecedence);
+      const routerWithPrecedence = await createRouter(appWithPrecedence);
       const match = routerWithPrecedence.handle("/users/new");
       expect(match).toBeDefined();
       expect(match?.handler).toBe(NewUser);
@@ -121,7 +125,7 @@ describe("Component Router", () => {
       expect(match?.params).toEqual({ id: "123" });
     });
 
-    it("should not match handlerless routes but should match their children", () => {
+    it("should not match handlerless routes but should match their children", async () => {
       const AdminDashboard: ComponentFactory = () => ({
         factory: "h1",
         props: { children: ["Dashboard"] },
@@ -140,7 +144,7 @@ describe("Component Router", () => {
         },
       };
 
-      const routerWithHandlerless = createRouter(appWithHandlerless);
+      const routerWithHandlerless = await createRouter(appWithHandlerless);
 
       const noMatch = routerWithHandlerless.handle("/admin");
       expect(noMatch).toBeNull();
@@ -150,7 +154,7 @@ describe("Component Router", () => {
       expect(didMatch?.handler).toBe(AdminDashboard);
     });
 
-    it("should handle multi-segment static routes", () => {
+    it("should handle multi-segment static routes", async () => {
       const AdminProfile: ComponentFactory = () => ({
         factory: "h1",
         props: { children: ["Admin Profile"] },
@@ -164,13 +168,13 @@ describe("Component Router", () => {
         },
       };
 
-      const routerWithMultiSegment = createRouter(appWithMultiSegment);
+      const routerWithMultiSegment = await createRouter(appWithMultiSegment);
       const match = routerWithMultiSegment.handle("/admin/settings/profile");
       expect(match).toBeDefined();
       expect(match?.handler).toBe(AdminProfile);
     });
 
-    it("should handle wildcard/catch-all routes", () => {
+    it("should handle wildcard/catch-all routes", async () => {
       const NotFound: ComponentFactory = () => ({
         factory: "h1",
         props: { children: ["Not Found"] },
@@ -190,7 +194,7 @@ describe("Component Router", () => {
         },
       };
 
-      const routerWithWildcard = createRouter(appWithWildcard);
+      const routerWithWildcard = await createRouter(appWithWildcard);
 
       const homeMatch = routerWithWildcard.handle("/");
       expect(homeMatch?.handler).toBe(Home);
@@ -200,7 +204,7 @@ describe("Component Router", () => {
       expect(notFoundMatch?.handler).toBe(NotFound);
     });
 
-    it("should prioritize static routes regardless of definition order", () => {
+    it("should prioritize static routes regardless of definition order", async () => {
       const NewUser: ComponentFactory = () => ({
         factory: "h1",
         props: { children: ["New User"] },
@@ -224,7 +228,7 @@ describe("Component Router", () => {
         },
       };
 
-      const routerWithReversed = createRouter(appWithReversed);
+      const routerWithReversed = await createRouter(appWithReversed);
       const match = routerWithReversed.handle("/users/new");
       expect(match).toBeDefined();
       expect(match?.handler).toBe(NewUser);
@@ -237,7 +241,7 @@ describe("Component Router", () => {
       expect(match?.params).toEqual({ id: "123" });
     });
 
-    it("should handle optional parameters", () => {
+    it("should handle optional parameters", async () => {
       const UserOrNew: ComponentFactory = () => ({
         factory: "h1",
         props: { children: ["User or New"] },
@@ -251,7 +255,7 @@ describe("Component Router", () => {
         },
       };
 
-      const routerWithOptional = createRouter(appWithOptional);
+      const routerWithOptional = await createRouter(appWithOptional);
 
       const matchWithParam = routerWithOptional.handle("/users/123");
       expect(matchWithParam).toBeDefined();

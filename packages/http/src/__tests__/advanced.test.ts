@@ -2,32 +2,8 @@ import * as http from "http";
 import request from "supertest";
 import { createHttpServer, HttpContext } from "../http";
 import { s, validate, Schema } from "@tsmk/schema";
-import { StepHandler, BREAK } from "@tsmk/kernel";
-import { createRouter } from "@tsmk/router";
-
-const createValidationStep = <T>(
-  schema: Schema<any, any>,
-  getTarget: (ctx: HttpContext) => T,
-  propName: "body" | "params" | "query" = "body"
-): StepHandler<HttpContext> => {
-  return async (ctx) => {
-    const target = getTarget(ctx);
-    const result = await validate(schema, target);
-    if (!result.success) {
-      ctx.res.statusCode = 400;
-      ctx.res.setHeader("Content-Type", "application/json");
-      ctx.res.end(
-        JSON.stringify({
-          error: `Validation failed for ${propName}`,
-          details: result.error,
-        })
-      );
-      return BREAK;
-    }
-    // Mutate context with validated data
-    ctx[propName] = result.data;
-  };
-};
+import { VNode, AsyncComponentFactory, ComponentFactory } from "@tsmk/kernel";
+import { Route } from "@tsmk/router";
 
 describe("Advanced HTTP Scenarios", () => {
   let server: http.Server;
@@ -41,7 +17,6 @@ describe("Advanced HTTP Scenarios", () => {
   });
 
   test("Scenario: Multi-step validation and processing pipeline", async () => {
-    // Schemas for our rigid validation
     const AuthHeaderSchema = s(s.string, s.startsWith("Bearer "));
     const OrderIdParamSchema = s.object({
       orderId: s(s.string, s.cuid2),
@@ -55,48 +30,79 @@ describe("Advanced HTTP Scenarios", () => {
       orderItems: s(s.array(OrderItemSchema), s.minLength(1)),
     });
 
-    // -- Middleware-like Pipeline Steps --
-    const checkAuth: StepHandler<HttpContext> = async (ctx) => {
+    const handler: AsyncComponentFactory<HttpContext> = async (
+      ctx: HttpContext
+    ) => {
+      // 1. Auth Check
       const authHeader = ctx.req.headers.authorization;
-      const result = await validate(AuthHeaderSchema, authHeader);
-      if (!result.success) {
+      const authResult = await validate(AuthHeaderSchema, authHeader);
+      if (!authResult.success) {
         ctx.res.statusCode = 401;
         ctx.res.end("Unauthorized");
-        return BREAK;
+        return { factory: "auth-failed", props: {} };
       }
-    };
 
-    const processOrder: StepHandler<HttpContext> = (ctx) => {
+      // 2. Params Validation
+      const paramsResult = await validate(OrderIdParamSchema, ctx.params);
+      if (!paramsResult.success) {
+        ctx.res.statusCode = 400;
+        ctx.res.setHeader("Content-Type", "application/json");
+        ctx.res.end(
+          JSON.stringify({
+            error: "Validation failed for params",
+            details: paramsResult.error,
+          })
+        );
+        return { factory: "params-validation-failed", props: {} };
+      }
+      ctx.params = paramsResult.data;
+
+      // 3. Body Validation
+      const bodyResult = await validate(BodySchema, ctx.body);
+      if (!bodyResult.success) {
+        ctx.res.statusCode = 400;
+        ctx.res.setHeader("Content-Type", "application/json");
+        ctx.res.end(
+          JSON.stringify({
+            error: "Validation failed for body",
+            details: bodyResult.error,
+          })
+        );
+        return { factory: "body-validation-failed", props: {} };
+      }
+      ctx.body = bodyResult.data;
+
+      // 4. Process Order
       ctx.res.statusCode = 200;
-      ctx.body = {
+      ctx.res.setHeader("Content-Type", "application/json");
+      const responseBody = {
         message: "Order updated successfully",
         orderId: ctx.params.orderId,
         itemsAdded: (ctx.body.orderItems as any[]).length,
       };
+      ctx.res.end(JSON.stringify(responseBody));
+      return { factory: "order-processed", props: {} };
     };
 
-    // -- Server Setup --
-    server = createHttpServer((router) => {
-      router.all("/api/orders/:orderId/items", [
-        checkAuth,
-        createValidationStep(OrderIdParamSchema, (ctx) => ctx.params, "params"),
-        createValidationStep(BodySchema, (ctx) => ctx.body, "body"),
-        processOrder,
-      ]);
-    });
+    const app: VNode = {
+      factory: Route,
+      props: {
+        path: "/api/orders/:orderId/items",
+        component: handler,
+      },
+    };
 
-    // -- Test Cases --
-    const validCuid = "ch72gsb320000udocl363eofy"; // A real CUID
+    server = await createHttpServer(app);
+
+    const validCuid = "ch72gsb320000udocl363eofy";
     const validCuid2 = "tz4a98xxat96iws9zmbrgj3a";
 
-    // Case 1: Happy Path
     const response1 = await request(server)
       .post(`/api/orders/${validCuid2}/items`)
       .set("Authorization", "Bearer valid-token")
       .send({
         orderItems: [{ productId: validCuid, quantity: 2, price: 99.99 }],
       });
-
     expect(response1.status).toBe(200);
     expect(response1.body).toEqual({
       message: "Order updated successfully",
@@ -104,7 +110,6 @@ describe("Advanced HTTP Scenarios", () => {
       itemsAdded: 1,
     });
 
-    // Case 2: Missing Auth
     const response2 = await request(server)
       .post(`/api/orders/${validCuid2}/items`)
       .send({
@@ -112,7 +117,6 @@ describe("Advanced HTTP Scenarios", () => {
       });
     expect(response2.status).toBe(401);
 
-    // Case 3: Invalid orderId
     const response3 = await request(server)
       .post(`/api/orders/not-a-cuid/items`)
       .set("Authorization", "Bearer valid-token")
@@ -120,10 +124,8 @@ describe("Advanced HTTP Scenarios", () => {
         orderItems: [{ productId: validCuid, quantity: 1, price: 10 }],
       });
     expect(response3.status).toBe(400);
-    const json3 = response3.body;
-    expect(json3.error).toContain("params");
+    expect(response3.body.error).toContain("params");
 
-    // Case 4: Invalid body
     const response4 = await request(server)
       .post(`/api/orders/${validCuid2}/items`)
       .set("Authorization", "Bearer valid-token")
@@ -131,36 +133,47 @@ describe("Advanced HTTP Scenarios", () => {
         orderItems: [{ productId: "not-a-cuid", quantity: 1, price: 10 }],
       });
     expect(response4.status).toBe(400);
-    const json4 = response4.body;
-    expect(json4.error).toContain("body");
+    expect(response4.body.error).toContain("body");
   });
 
   test("Scenario: Composed routes with error boundary", async () => {
-    server = createHttpServer((router) => {
-      router.all("/public/home", [
-        (ctx) => {
-          ctx.res.statusCode = 200;
-          ctx.body = { message: "Welcome to the public home!" };
-        },
-      ]);
-      router.all("/admin/dashboard", [
-        () => {
-          throw new Error("DB Connection Failed!");
-        },
-      ]);
-    });
+    const publicHome: ComponentFactory<HttpContext> = (ctx: HttpContext) => {
+      ctx.res.statusCode = 200;
+      ctx.res.setHeader("Content-Type", "application/json");
+      ctx.res.end(JSON.stringify({ message: "Welcome to the public home!" }));
+      return { factory: "public-home", props: {} };
+    };
 
-    // Case 1: Hit a route in the public router
+    const adminDashboard: ComponentFactory<HttpContext> = () => {
+      throw new Error("DB Connection Failed!");
+    };
+
+    const app: VNode = {
+      factory: "div",
+      props: {
+        children: [
+          {
+            factory: Route,
+            props: { path: "/public/home", component: publicHome },
+          },
+          {
+            factory: Route,
+            props: { path: "/admin/dashboard", component: adminDashboard },
+          },
+        ],
+      },
+    };
+
+    server = await createHttpServer(app);
+
     const res1 = await request(server).get("/public/home");
     expect(res1.status).toBe(200);
     expect(res1.body).toEqual({ message: "Welcome to the public home!" });
 
-    // Case 2: Hit a route in the admin router that throws
     const res2 = await request(server).get("/admin/dashboard");
     expect(res2.status).toBe(500);
     expect(res2.text).toEqual("Internal Server Error");
 
-    // Case 3: Hit a route that doesn't exist anywhere
     const res3 = await request(server).get("/non-existent");
     expect(res3.status).toBe(404);
   });

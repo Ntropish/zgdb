@@ -1,26 +1,26 @@
 import * as nodeHttp from "http";
-import { Orchestrator, LoggerPlugins } from "@tsmk/kernel";
-import { createRouter, RouteContext } from "@tsmk/router";
+import {
+  Orchestrator,
+  LoggerPlugins,
+  VNode,
+  ComponentFactory,
+} from "@tsmk/kernel";
+import { createRouter } from "@tsmk/router";
 import { URL } from "url";
 
-export type HttpContext = RouteContext & {
+export type HttpContext = {
   req: nodeHttp.IncomingMessage;
   res: nodeHttp.ServerResponse;
   query: URLSearchParams;
+  params: Record<string, string>;
   body?: any;
 };
 
-type RouterConfigurator = (
-  router: ReturnType<typeof createRouter<HttpContext>>
-) => void;
-
-export function createHttpServer(
-  configure: RouterConfigurator,
+export async function createHttpServer(
+  app: VNode,
   logger?: LoggerPlugins
-): nodeHttp.Server {
-  const router = createRouter<HttpContext>({ logger });
-  configure(router);
-  const kernel = router.kernel();
+): Promise<nodeHttp.Server> {
+  const router = await createRouter(app);
 
   const server = nodeHttp.createServer(async (req, res) => {
     const startTime = process.hrtime();
@@ -41,45 +41,56 @@ export function createHttpServer(
     }
 
     const url = new URL(req.url!, `http://${req.headers.host}`);
+    const match = router.handle(url.pathname);
 
-    const context: HttpContext = {
-      req,
-      res,
-      path: url.pathname,
-      method: req.method?.toUpperCase(),
-      params: {},
-      query: url.searchParams,
-      matched: false,
-    };
+    if (match) {
+      const context: HttpContext = {
+        req,
+        res,
+        params: match.params,
+        query: url.searchParams,
+      };
 
-    if (["POST", "PUT", "PATCH"].includes(req.method ?? "")) {
-      const buffers = [];
-      for await (const chunk of req) buffers.push(chunk);
-      const data = Buffer.concat(buffers).toString();
-      if (req.headers["content-type"] === "application/json" && data) {
-        try {
-          context.body = JSON.parse(data);
-        } catch {
-          // Keep body as string if JSON parsing fails
+      if (["POST", "PUT", "PATCH"].includes(req.method ?? "")) {
+        const buffers = [];
+        for await (const chunk of req) buffers.push(chunk);
+        const data = Buffer.concat(buffers).toString();
+        if (req.headers["content-type"] === "application/json" && data) {
+          try {
+            context.body = JSON.parse(data);
+          } catch {
+            context.body = data;
+          }
+        } else {
           context.body = data;
         }
-      } else {
-        context.body = data;
       }
-    }
 
-    try {
-      await kernel.run(context);
-    } catch (err) {
-      console.error("Unhandled error during kernel execution:", err);
-      if (!res.writableEnded) {
-        res.statusCode = 500;
-        res.setHeader("Content-Type", "text/plain");
-        res.end("Internal Server Error");
+      try {
+        const resultVNode = await match.handler(context);
+
+        // Assuming handlers might have side-effects on res,
+        // but we can also handle a return value.
+        if (!res.writableEnded) {
+          if (resultVNode.props?.body) {
+            res.statusCode = (resultVNode.props.statusCode as number) || 200;
+            const body = resultVNode.props.body;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(body));
+          } else if (!res.headersSent) {
+            res.statusCode = 204; // No Content
+            res.end();
+          }
+        }
+      } catch (err) {
+        console.error("Unhandled error during handler execution:", err);
+        if (!res.writableEnded) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "text/plain");
+          res.end("Internal Server Error");
+        }
       }
-    }
-
-    if (!context.matched) {
+    } else {
       res.statusCode = 404;
       res.setHeader("Content-Type", "text/plain");
       res.end("Not Found");
