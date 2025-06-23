@@ -9,7 +9,8 @@
     "build": "tsc",
     "test:jest": "jest",
     "test:types": "tsd",
-    "test": "npm-run-all build test:jest test:types"
+    "test": "npm-run-all build test:jest",
+    "test:all": "npm-run-all build test:jest test:types"
   },
   "tsd": {
     "directory": "src"

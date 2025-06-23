@@ -7,7 +7,9 @@
   "scripts": {
     "build": "pnpm -r build",
     "test:standalone": "pnpm -r test",
-    "test": "run-p build test:standalone"
+    "test:types": "pnpm -r test:types",
+    "test": "run-p build test:standalone",
+    "test:all": "run-p build test:standalone test:types"
   },
   "keywords": [],
   "author": "",
