@@ -40,5 +40,25 @@
   },
   "tsd": {
     "directory": "src"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!yaml|yaml-unist-parser|yallist|@babel)"
+    ],
+    "testPathIgnorePatterns": [
+      "/dist/",
+      "\\.test-d\\.ts$"
+    ],
+    "moduleNameMapper": {
+      "^@tsmk/(.*)$": "<rootDir>/../$1/src"
+    },
+    "roots": [
+      "<rootDir>/src"
+    ]
   }
 }

@@ -31,5 +31,19 @@
     "composable"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "jsdom",
+    "testPathIgnorePatterns": [
+      "/dist/",
+      "\\.test-d\\.ts$"
+    ],
+    "moduleNameMapper": {
+      "^@tsmk/(.*)$": "<rootDir>/../$1/src"
+    },
+    "roots": [
+      "<rootDir>/src"
+    ]
+  }
 }

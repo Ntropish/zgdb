@@ -26,5 +26,19 @@
     "ts-jest": "^29.1.2",
     "tsd": "^0.32.0",
     "typescript": "^5.4.5"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testPathIgnorePatterns": [
+      "/dist/",
+      "\\.test-d\\.ts$"
+    ],
+    "moduleNameMapper": {
+      "^@tsmk/(.*)$": "<rootDir>/../$1/src"
+    },
+    "roots": [
+      "<rootDir>/src"
+    ]
   }
 }
