@@ -2,7 +2,7 @@ import { Reactor } from "@tsmk/kernel";
 import { parseKey, parseSgrMouse } from "./parser.js";
 import { Key, Mouse, TtyEventMap } from "./types.js";
 
-export { Key, Mouse, TtyEventMap };
+export type { Key, Mouse, TtyEventMap };
 
 export function createTtyReactor(eventMap: Reactor.EventMap<TtyEventMap>): {
   reactor: Reactor.Kernel<TtyEventMap>;

@@ -41,8 +41,7 @@
     "ts-jest": "^29.1.2",
     "tsd": "^0.31.0",
     "typescript": "^5.4.5",
-    "run-p": "^0.0.0",
-    "message": "Use `T` instead."
+    "run-p": "^0.0.0"
   },
   "tsd": {
     "directory": "src"

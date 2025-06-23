@@ -1,18 +1,12 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022",
     "types": ["jest", "node"],
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
     "sourceMap": true,
     "inlineSources": true,
-    "isolatedModules": true,
-    "declaration": true,
     "noImplicitAny": false
   },
   "include": ["src"],
