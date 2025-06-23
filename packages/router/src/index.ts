@@ -9,19 +9,17 @@ type RouteNode = {
 
 type RouteProps = {
   path: string;
-  component: AnyComponentFactory;
+  handler: AnyComponentFactory;
   children?: VNode[];
 };
 
 export const Route: AnyComponentFactory<RouteProps> = (props) => {
-  const { component, ...rest } = props;
+  const { handler, ...rest } = props;
   return {
     factory: "route",
     props: {
       ...rest,
-      // The component factory itself is passed to the host config,
-      // which will instantiate it when the route is matched.
-      component: component,
+      handler: handler,
     },
   };
 };
@@ -33,7 +31,13 @@ async function buildRouteTree(vnode: VNode, parent: RouteNode): Promise<void> {
   if (typeof factory === "function" && factory !== Route) {
     const rendered = await factory(vnode.props);
     if (rendered) {
-      await buildRouteTree(rendered, parent);
+      if (Array.isArray(rendered)) {
+        for (const child of rendered) {
+          await buildRouteTree(child, parent);
+        }
+      } else {
+        await buildRouteTree(rendered, parent);
+      }
     }
     return;
   }
@@ -45,7 +49,7 @@ async function buildRouteTree(vnode: VNode, parent: RouteNode): Promise<void> {
   if (props) {
     const routeNode: RouteNode = {
       path: props.path,
-      handler: props.component,
+      handler: props.handler || props.component,
       children: [],
       parent: parent,
     };
@@ -57,6 +61,12 @@ async function buildRouteTree(vnode: VNode, parent: RouteNode): Promise<void> {
         if (typeof child === "object") {
           await buildRouteTree(child, routeNode);
         }
+      }
+    }
+  } else if (vnode.props?.children) {
+    for (const child of vnode.props.children) {
+      if (typeof child === "object") {
+        await buildRouteTree(child, parent);
       }
     }
   }
@@ -170,9 +180,15 @@ function findMatch(node: RouteNode, segments: string[]): MatchResult {
   return null;
 }
 
-export async function createRouter(app: VNode) {
+export async function createRouter(vnodes: VNode | VNode[]) {
   const root: RouteNode = { path: "/", children: [] };
-  await buildRouteTree(app, root);
+  if (Array.isArray(vnodes)) {
+    for (const vnode of vnodes) {
+      await buildRouteTree(vnode, root);
+    }
+  } else {
+    await buildRouteTree(vnodes, root);
+  }
 
   return {
     tree: root,

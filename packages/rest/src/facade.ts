@@ -3,6 +3,7 @@ import {
   LoggerPlugins,
   StepHandler,
   VNode,
+  Orchestrator,
 } from "@tsmk/kernel";
 import { HttpContext } from "@tsmk/http";
 import { Schema, validate } from "@tsmk/schema";
@@ -122,7 +123,7 @@ class RestBuilder<TContext extends BaseContext> {
       factory: Route,
       props: {
         path,
-        component,
+        handler: component,
       },
     });
 
@@ -145,13 +146,8 @@ class RestBuilder<TContext extends BaseContext> {
 
   // ... other HTTP methods ...
 
-  build(): VNode {
-    return {
-      factory: "div",
-      props: {
-        children: this.routes,
-      },
-    };
+  build(): VNode[] {
+    return this.routes;
   }
 }
 

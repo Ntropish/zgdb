@@ -1,10 +1,5 @@
 import * as nodeHttp from "http";
-import {
-  Orchestrator,
-  LoggerPlugins,
-  VNode,
-  ComponentFactory,
-} from "@tsmk/kernel";
+import { LoggerPlugins, VNode } from "@tsmk/kernel";
 import { createRouter } from "@tsmk/router";
 import { URL } from "url";
 
@@ -17,28 +12,13 @@ export type HttpContext = {
 };
 
 export async function createHttpServer(
-  app: VNode,
+  vnodes: VNode | VNode[],
   logger?: LoggerPlugins
 ): Promise<nodeHttp.Server> {
-  const router = await createRouter(app);
+  const router = await createRouter(vnodes);
 
   const server = nodeHttp.createServer(async (req, res) => {
     const startTime = process.hrtime();
-    if (logger?.info) {
-      await Orchestrator.create(logger.info).run({
-        message: "Incoming request",
-        data: {
-          http: {
-            method: req.method,
-            url: req.url,
-            headers: req.headers,
-          },
-          network: {
-            remoteAddress: req.socket.remoteAddress,
-          },
-        },
-      });
-    }
 
     const url = new URL(req.url!, `http://${req.headers.host}`);
     const match = router.handle(url.pathname);
@@ -69,8 +49,6 @@ export async function createHttpServer(
       try {
         const resultVNode = await match.handler(context);
 
-        // Assuming handlers might have side-effects on res,
-        // but we can also handle a return value.
         if (!res.writableEnded) {
           if (resultVNode.props?.body) {
             res.statusCode = (resultVNode.props.statusCode as number) || 200;
@@ -98,21 +76,6 @@ export async function createHttpServer(
 
     const duration = process.hrtime(startTime);
     const durationMs = duration[0] * 1000 + duration[1] / 1e6;
-    if (logger?.info) {
-      await Orchestrator.create(logger.info).run({
-        message: "Request completed",
-        data: {
-          http: {
-            method: req.method,
-            url: req.url,
-            statusCode: res.statusCode,
-          },
-          duration: {
-            ms: durationMs,
-          },
-        },
-      });
-    }
   });
 
   server.on("error", (err) => {
