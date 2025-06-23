@@ -8,7 +8,7 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": [
         "--filter",
-        "@tsmk/aura",
+        "@tsmk/loom",
         "test",
         "--",
         "--runInBand",

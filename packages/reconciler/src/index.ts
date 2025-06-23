@@ -27,9 +27,11 @@ type Fiber = {
   sibling?: Fiber;
   child?: Fiber;
   alternate?: Fiber;
-  effectTag?: EffectTag;
-  _nativeElement?: any;
+  effectTag?: "PLACEMENT" | "UPDATE" | "DELETION";
+  _nativeElement?: HostInstance | HostTextInstance;
   hooks?: Hook[];
+  container?: HostInstance;
+  deletions?: Fiber[];
 };
 
 // ===================================================================
@@ -58,13 +60,24 @@ const instanceToFiberMap = new Map<HostInstance, Fiber>();
 // ===================================================================
 
 export function render(
-  vnode: VNode,
+  vnode: VNode | null,
   container: HostInstance,
-  config: HostConfig
+  config: HostConfig,
+  updateCallback: () => void
 ) {
   hostConfig = config;
+  scheduleUpdate = updateCallback;
+
+  const currentRoot =
+    workInProgressRoot?.container === container ? workInProgressRoot : null;
+
+  const newVNode = vnode
+    ? { factory: "ROOT", props: { children: [vnode] } }
+    : { factory: "ROOT", props: { children: [] } };
+
   workInProgressRoot = {
-    vnode: { factory: "ROOT", props: { children: [vnode] } },
+    vnode: newVNode,
+    container,
     _nativeElement: container,
     alternate: currentRoot ?? undefined,
     hooks: [],
@@ -100,13 +113,28 @@ export function useState<T>(initialState: T): [T, (newState: T) => void] {
   });
 
   const setState = (action: (prevState: T) => T) => {
-    // This part will need to be improved to trigger a new render
     hook.queue.push(action);
+    if (scheduleUpdate) {
+      scheduleUpdate();
+    }
   };
 
   currentlyRenderingFiber.hooks!.push(hook);
   hookIndex++;
   return [hook.state, (newState: T) => setState(() => newState)];
+}
+
+export function use<T>(signal: {
+  read: () => T;
+  subscribe: (fn: (value: T) => void) => () => void;
+}): T {
+  const [value, setValue] = useState(signal.read());
+
+  useEffect(() => {
+    return signal.subscribe(setValue);
+  }, [signal]);
+
+  return value;
 }
 
 export function useEffect(effect: () => (() => void) | void, deps?: any[]) {
@@ -180,34 +208,41 @@ function updateFunctionComponent(fiber: Fiber) {
 
 function updateHostComponent(fiber: Fiber) {
   if (!fiber._nativeElement) {
-    fiber._nativeElement = hostConfig!.createInstance(
-      fiber.vnode.factory as string,
-      fiber.vnode.props ?? {}
-    );
+    if (fiber.vnode.factory === "TEXT_ELEMENT") {
+      fiber._nativeElement = hostConfig!.createTextInstance(
+        fiber.vnode.props?.nodeValue ?? ""
+      );
+    } else {
+      fiber._nativeElement = hostConfig!.createInstance(
+        fiber.vnode.factory as string,
+        fiber.vnode.props ?? {}
+      );
+    }
   }
-  const children = (fiber.vnode.props?.children || []).flat();
-  reconcileChildren(
-    fiber,
-    children.filter((c): c is VNode => typeof c !== "string")
-  );
+  const children = fiber.vnode.props?.children || [];
+  reconcileChildren(fiber, children);
 }
 
-function reconcileChildren(wipFiber: Fiber, children: VNode[]) {
+function reconcileChildren(wipFiber: Fiber, children: (VNode | string)[]) {
   let index = 0;
   let oldFiber = wipFiber.alternate?.child;
   let prevSibling: Fiber | null = null;
 
   while (index < children.length || oldFiber != null) {
-    const childVNode = children[index];
+    const child = children[index];
     let newFiber: Fiber | null = null;
+    const vnode =
+      typeof child === "string"
+        ? { factory: "TEXT_ELEMENT", props: { nodeValue: child, children: [] } }
+        : child;
 
     const sameType =
-      oldFiber && childVNode && childVNode.factory === oldFiber.vnode.factory;
+      oldFiber && vnode && vnode.factory === oldFiber.vnode.factory;
 
-    if (sameType && oldFiber) {
+    if (sameType && oldFiber && vnode) {
       // Update
       newFiber = {
-        vnode: childVNode,
+        vnode,
         parent: wipFiber,
         alternate: oldFiber,
         _nativeElement: oldFiber._nativeElement,
@@ -215,10 +250,10 @@ function reconcileChildren(wipFiber: Fiber, children: VNode[]) {
         hooks: oldFiber.hooks,
       };
     }
-    if (childVNode && !sameType) {
+    if (vnode && !sameType) {
       // Placement
       newFiber = {
-        vnode: childVNode,
+        vnode,
         parent: wipFiber,
         effectTag: "PLACEMENT",
         hooks: [],
@@ -252,16 +287,9 @@ function reconcileChildren(wipFiber: Fiber, children: VNode[]) {
 // ===================================================================
 
 function commitRoot(root: Fiber) {
-  // 1. Process deletions
   deletions!.forEach(commitWork);
-
-  // 2. Commit the rest of the tree
   commitWork(root.child);
-
-  // 3. Run effects
   runEffects(root);
-
-  // 4. Set the current root
   currentRoot = root;
 }
 
@@ -299,7 +327,7 @@ function commitWork(fiber?: Fiber) {
   } else if (fiber.effectTag === "UPDATE" && fiber._nativeElement) {
     hostConfig!.commitUpdate(fiber._nativeElement, fiber.vnode.props ?? {});
   } else if (fiber.effectTag === "DELETION") {
-    commitDeletion(fiber, parentDom);
+    commitDeletion(fiber);
     return; // No need to commit children of a deleted fiber
   }
 
@@ -307,17 +335,32 @@ function commitWork(fiber?: Fiber) {
   commitWork(fiber.sibling);
 }
 
-function commitDeletion(fiber: Fiber, parentDom: HostInstance) {
-  let child = fiber.child;
-  while (child) {
-    commitDeletion(child, parentDom);
-    child = child.sibling;
+function commitDeletion(fiber: Fiber) {
+  let parentFiber = fiber.parent;
+  while (parentFiber && !parentFiber._nativeElement) {
+    parentFiber = parentFiber.parent;
+  }
+  const domParent = parentFiber!._nativeElement;
+  commitDeletionRecursive(fiber, domParent);
+}
+
+function commitDeletionRecursive(fiber: Fiber, domParent: HostInstance) {
+  if (fiber._nativeElement) {
+    hostConfig!.removeChild(domParent, fiber._nativeElement);
+  } else {
+    if (fiber.child) {
+      commitDeletionRecursive(fiber.child, domParent);
+    }
   }
 
-  fiber.hooks?.forEach((hook) => hook.cleanup?.());
+  // Also process siblings
+  if (fiber.sibling) {
+    commitDeletionRecursive(fiber.sibling, domParent);
+  }
 
-  if (fiber._nativeElement) {
-    hostConfig!.removeChild(parentDom, fiber._nativeElement);
+  // Run effect cleanups
+  if (fiber.effectTag === "DELETION" && fiber.hooks) {
+    fiber.hooks.forEach((hook) => hook.cleanup?.());
   }
 }
 
@@ -353,6 +396,9 @@ export interface HostConfig {
 
   // Methods for updating an instance's properties
   commitUpdate(instance: HostInstance, newProps: object): void;
+
+  // New method for creating text instances
+  createTextInstance(nodeValue: string): HostTextInstance;
 }
 
 // ===================================================================

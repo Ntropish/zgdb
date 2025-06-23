@@ -6,7 +6,14 @@ let rootContainer: any;
 
 beforeEach(() => {
   mockHostConfig = {
-    createInstance: jest.fn((type, props) => ({ type, props, children: [] })),
+    createInstance: jest.fn((type, props) => ({
+      type,
+      props,
+      children: [],
+    })),
+    createTextInstance: jest.fn((text) => ({
+      nodeValue: text,
+    })),
     appendChild: jest.fn(),
     removeChild: jest.fn(),
     commitUpdate: jest.fn(),
@@ -19,7 +26,7 @@ beforeEach(() => {
 describe("Reconciler", () => {
   it("should render a single node", () => {
     const node = { factory: "div", props: {} };
-    render(node, rootContainer, mockHostConfig);
+    render(node, rootContainer, mockHostConfig, jest.fn());
     expect(mockHostConfig.createInstance).toHaveBeenCalledWith("div", {});
     expect(mockHostConfig.appendChild).toHaveBeenCalled();
   });
@@ -29,7 +36,7 @@ describe("Reconciler", () => {
       factory: "div",
       props: { children: [{ factory: "span", props: {} }] },
     };
-    render(node, rootContainer, mockHostConfig);
+    render(node, rootContainer, mockHostConfig, jest.fn());
     expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
       "div",
       expect.any(Object)
@@ -40,13 +47,13 @@ describe("Reconciler", () => {
 
   it("should update a node's props", () => {
     const initialNode = { factory: "div", props: { id: "initial" } };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
     expect(mockHostConfig.createInstance).toHaveBeenCalledWith("div", {
       id: "initial",
     });
 
     const updatedNode = { factory: "div", props: { id: "updated" } };
-    render(updatedNode, rootContainer, mockHostConfig);
+    render(updatedNode, rootContainer, mockHostConfig, jest.fn());
     expect(mockHostConfig.commitUpdate).toHaveBeenCalledWith(
       expect.any(Object),
       {
@@ -57,11 +64,11 @@ describe("Reconciler", () => {
 
   it("should replace a node with a different one", () => {
     const initialNode = { factory: "div", props: {} };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
     const initialDiv = mockHostConfig.createInstance.mock.results[0].value;
 
     const updatedNode = { factory: "span", props: {} };
-    render(updatedNode, rootContainer, mockHostConfig);
+    render(updatedNode, rootContainer, mockHostConfig, jest.fn());
     const newSpan = mockHostConfig.createInstance.mock.results[1].value;
 
     expect(mockHostConfig.removeChild).toHaveBeenCalledWith(
@@ -79,11 +86,11 @@ describe("Reconciler", () => {
       factory: "div",
       props: { children: [{ factory: "span", props: {} }] },
     };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
     const childSpan = mockHostConfig.createInstance.mock.results[1].value;
 
     const updatedNode = { factory: "div", props: { children: [] } };
-    render(updatedNode, rootContainer, mockHostConfig);
+    render(updatedNode, rootContainer, mockHostConfig, jest.fn());
 
     expect(mockHostConfig.removeChild).toHaveBeenCalledWith(
       expect.any(Object),
@@ -97,7 +104,7 @@ describe("Reconciler", () => {
       props: { children: [`Hello, ${props.name}`] },
     });
     const node = { factory: Component, props: { name: "World" } };
-    render(node, rootContainer, mockHostConfig);
+    render(node, rootContainer, mockHostConfig, jest.fn());
     expect(mockHostConfig.createInstance).toHaveBeenCalledWith("h1", {
       children: ["Hello, World"],
     });
@@ -112,9 +119,14 @@ describe("Reconciler", () => {
       return { factory: "div", props: {} };
     };
     const initialNode = { factory: Component, props: {} };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
 
-    render({ factory: "div", props: {} }, rootContainer, mockHostConfig);
+    render(
+      { factory: "div", props: {} },
+      rootContainer,
+      mockHostConfig,
+      jest.fn()
+    );
 
     expect(cleanup).toHaveBeenCalled();
   });
@@ -125,12 +137,12 @@ describe("Reconciler", () => {
       props: { children: [`Count: ${props.count}`] },
     });
     const initialNode = { factory: Component, props: { count: 1 } };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
     const p = mockHostConfig.createInstance.mock.results[0].value;
     expect(mockHostConfig.commitUpdate).not.toHaveBeenCalled();
 
     const updatedNode = { factory: Component, props: { count: 2 } };
-    render(updatedNode, rootContainer, mockHostConfig);
+    render(updatedNode, rootContainer, mockHostConfig, jest.fn());
     expect(mockHostConfig.commitUpdate).toHaveBeenCalledWith(p, {
       children: ["Count: 2"],
     });
@@ -156,10 +168,15 @@ describe("Reconciler", () => {
       };
     };
     const initialNode = { factory: Parent, props: {} };
-    render(initialNode, rootContainer, mockHostConfig);
+    render(initialNode, rootContainer, mockHostConfig, jest.fn());
 
     // Unmount
-    render({ factory: "div", props: {} }, rootContainer, mockHostConfig);
+    render(
+      { factory: "div", props: {} },
+      rootContainer,
+      mockHostConfig,
+      jest.fn()
+    );
 
     expect(childCleanup).toHaveBeenCalled();
     expect(parentCleanup).toHaveBeenCalled();
@@ -174,8 +191,12 @@ describe("Reconciler", () => {
         return { factory: "p", props: { children: [`Count: ${count}`] } };
       };
 
-      render({ factory: Component }, rootContainer, mockHostConfig);
-      // More assertions needed here to test state updates
+      const mockUpdate = jest.fn();
+      render({ factory: Component }, rootContainer, mockHostConfig, mockUpdate);
+
+      expect(capturedSetState).not.toBeNull();
+      capturedSetState!(1);
+      expect(mockUpdate).toHaveBeenCalled();
     });
   });
 
@@ -190,7 +211,8 @@ describe("Reconciler", () => {
       render(
         { factory: Component, props: { dep: 1 } },
         rootContainer,
-        mockHostConfig
+        mockHostConfig,
+        jest.fn()
       );
       expect(effect).toHaveBeenCalledTimes(1);
 
@@ -198,7 +220,8 @@ describe("Reconciler", () => {
       render(
         { factory: Component, props: { dep: 1 } },
         rootContainer,
-        mockHostConfig
+        mockHostConfig,
+        jest.fn()
       );
       expect(effect).toHaveBeenCalledTimes(1);
 
@@ -206,7 +229,8 @@ describe("Reconciler", () => {
       render(
         { factory: Component, props: { dep: 2 } },
         rootContainer,
-        mockHostConfig
+        mockHostConfig,
+        jest.fn()
       );
       expect(effect).toHaveBeenCalledTimes(2);
     });

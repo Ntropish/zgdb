@@ -3,45 +3,33 @@ import {
   render as tsmkRender,
   HostConfig,
   HostInstance,
+  HostTextInstance,
 } from "@tsmk/reconciler";
 
 // The HostConfig tells the reconciler how to interact with the DOM.
 const domHostConfig: HostConfig = {
-  createInstance: (type: string, props: Record<string, any>): Element => {
+  createInstance: (type: string, props: Record<string, any>): HostInstance => {
     const el = document.createElement(type);
-
-    // Apply attributes and properties first
     for (const key in props) {
       if (key !== "children") {
-        if (key.startsWith("on")) {
-          const eventName = key.slice(2).toLowerCase();
-          el.addEventListener(eventName, props[key]);
-        } else {
-          (el as any)[key] = props[key];
-        }
+        (el as any)[key] = props[key];
       }
     }
-
-    // Set text content if it exists
-    if (props.children && typeof props.children[0] === "string") {
-      el.textContent = props.children[0];
-    }
-
     return el;
   },
-
-  appendChild: (parent: Element, child: Element | Text) =>
-    parent.appendChild(child),
-
+  createTextInstance: (text: string): HostTextInstance => {
+    return document.createTextNode(text);
+  },
+  appendChild: (parent: HostInstance, child: HostInstance) => {
+    parent.appendChild(child);
+  },
   removeChild: (parent: Element, child: Element | Text) =>
     parent.removeChild(child),
-
   insertBefore: (
     parent: Element,
     child: Element | Text,
     beforeChild: Element | Text
   ) => parent.insertBefore(child, beforeChild),
-
   commitUpdate: (instance: HostInstance, newProps: Record<string, any>) => {
     const el = instance as Element;
 
@@ -68,17 +56,32 @@ const domHostConfig: HostConfig = {
   },
 };
 
+const Empty = () => ({ factory: "div", props: { children: [] } });
+
+const roots = new Map<HTMLElement, { vnode: VNode; update: () => void }>();
+
 /**
  * Renders a VNode into a DOM container.
  *
  * @param vnode The VNode to render.
  * @param container The DOM element to render into.
  */
-export function render(vnode: VNode, container: HTMLElement) {
-  // The update callback is the key to reactivity.
-  // When state changes, we call this to re-render.
-  const update = () => tsmkRender(vnode, container, domHostConfig, update);
+export function render(vnode: VNode | null, container: HTMLElement) {
+  const vnodeToRender = vnode || { factory: Empty, props: {} };
+  let root = roots.get(container);
 
-  // Initial render
-  update();
+  if (root) {
+    root.vnode = vnodeToRender;
+  } else {
+    const update = () => {
+      const currentRoot = roots.get(container);
+      if (currentRoot) {
+        tsmkRender(currentRoot.vnode, container, domHostConfig, update);
+      }
+    };
+    root = { vnode: vnodeToRender, update };
+    roots.set(container, root);
+  }
+
+  root.update();
 }
