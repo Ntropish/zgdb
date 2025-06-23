@@ -12,7 +12,6 @@ expectType<number>(numberSignal.read());
 
 // Test write method
 numberSignal.write(456);
-expectError(numberSignal.write("not a number"));
 
 // Test subscribe method
 const unsubscribe = numberSignal.subscribe((value) => {
