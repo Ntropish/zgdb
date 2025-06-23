@@ -38,6 +38,9 @@ function createProxy<T extends object>(
 }
 
 export function aura<T extends object>(initialState: T): T {
+  if (initialState && (initialState as any)[IS_AURA_PROXY]) {
+    return initialState;
+  }
   const store = new AuraStore(initialState);
   return createProxy(store);
 }
