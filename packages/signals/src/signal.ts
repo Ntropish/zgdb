@@ -6,8 +6,8 @@ export type Signal<T> = {
   subscribe: (callback: (value: T) => void) => () => void;
 };
 
-type Effect = () => void;
-const effectStack: Effect[] = [];
+export type Effect = () => void;
+export const effectStack: Effect[] = [];
 
 export function createEffect(effect: Effect) {
   effectStack.push(effect);

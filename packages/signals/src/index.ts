@@ -2,7 +2,7 @@ import { StepHandler } from "@tsmk/kernel";
 
 export * from "./signal";
 export type { Signal } from "./signal";
-export { createSignal } from "./signal";
+export { createSignal, createEffect, effectStack, type Effect } from "./signal";
 
 // ===================================================================
 //
