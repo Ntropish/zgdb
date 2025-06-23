@@ -1,6 +1,6 @@
 import { Reactor } from "@tsmk/kernel";
 import { createEffect, Effect, effectStack } from "@tsmk/signals";
-import { get, set } from "lodash-es";
+import { get, set, unset } from "lodash-es";
 
 type AuraUpdateContext = {
   path: string;
@@ -55,6 +55,12 @@ export class AuraStore<T extends object> {
   public async set(path: string, value: any): Promise<void> {
     set(this.state, path, value);
     await this.reactor.trigger("update", { path, value });
+  }
+
+  public async delete(path: string): Promise<void> {
+    unset(this.state, path);
+    // Trigger updates for the path and potentially parent paths
+    await this.reactor.trigger("update", { path, value: undefined });
   }
 
   public getState(): T {

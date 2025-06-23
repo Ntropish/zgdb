@@ -2,6 +2,14 @@ import { AuraStore } from "./store";
 
 const IS_AURA_PROXY = Symbol("isAuraProxy");
 
+function isPlainObject(value: any): boolean {
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
 function createProxy<T extends object>(
   store: AuraStore<T>,
   path: string[] = []
@@ -19,8 +27,11 @@ function createProxy<T extends object>(
 
         const value = store.get(pathString);
 
-        if (typeof value === "object" && value !== null) {
-          return createProxy(store, newPath);
+        if (value !== null && typeof value === "object") {
+          // Only proxy plain objects and arrays, not special objects like Date or RegExp.
+          if (isPlainObject(value) || Array.isArray(value)) {
+            return createProxy(store, newPath);
+          }
         }
 
         return value;
@@ -29,6 +40,12 @@ function createProxy<T extends object>(
         const newPath = [...path, key as string];
         const pathString = newPath.join(".");
         store.set(pathString, value);
+        return true;
+      },
+      deleteProperty(_, key) {
+        const newPath = [...path, key as string];
+        const pathString = newPath.join(".");
+        store.delete(pathString);
         return true;
       },
     }
