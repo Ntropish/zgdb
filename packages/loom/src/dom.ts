@@ -7,7 +7,28 @@ import {
 
 // The HostConfig tells the reconciler how to interact with the DOM.
 const domHostConfig: HostConfig = {
-  createInstance: (type: string): Element => document.createElement(type),
+  createInstance: (type: string, props: Record<string, any>): Element => {
+    const el = document.createElement(type);
+
+    // Apply attributes and properties first
+    for (const key in props) {
+      if (key !== "children") {
+        if (key.startsWith("on")) {
+          const eventName = key.slice(2).toLowerCase();
+          el.addEventListener(eventName, props[key]);
+        } else {
+          (el as any)[key] = props[key];
+        }
+      }
+    }
+
+    // Set text content if it exists
+    if (props.children && typeof props.children[0] === "string") {
+      el.textContent = props.children[0];
+    }
+
+    return el;
+  },
 
   appendChild: (parent: Element, child: Element | Text) =>
     parent.appendChild(child),
@@ -22,22 +43,27 @@ const domHostConfig: HostConfig = {
   ) => parent.insertBefore(child, beforeChild),
 
   commitUpdate: (instance: HostInstance, newProps: Record<string, any>) => {
-    // A simplified update commit. In a real implementation, this would
-    // be much more robust, handling event listeners, styles, etc.
+    const el = instance as Element;
+
+    // Update properties and attributes
     for (const key in newProps) {
       if (key !== "children") {
         if (key.startsWith("on")) {
           const eventName = key.slice(2).toLowerCase();
-          // This is a naive implementation for event handlers.
-          // A real one would need to handle listener removal and updates.
-          (instance as Element).addEventListener(eventName, newProps[key]);
+          el.addEventListener(eventName, newProps[key]);
         } else {
-          (instance as any)[key] = newProps[key];
+          (el as any)[key] = newProps[key];
         }
       }
     }
-    if (typeof newProps.children?.[0] === "string") {
-      (instance as Element).textContent = newProps.children[0];
+
+    // Update text content
+    const newText =
+      newProps.children && typeof newProps.children[0] === "string"
+        ? newProps.children[0]
+        : null;
+    if (el.textContent !== newText) {
+      el.textContent = newText;
     }
   },
 };
