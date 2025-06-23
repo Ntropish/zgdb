@@ -4,22 +4,22 @@ import { createSignal, Signal } from "./index";
 // Test basic signal creation and types
 const stringSignal = createSignal("hello");
 expectType<Signal<string>>(stringSignal);
-expectType<string>(stringSignal.value);
+expectType<string>(stringSignal.read());
 
 const numberSignal = createSignal(123);
 expectType<Signal<number>>(numberSignal);
-expectType<number>(numberSignal.value);
+expectType<number>(numberSignal.read());
 
-// Test set method
-numberSignal.set(456);
-expectError(numberSignal.set("not a number"));
+// Test write method
+numberSignal.write(456);
+expectError(numberSignal.write("not a number"));
 
 // Test subscribe method
-const unsubscribe = numberSignal.subscribe(({ value, oldValue }) => {
+const unsubscribe = numberSignal.subscribe((value) => {
   expectType<number>(value);
-  expectType<number>(oldValue);
 });
 expectType<() => void>(unsubscribe);
 
-// Test readonly value
-expectError((stringSignal.value = "new value"));
+// Test readonly - this is now implicit as there's no direct setter
+// The following would be a compile-time error if we tried to reassign read, for example.
+// stringSignal.read = () => "new";

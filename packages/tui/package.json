@@ -5,12 +5,12 @@
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "concurrently \"npm run test:jest\" \"npm run test:types\"",
+    "test": "run-s build test:jest",
     "test:jest": "jest --verbose",
     "test:types": "tsd -f src/index.test-d.ts",
+    "test:all": "run-s build test:jest test:types",
     "run:simple": "node dist/examples/simple.js",
     "example:simple": "run-s build run:simple",
     "run:layouts": "node dist/examples/layouts.js",
@@ -55,5 +55,15 @@
   },
   "tsd": {
     "directory": "src"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@tsmk/(.*)$": "<rootDir>/../$1/src"
+    },
+    "roots": [
+      "<rootDir>/src"
+    ]
   }
 }
