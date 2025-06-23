@@ -8,8 +8,8 @@
   "scripts": {
     "build": "tsc",
     "test": "concurrently \"npm run test:jest\" \"npm run test:types\"",
-    "test:jest": "jest --verbose",
-    "test:types": "tsd -f src/index.test-d.ts",
+    "test:jest": "jest --detectOpenHandles --verbose",
+    "test:types": "tsd",
     "run:simple": "node dist/examples/simple.js",
     "example:simple": "run-s build run:simple",
     "run:chaining": "node dist/examples/chaining.js",
@@ -17,7 +17,8 @@
     "run:low-level": "node dist/examples/low-level.js",
     "example:low-level": "run-s build run:low-level",
     "run:direct": "node dist/examples/direct.js",
-    "example:direct": "run-s build run:direct"
+    "example:direct": "run-s build run:direct",
+    "test:all": "run-p test test:types"
   },
   "dependencies": {
     "@tsmk/kernel": "workspace:*",
@@ -39,7 +40,9 @@
     "supertest": "^7.0.0",
     "ts-jest": "^29.1.2",
     "tsd": "^0.31.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "run-p": "^0.0.0",
+    "message": "Use `T` instead."
   },
   "tsd": {
     "directory": "src"

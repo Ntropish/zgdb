@@ -8,8 +8,9 @@
     "test": "npm-run-all build tests",
     "build": "tsc",
     "tests": "concurrently \"npm run test:jest\" \"npm run test:types\"",
-    "test:jest": "jest",
-    "test:types": "tsd -f src/index.test-d.ts"
+    "test:jest": "jest --detectOpenHandles --verbose",
+    "test:types": "tsd",
+    "test:all": "run-p test test:types"
   },
   "dependencies": {
     "@tsmk/kernel": "workspace:*",
@@ -45,5 +46,8 @@
     "roots": [
       "<rootDir>/src"
     ]
+  },
+  "tsd": {
+    "directory": "src"
   }
 }

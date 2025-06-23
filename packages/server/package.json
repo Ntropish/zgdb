@@ -7,8 +7,9 @@
   "scripts": {
     "build": "tsc",
     "test": "concurrently \"npm run test:jest\" \"npm run test:types\"",
-    "test:jest": "jest",
-    "test:types": "tsd -f src/index.test-d.ts"
+    "test:all": "run-p test test:types",
+    "test:jest": "jest --detectOpenHandles --verbose",
+    "test:types": "tsd"
   },
   "keywords": [
     "tsmk",
@@ -28,6 +29,7 @@
     "@types/supertest": "^6.0.3",
     "concurrently": "^9.1.2",
     "jest": "^29.7.0",
+    "run-p": "^0.0.0",
     "tsd": "^0.32.0",
     "typescript": "^5.8.3"
   },
@@ -44,5 +46,8 @@
     "roots": [
       "<rootDir>/src"
     ]
+  },
+  "tsd": {
+    "directory": "src"
   }
 }

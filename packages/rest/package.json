@@ -8,8 +8,9 @@
   "scripts": {
     "build": "tsc",
     "test": "concurrently \"npm run test:jest\" \"npm run test:types\"",
-    "test:jest": "jest",
-    "test:types": "tsd -f src/index.test-d.ts"
+    "test:all": "run-p test test:types",
+    "test:jest": "jest --detectOpenHandles --verbose",
+    "test:types": "tsd"
   },
   "dependencies": {
     "@tsmk/http": "workspace:*",
@@ -33,7 +34,9 @@
     "supertest": "^7.1.1",
     "ts-jest": "^29.1.2",
     "tsd": "^0.31.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "run-p": "^0.0.0",
+    "message": "Use `T` instead."
   },
   "tsd": {
     "directory": "src"

@@ -8,8 +8,8 @@
     "build": "tsc",
     "test": "run-p build test:jest",
     "test:all": "run-p test test:types",
-    "test:jest": "jest",
-    "test:types": "tsd -f src/index.test-d.ts"
+    "test:jest": "jest --detectOpenHandles --verbose",
+    "test:types": "tsd"
   },
   "dependencies": {
     "@tsmk/kernel": "workspace:*"
@@ -36,5 +36,8 @@
     "roots": [
       "<rootDir>/src"
     ]
+  },
+  "tsd": {
+    "directory": "src"
   }
 }

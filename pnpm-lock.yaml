@@ -184,6 +184,9 @@ importers:
       run-s:
         specifier: ^0.0.0
         version: 0.0.0
+      tsd:
+        specifier: ^0.32.0
+        version: 0.32.0
       typescript:
         specifier: ^5.8.3
         version: 5.8.3

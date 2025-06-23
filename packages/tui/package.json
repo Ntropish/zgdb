@@ -8,9 +8,9 @@
   "scripts": {
     "build": "tsc",
     "test": "run-s build test:jest",
-    "test:jest": "jest --verbose",
-    "test:types": "tsd -f src/index.test-d.ts",
-    "test:all": "run-s build test:jest test:types",
+    "test:jest": "jest --detectOpenHandles --verbose",
+    "test:types": "tsd",
+    "test:all": "run-p test test:types",
     "run:simple": "node dist/examples/simple.js",
     "example:simple": "run-s build run:simple",
     "run:layouts": "node dist/examples/layouts.js",
@@ -51,7 +51,8 @@
     "supertest": "^7.0.0",
     "ts-jest": "^29.1.2",
     "tsd": "^0.31.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "esbuild": "^0.21.3"
   },
   "tsd": {
     "directory": "src"

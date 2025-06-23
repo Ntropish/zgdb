@@ -8,13 +8,15 @@
   "scripts": {
     "build": "tsc",
     "tests": "concurrently \"npm run test:jest\" \"npm run test:types\"",
-    "test:jest": "jest",
-    "test:types": "tsd -f src/index.test-d.ts"
+    "test:all": "run-p test test:types",
+    "test:jest": "jest --detectOpenHandles --verbose",
+    "test:types": "tsd"
   },
   "dependencies": {
     "@tsmk/builder": "workspace:*",
     "@tsmk/kernel": "workspace:*",
-    "@tsmk/router": "workspace:*"
+    "@tsmk/router": "workspace:*",
+    "typescript": "^5.4.5"
   },
   "devDependencies": {
     "@tsmk/log": "workspace:*",
@@ -29,7 +31,6 @@
     "npm-run-all": "^4.1.5",
     "ts-jest": "^29.1.2",
     "tsd": "^0.31.0",
-    "typescript": "^5.4.5",
     "supertest": "^7.0.0",
     "@types/supertest": "^6.0.2"
   },

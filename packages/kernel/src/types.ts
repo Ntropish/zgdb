@@ -1,5 +1,3 @@
-import { ComponentFactory } from "./component";
-
 /**
  * A unique symbol used to signal that an orchestrator pipeline should halt execution.
  */

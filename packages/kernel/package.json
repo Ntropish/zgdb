@@ -10,7 +10,7 @@
     "test": "run-s build test:jest",
     "test:all": "run-p test test:types",
     "test:jest": "jest --detectOpenHandles --verbose",
-    "test:types": "tsd -f src/index.test-d.ts"
+    "test:types": "tsd"
   },
   "devDependencies": {
     "run-p": "^0.0.0",
@@ -39,5 +39,8 @@
     "roots": [
       "<rootDir>/src"
     ]
+  },
+  "tsd": {
+    "directory": "src"
   }
 }
