@@ -213,9 +213,14 @@ function updateHostComponent(fiber: Fiber) {
         fiber.vnode.props?.nodeValue ?? ""
       );
     } else {
+      let parentElement = fiber.parent;
+      while (parentElement && !parentElement._nativeElement) {
+        parentElement = parentElement.parent;
+      }
       fiber._nativeElement = hostConfig!.createInstance(
         fiber.vnode.factory as string,
-        fiber.vnode.props ?? {}
+        fiber.vnode.props ?? {},
+        parentElement?._nativeElement ?? null
       );
     }
   }
@@ -374,7 +379,11 @@ export type HostTextInstance = any;
  */
 export interface HostConfig {
   // Methods for creating instances in the host environment
-  createInstance(type: string, props: object): HostInstance;
+  createInstance(
+    type: string,
+    props: object,
+    parent: HostInstance | null
+  ): HostInstance;
 
   // Methods for mutating the host tree
   appendChild(

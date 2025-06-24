@@ -6,7 +6,10 @@ import { VNode } from "@tsmk/kernel";
  */
 type HyperscriptFactory = (
   props?: Record<string, any>,
-  children?: (VNode | string | undefined | null)[] | VNode | string
+  children?:
+    | (VNode | string | boolean | undefined | null | (VNode | string)[])[]
+    | VNode
+    | string
 ) => VNode;
 
 /**
@@ -23,14 +26,20 @@ const handler: ProxyHandler<H> = {
     // that creates a VNode with that tag as its type.
     return (
       props?: Record<string, any>,
-      children?: (VNode | string | undefined | null)[] | VNode | string
+      children?:
+        | (VNode | string | boolean | undefined | null | (VNode | string)[])[]
+        | VNode
+        | string
     ): VNode => {
       return {
         factory: tag,
         props: {
           ...props,
           children: Array.isArray(children)
-            ? (children.flat().filter((c) => c != null) as (VNode | string)[])
+            ? (children.flat().filter((c) => c != null && c !== false) as (
+                | VNode
+                | string
+              )[])
             : children
             ? [children]
             : [],

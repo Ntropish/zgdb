@@ -6,7 +6,7 @@ let rootContainer: any;
 
 beforeEach(() => {
   mockHostConfig = {
-    createInstance: jest.fn((type, props) => ({
+    createInstance: jest.fn((type, props, parent) => ({
       type,
       props,
       children: [],
@@ -27,7 +27,11 @@ describe("Reconciler", () => {
   it("should render a single node", () => {
     const node = { factory: "div", props: {} };
     render(node, rootContainer, mockHostConfig, jest.fn());
-    expect(mockHostConfig.createInstance).toHaveBeenCalledWith("div", {});
+    expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
+      "div",
+      {},
+      rootContainer
+    );
     expect(mockHostConfig.appendChild).toHaveBeenCalled();
   });
 
@@ -37,20 +41,30 @@ describe("Reconciler", () => {
       props: { children: [{ factory: "span", props: {} }] },
     };
     render(node, rootContainer, mockHostConfig, jest.fn());
+    const divInstance = mockHostConfig.createInstance.mock.results[0].value;
     expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
       "div",
-      expect.any(Object)
+      expect.any(Object),
+      rootContainer
     );
-    expect(mockHostConfig.createInstance).toHaveBeenCalledWith("span", {});
+    expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
+      "span",
+      {},
+      divInstance
+    );
     expect(mockHostConfig.appendChild).toHaveBeenCalledTimes(2);
   });
 
   it("should update a node's props", () => {
     const initialNode = { factory: "div", props: { id: "initial" } };
     render(initialNode, rootContainer, mockHostConfig, jest.fn());
-    expect(mockHostConfig.createInstance).toHaveBeenCalledWith("div", {
-      id: "initial",
-    });
+    expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
+      "div",
+      {
+        id: "initial",
+      },
+      rootContainer
+    );
 
     const updatedNode = { factory: "div", props: { id: "updated" } };
     render(updatedNode, rootContainer, mockHostConfig, jest.fn());
@@ -105,9 +119,13 @@ describe("Reconciler", () => {
     });
     const node = { factory: Component, props: { name: "World" } };
     render(node, rootContainer, mockHostConfig, jest.fn());
-    expect(mockHostConfig.createInstance).toHaveBeenCalledWith("h1", {
-      children: ["Hello, World"],
-    });
+    expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
+      "h1",
+      {
+        children: ["Hello, World"],
+      },
+      rootContainer
+    );
   });
 
   it("should unmount a functional component and trigger cleanup", () => {

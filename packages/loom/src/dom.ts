@@ -6,13 +6,39 @@ import {
   HostTextInstance,
 } from "@tsmk/reconciler";
 
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+function setAttribute(el: Element, key: string, value: any) {
+  if (key.startsWith("on")) {
+    const eventName = key.slice(2).toLowerCase();
+    el.addEventListener(eventName, value);
+  } else if (typeof value === "boolean") {
+    if (value) {
+      el.setAttribute(key, "");
+    } else {
+      el.removeAttribute(key);
+    }
+  } else {
+    el.setAttribute(key, value);
+  }
+}
+
 // The HostConfig tells the reconciler how to interact with the DOM.
 const domHostConfig: HostConfig = {
-  createInstance: (type: string, props: Record<string, any>): HostInstance => {
-    const el = document.createElement(type);
+  createInstance: (
+    type: string,
+    props: Record<string, any>,
+    parent: HostInstance | null
+  ): HostInstance => {
+    const parentIsSvg = parent && parent.namespaceURI === SVG_NAMESPACE;
+    const el =
+      type === "svg" || parentIsSvg
+        ? document.createElementNS(SVG_NAMESPACE, type)
+        : document.createElement(type);
+
     for (const key in props) {
       if (key !== "children") {
-        (el as any)[key] = props[key];
+        setAttribute(el, key, props[key]);
       }
     }
     return el;
@@ -36,12 +62,7 @@ const domHostConfig: HostConfig = {
     // Update properties and attributes
     for (const key in newProps) {
       if (key !== "children") {
-        if (key.startsWith("on")) {
-          const eventName = key.slice(2).toLowerCase();
-          el.addEventListener(eventName, newProps[key]);
-        } else {
-          (el as any)[key] = newProps[key];
-        }
+        setAttribute(el, key, newProps[key]);
       }
     }
 
