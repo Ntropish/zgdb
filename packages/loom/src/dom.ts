@@ -56,22 +56,41 @@ const domHostConfig: HostConfig = {
     child: Element | Text,
     beforeChild: Element | Text
   ) => parent.insertBefore(child, beforeChild),
-  commitUpdate: (instance: HostInstance, newProps: Record<string, any>) => {
+  commitUpdate: (
+    instance: HostInstance,
+    oldProps: Record<string, any>,
+    newProps: Record<string, any>
+  ) => {
     // Handle text node updates
     if (instance.nodeType === 3) {
-      if (instance.nodeValue !== newProps.nodeValue) {
+      if (oldProps.nodeValue !== newProps.nodeValue) {
         instance.nodeValue = newProps.nodeValue;
       }
       return;
     }
 
-    // Handle element updates
     const el = instance as Element;
-    // NOTE: This simple implementation doesn't handle REMOVING attributes.
-    // It only sets new ones. This is a limitation imposed by the reconciler's
-    // HostConfig, which doesn't provide oldProps.
+
+    // Remove old or changed event listeners
+    for (const key in oldProps) {
+      if (
+        key.startsWith("on") &&
+        (oldProps[key] !== newProps[key] || !(key in newProps))
+      ) {
+        (el as any)[key.toLowerCase()] = null;
+      }
+    }
+
+    // Remove old attributes
+    for (const key in oldProps) {
+      if (!(key in newProps)) {
+        el.removeAttribute(key);
+      }
+    }
+
+    // Set new or changed attributes
     for (const key in newProps) {
-      if (key !== "children") {
+      if (key !== "children" && oldProps[key] !== newProps[key]) {
         setAttribute(el, key, newProps[key]);
       }
     }

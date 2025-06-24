@@ -335,7 +335,11 @@ function commitWork(fiber?: Fiber) {
   if (fiber.effectTag === "PLACEMENT" && fiber._nativeElement) {
     hostConfig!.appendChild(parentDom, fiber._nativeElement);
   } else if (fiber.effectTag === "UPDATE" && fiber._nativeElement) {
-    hostConfig!.commitUpdate(fiber._nativeElement, fiber.vnode.props ?? {});
+    hostConfig!.commitUpdate(
+      fiber._nativeElement,
+      fiber.alternate!.vnode.props ?? {},
+      fiber.vnode.props ?? {}
+    );
   } else if (fiber.effectTag === "DELETION") {
     commitDeletion(fiber);
     return; // No need to commit children of a deleted fiber
@@ -406,7 +410,11 @@ export interface HostConfig {
   ): void;
 
   // Methods for updating an instance's properties
-  commitUpdate(instance: HostInstance, newProps: object): void;
+  commitUpdate(
+    instance: HostInstance,
+    oldProps: object,
+    newProps: object
+  ): void;
 
   // New method for creating text instances
   createTextInstance(nodeValue: string): HostTextInstance;

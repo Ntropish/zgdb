@@ -1,10 +1,5 @@
 import { render, l } from "..";
-import {
-  _reset as resetReconciler,
-  useState,
-  _getInstanceCount as getReconcilerInstanceCount,
-} from "@tsmk/reconciler";
-import { _getInstanceCount as getLoomInstanceCount } from "..";
+import { _reset as resetReconciler, useState } from "@tsmk/reconciler";
 
 describe("Loom DOM Renderer", () => {
   let container: HTMLElement;
