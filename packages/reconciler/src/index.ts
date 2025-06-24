@@ -1,62 +1,14 @@
+import { VNode } from "@tsmk/kernel";
+import { HostConfig, HostInstance } from "./hostConfig";
 import {
-  VNode,
-  ComponentFactory,
-  LoggerPlugins,
-  Orchestrator,
-} from "@tsmk/kernel";
-
-// ===================================================================
-//
-//                        TYPES
-//
-// ===================================================================
-
-type EffectTag = "UPDATE" | "PLACEMENT" | "DELETION";
-
-type Hook = {
-  state: any;
-  queue: any[];
-  deps?: any[];
-  effect?: () => (() => void) | void;
-  cleanup?: (() => void) | void;
-};
-
-type Fiber = {
-  vnode: VNode;
-  parent?: Fiber;
-  sibling?: Fiber;
-  child?: Fiber;
-  alternate?: Fiber;
-  effectTag?: "PLACEMENT" | "UPDATE" | "DELETION";
-  _nativeElement?: HostInstance | HostTextInstance;
-  hooks?: Hook[];
-  container?: HostInstance;
-  deletions?: Fiber[];
-};
-
-// ===================================================================
-//
-//                      MODULE-LEVEL STATE
-//
-// ===================================================================
-
-let workInProgressRoot: Fiber | null = null;
-let currentRoot: Fiber | null = null;
-let nextUnitOfWork: Fiber | null = null;
-let deletions: Fiber[] | null = null;
-let currentlyRenderingFiber: Fiber | null = null;
-let hookIndex = 0;
-let hostConfig: HostConfig | null = null;
-let logger: LoggerPlugins | undefined | null = null;
-let scheduleUpdate: (() => void) | null = null;
-
-const roots = new Map<HostInstance, Fiber>();
-const instanceToFiberMap = new Map<HostInstance, Fiber>();
-
-// A simple counter to detect multiple instances of the reconciler.
-// This is a common source of bugs in hook-based systems.
-let instanceCounter = 0;
-instanceCounter++;
+  getCurrentRoot,
+  setDeletions,
+  setHostConfig,
+  setNextUnitOfWork,
+  setRenderCallback,
+  setWorkInProgressRoot,
+} from "./state";
+import { workLoop } from "./workloop";
 
 // ===================================================================
 //
@@ -64,411 +16,36 @@ instanceCounter++;
 //
 // ===================================================================
 
+// Re-export public types
+export type { HostConfig, HostInstance, HostTextInstance } from "./hostConfig";
+
+// Re-export public hooks
+export { useState, useEffect } from "./hooks";
+
+// The main render function, which serves as the entry point to the reconciler.
 export function render(
-  vnode: VNode | null,
+  vnode: VNode,
   container: HostInstance,
-  config: HostConfig,
-  updateCallback: () => void
+  hostConfig: HostConfig,
+  cb?: () => void
 ) {
-  hostConfig = config;
-  scheduleUpdate = updateCallback;
+  setHostConfig(hostConfig);
+  setRenderCallback(cb);
 
-  const newVNode = vnode
-    ? { factory: "ROOT", props: { children: [vnode] } }
-    : { factory: "ROOT", props: { children: [] } };
-
-  workInProgressRoot = {
-    vnode: newVNode,
-    container,
+  const workInProgressRoot = {
+    vnode: {
+      factory: "ROOT",
+      props: {
+        children: [vnode],
+      },
+    },
     _nativeElement: container,
-    alternate: currentRoot ?? undefined,
-    hooks: [],
-  };
-  deletions = [];
-  nextUnitOfWork = workInProgressRoot;
-
-  // Start the work loop
-  while (nextUnitOfWork) {
-    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
-  }
-
-  // Commit the tree
-  if (workInProgressRoot) {
-    commitRoot(workInProgressRoot);
-  }
-}
-
-export function useState<T>(initialState: T): [T, (newState: T) => void] {
-  if (!currentlyRenderingFiber) {
-    throw new Error("useState can only be called inside a component");
-  }
-
-  const oldHook = currentlyRenderingFiber.alternate?.hooks?.[hookIndex];
-  const hook: Hook = {
-    state: oldHook ? oldHook.state : initialState,
-    queue: oldHook ? oldHook.queue : [],
+    alternate: getCurrentRoot() ?? undefined,
   };
 
-  const actions = hook.queue;
-  actions.forEach((action) => {
-    hook.state =
-      typeof action === "function" ? (action as any)(hook.state) : action;
-  });
+  setWorkInProgressRoot(workInProgressRoot);
+  setNextUnitOfWork(workInProgressRoot);
+  setDeletions([]);
 
-  const setState = (action: T | ((prevState: T) => T)) => {
-    hook.queue.push(action);
-    if (scheduleUpdate) {
-      scheduleUpdate();
-    }
-  };
-
-  currentlyRenderingFiber.hooks!.push(hook);
-  hookIndex++;
-  return [hook.state, setState];
-}
-
-export function use<T>(signal: {
-  read: () => T;
-  subscribe: (fn: (value: T) => void) => () => void;
-}): T {
-  const [value, setValue] = useState(signal.read());
-
-  useEffect(() => {
-    return signal.subscribe(setValue);
-  }, [signal]);
-
-  return value;
-}
-
-export function useEffect(effect: () => (() => void) | void, deps?: any[]) {
-  if (!currentlyRenderingFiber) {
-    throw new Error("useEffect can only be called inside a component");
-  }
-
-  const oldHook = currentlyRenderingFiber.alternate?.hooks?.[hookIndex];
-
-  const hasChanged = deps
-    ? !oldHook || !oldHook.deps || deps.some((d, i) => d !== oldHook.deps?.[i])
-    : true;
-
-  const hook: Hook = {
-    state: null,
-    queue: [],
-    deps,
-  };
-
-  if (hasChanged) {
-    hook.effect = effect;
-  }
-
-  hook.cleanup = oldHook?.cleanup;
-
-  currentlyRenderingFiber.hooks!.push(hook);
-  hookIndex++;
-}
-
-// ===================================================================
-//
-//                     PHASE 1: RECONCILE (RENDER)
-//
-// ===================================================================
-
-function performUnitOfWork(fiber: Fiber): Fiber | null {
-  const isFunctionComponent = typeof fiber.vnode.factory === "function";
-
-  if (isFunctionComponent) {
-    currentlyRenderingFiber = fiber;
-    hookIndex = 0;
-    fiber.hooks = [];
-    try {
-      const Component = fiber.vnode.factory as ComponentFactory;
-      const children = [Component(fiber.vnode.props ?? {})];
-      reconcileChildren(fiber, children);
-    } finally {
-      currentlyRenderingFiber = null;
-    }
-  } else {
-    updateHostComponent(fiber);
-  }
-
-  // Return next unit of work
-  if (fiber.child) {
-    return fiber.child;
-  }
-  let nextFiber: Fiber | undefined = fiber;
-  while (nextFiber) {
-    if (nextFiber.sibling) {
-      return nextFiber.sibling;
-    }
-    nextFiber = nextFiber.parent;
-  }
-  return null;
-}
-
-function updateFunctionComponent(fiber: Fiber) {
-  // This function is now empty as its logic is moved to performUnitOfWork
-}
-
-function updateHostComponent(fiber: Fiber) {
-  if (!fiber._nativeElement) {
-    if (fiber.vnode.factory === "TEXT_ELEMENT") {
-      fiber._nativeElement = hostConfig!.createTextInstance(
-        fiber.vnode.props?.nodeValue ?? ""
-      );
-    } else {
-      let parentElement = fiber.parent;
-      while (parentElement && !parentElement._nativeElement) {
-        parentElement = parentElement.parent;
-      }
-      fiber._nativeElement = hostConfig!.createInstance(
-        fiber.vnode.factory as string,
-        fiber.vnode.props ?? {},
-        parentElement?._nativeElement ?? null
-      );
-    }
-  }
-  const children = fiber.vnode.props?.children || [];
-  reconcileChildren(fiber, children);
-}
-
-function reconcileChildren(wipFiber: Fiber, children: (VNode | string)[]) {
-  let index = 0;
-  let oldFiber = wipFiber.alternate?.child;
-  let prevSibling: Fiber | null = null;
-
-  while (index < children.length || oldFiber != null) {
-    const child = children[index];
-    let newFiber: Fiber | null = null;
-    const vnode =
-      typeof child === "string"
-        ? { factory: "TEXT_ELEMENT", props: { nodeValue: child, children: [] } }
-        : child;
-
-    const sameType =
-      oldFiber && vnode && vnode.factory === oldFiber.vnode.factory;
-
-    if (sameType && oldFiber && vnode) {
-      // Update
-      newFiber = {
-        vnode,
-        parent: wipFiber,
-        alternate: oldFiber,
-        _nativeElement: oldFiber._nativeElement,
-        effectTag: "UPDATE",
-        hooks: oldFiber.hooks,
-      };
-    }
-    if (vnode && !sameType) {
-      // Placement
-      newFiber = {
-        vnode,
-        parent: wipFiber,
-        effectTag: "PLACEMENT",
-        hooks: [],
-      };
-    }
-    if (oldFiber && !sameType) {
-      // Deletion
-      oldFiber.effectTag = "DELETION";
-      deletions!.push(oldFiber);
-    }
-
-    if (oldFiber) {
-      oldFiber = oldFiber.sibling;
-    }
-
-    if (index === 0) {
-      wipFiber.child = newFiber ?? undefined;
-    } else if (prevSibling) {
-      prevSibling.sibling = newFiber ?? undefined;
-    }
-
-    prevSibling = newFiber;
-    index++;
-  }
-}
-
-// ===================================================================
-//
-//                      PHASE 2: COMMIT
-//
-// ===================================================================
-
-function commitRoot(root: Fiber) {
-  deletions!.forEach(commitWork);
-  commitWork(root.child);
-  runEffects(root);
-  currentRoot = root;
-}
-
-function runEffects(fiber?: Fiber) {
-  if (!fiber) return;
-
-  if (fiber.effectTag === "UPDATE" || fiber.effectTag === "PLACEMENT") {
-    fiber.hooks?.forEach((hook) => {
-      if (hook.effect) {
-        const cleanup = hook.effect();
-        if (typeof cleanup === "function") {
-          hook.cleanup = cleanup;
-        }
-      }
-    });
-  }
-
-  runEffects(fiber.child);
-  runEffects(fiber.sibling);
-}
-
-function commitWork(fiber?: Fiber) {
-  if (!fiber) {
-    return;
-  }
-
-  let parentFiber = fiber.parent;
-  while (parentFiber && !parentFiber._nativeElement) {
-    parentFiber = parentFiber.parent;
-  }
-  const parentDom = parentFiber?._nativeElement;
-
-  if (fiber.effectTag === "PLACEMENT" && fiber._nativeElement) {
-    hostConfig!.appendChild(parentDom, fiber._nativeElement);
-  } else if (fiber.effectTag === "UPDATE" && fiber._nativeElement) {
-    hostConfig!.commitUpdate(
-      fiber._nativeElement,
-      fiber.alternate!.vnode.props ?? {},
-      fiber.vnode.props ?? {}
-    );
-  } else if (fiber.effectTag === "DELETION") {
-    commitDeletion(fiber);
-    return; // No need to commit children of a deleted fiber
-  }
-
-  commitWork(fiber.child);
-  commitWork(fiber.sibling);
-}
-
-function commitDeletion(fiber: Fiber) {
-  // Recurse on children first to clean them up.
-  let child = fiber.child;
-  while (child) {
-    commitDeletion(child);
-    child = child.sibling;
-  }
-
-  // Run cleanup effects for the current fiber.
-  if (fiber.hooks) {
-    fiber.hooks.forEach((hook) => hook.cleanup?.());
-  }
-
-  // Remove the DOM node if it exists.
-  if (fiber._nativeElement) {
-    let parentFiber = fiber.parent;
-    while (parentFiber && !parentFiber._nativeElement) {
-      parentFiber = parentFiber.parent;
-    }
-    const domParent = parentFiber?._nativeElement;
-    if (domParent) {
-      hostConfig!.removeChild(domParent, fiber._nativeElement);
-    }
-  }
-}
-
-// ===================================================================
-
-// A generic handle for an instance in the host environment (e.g., a DOM element)
-export type HostInstance = any;
-export type HostTextInstance = any;
-
-/**
- * The HostConfig interface is the bridge between the reconciler and the target
- * rendering environment (e.g., DOM, TUI, etc.). By implementing these methods,
- * you can "teach" the reconciler how to manage your specific host environment.
- */
-export interface HostConfig {
-  // Methods for creating instances in the host environment
-  createInstance(
-    type: string,
-    props: object,
-    parent: HostInstance | null
-  ): HostInstance;
-
-  // Methods for mutating the host tree
-  appendChild(
-    parent: HostInstance,
-    child: HostInstance | HostTextInstance
-  ): void;
-  removeChild(
-    parent: HostInstance,
-    child: HostInstance | HostTextInstance
-  ): void;
-  insertBefore(
-    parent: HostInstance,
-    child: HostInstance | HostTextInstance,
-    beforeChild: HostInstance | HostTextInstance
-  ): void;
-
-  // Methods for updating an instance's properties
-  commitUpdate(
-    instance: HostInstance,
-    oldProps: object,
-    newProps: object
-  ): void;
-
-  // New method for creating text instances
-  createTextInstance(nodeValue: string): HostTextInstance;
-}
-
-// ===================================================================
-
-// --- Event System ---
-
-function getEventHandlerName(eventName: string) {
-  return `on${eventName.charAt(0).toUpperCase()}${eventName.slice(1)}`;
-}
-
-export function dispatchEvent(
-  target: HostInstance,
-  eventName: string,
-  payload: any
-) {
-  const handlerName = getEventHandlerName(eventName);
-  let currentFiber = instanceToFiberMap.get(target);
-
-  while (currentFiber) {
-    const handler = currentFiber.vnode.props?.[handlerName];
-    if (typeof handler === "function") {
-      handler(payload);
-      return; // Stop propagation after first handler
-    }
-    currentFiber = currentFiber.parent;
-  }
-}
-
-/**
- * (For Testing Purposes Only)
- * Returns the number of times this reconciler module has been instantiated.
- * If this is greater than 1, it's a sign of a duplicate dependency issue.
- * @private
- */
-export function _getInstanceCount() {
-  return instanceCounter;
-}
-
-/**
- * (For Testing Purposes Only)
- * Resets the internal state of the reconciler.
- * @private
- */
-export function _reset() {
-  roots.clear();
-  instanceToFiberMap.clear();
-  workInProgressRoot = null;
-  currentRoot = null;
-  nextUnitOfWork = null;
-  deletions = null;
-  currentlyRenderingFiber = null;
-  hookIndex = 0;
-  hostConfig = null;
-  logger = null;
-  instanceCounter = 0;
+  workLoop();
 }

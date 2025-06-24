@@ -113,11 +113,17 @@ export function render(vnode: VNode | null, container: HTMLElement) {
   let root = roots.get(container);
 
   if (!root) {
+    let isUpdateQueued = false;
     const update = () => {
-      const currentRoot = roots.get(container);
-      if (currentRoot) {
-        tsmkRender(currentRoot.vnode, container, domHostConfig, update);
-      }
+      if (isUpdateQueued) return;
+      isUpdateQueued = true;
+      queueMicrotask(() => {
+        isUpdateQueued = false;
+        const currentRoot = roots.get(container);
+        if (currentRoot) {
+          tsmkRender(currentRoot.vnode, container, domHostConfig, update);
+        }
+      });
     };
     root = { vnode: vnodeToRender, update };
     roots.set(container, root);

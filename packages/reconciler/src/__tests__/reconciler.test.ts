@@ -1,4 +1,4 @@
-import { HostConfig, render, useState, useEffect, _reset } from "../index";
+import { HostConfig, render, useState, useEffect } from "../index";
 import { VNode, ComponentFactory } from "@tsmk/kernel";
 
 let mockHostConfig: jest.Mocked<HostConfig>;
@@ -6,32 +6,27 @@ let rootContainer: any;
 
 beforeEach(() => {
   mockHostConfig = {
-    createInstance: jest.fn((type, props, parent) => ({
+    createInstance: jest.fn((type, props) => ({
       type,
       props,
       children: [],
     })),
     createTextInstance: jest.fn((text) => ({
-      nodeValue: text,
+      text,
     })),
     appendChild: jest.fn(),
     removeChild: jest.fn(),
+    commitTextUpdate: jest.fn(),
     commitUpdate: jest.fn(),
-    insertBefore: jest.fn(),
   };
   rootContainer = { type: "ROOT", props: {}, children: [] };
-  _reset(); // Reset reconciler state before each test
 });
 
 describe("Reconciler", () => {
   it("should render a single node", () => {
     const node = { factory: "div", props: {} };
     render(node, rootContainer, mockHostConfig, jest.fn());
-    expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
-      "div",
-      {},
-      rootContainer
-    );
+    expect(mockHostConfig.createInstance).toHaveBeenCalledWith("div", {});
     expect(mockHostConfig.appendChild).toHaveBeenCalled();
   });
 
@@ -44,32 +39,24 @@ describe("Reconciler", () => {
     const divInstance = mockHostConfig.createInstance.mock.results[0].value;
     expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
       "div",
-      expect.any(Object),
-      rootContainer
+      expect.any(Object)
     );
-    expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
-      "span",
-      {},
-      divInstance
-    );
+    expect(mockHostConfig.createInstance).toHaveBeenCalledWith("span", {});
     expect(mockHostConfig.appendChild).toHaveBeenCalledTimes(2);
   });
 
   it("should update a node's props", () => {
     const initialNode = { factory: "div", props: { id: "initial" } };
     render(initialNode, rootContainer, mockHostConfig, jest.fn());
-    expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
-      "div",
-      {
-        id: "initial",
-      },
-      rootContainer
-    );
+    expect(mockHostConfig.createInstance).toHaveBeenCalledWith("div", {
+      id: "initial",
+    });
 
     const updatedNode = { factory: "div", props: { id: "updated" } };
     render(updatedNode, rootContainer, mockHostConfig, jest.fn());
     expect(mockHostConfig.commitUpdate).toHaveBeenCalledWith(
       expect.any(Object),
+      { id: "initial" },
       {
         id: "updated",
       }
@@ -119,13 +106,9 @@ describe("Reconciler", () => {
     });
     const node = { factory: Component, props: { name: "World" } };
     render(node, rootContainer, mockHostConfig, jest.fn());
-    expect(mockHostConfig.createInstance).toHaveBeenCalledWith(
-      "h1",
-      {
-        children: ["Hello, World"],
-      },
-      rootContainer
-    );
+    expect(mockHostConfig.createInstance).toHaveBeenCalledWith("h1", {
+      children: ["Hello, World"],
+    });
   });
 
   it("should unmount a functional component and trigger cleanup", () => {
@@ -161,9 +144,13 @@ describe("Reconciler", () => {
 
     const updatedNode = { factory: Component, props: { count: 2 } };
     render(updatedNode, rootContainer, mockHostConfig, jest.fn());
-    expect(mockHostConfig.commitUpdate).toHaveBeenCalledWith(p, {
-      children: ["Count: 2"],
-    });
+    expect(mockHostConfig.commitUpdate).toHaveBeenCalledWith(
+      p,
+      { children: ["Count: 1"] },
+      {
+        children: ["Count: 2"],
+      }
+    );
   });
 
   it("should handle nested functional components and their effects", () => {
