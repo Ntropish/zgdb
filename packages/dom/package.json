@@ -1,5 +1,5 @@
 {
-  "name": "@tsmk/kernel",
+  "name": "@tsmk/dom",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
