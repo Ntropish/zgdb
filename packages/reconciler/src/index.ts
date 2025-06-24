@@ -73,9 +73,6 @@ export function render(
   hostConfig = config;
   scheduleUpdate = updateCallback;
 
-  const currentRoot =
-    workInProgressRoot?.container === container ? workInProgressRoot : null;
-
   const newVNode = vnode
     ? { factory: "ROOT", props: { children: [vnode] } }
     : { factory: "ROOT", props: { children: [] } };
@@ -109,10 +106,10 @@ export function useState<T>(initialState: T): [T, (newState: T) => void] {
   const oldHook = currentlyRenderingFiber.alternate?.hooks?.[hookIndex];
   const hook: Hook = {
     state: oldHook ? oldHook.state : initialState,
-    queue: [],
+    queue: oldHook ? oldHook.queue : [],
   };
 
-  const actions = oldHook ? oldHook.queue : [];
+  const actions = hook.queue;
   actions.forEach((action) => {
     hook.state =
       typeof action === "function" ? (action as any)(hook.state) : action;
