@@ -336,31 +336,28 @@ function commitWork(fiber?: Fiber) {
 }
 
 function commitDeletion(fiber: Fiber) {
-  let parentFiber = fiber.parent;
-  while (parentFiber && !parentFiber._nativeElement) {
-    parentFiber = parentFiber.parent;
-  }
-  const domParent = parentFiber!._nativeElement;
-  commitDeletionRecursive(fiber, domParent);
-}
-
-function commitDeletionRecursive(fiber: Fiber, domParent: HostInstance) {
-  if (fiber._nativeElement) {
-    hostConfig!.removeChild(domParent, fiber._nativeElement);
-  } else {
-    if (fiber.child) {
-      commitDeletionRecursive(fiber.child, domParent);
-    }
+  // Recurse on children first to clean them up.
+  let child = fiber.child;
+  while (child) {
+    commitDeletion(child);
+    child = child.sibling;
   }
 
-  // Also process siblings
-  if (fiber.sibling) {
-    commitDeletionRecursive(fiber.sibling, domParent);
-  }
-
-  // Run effect cleanups
-  if (fiber.effectTag === "DELETION" && fiber.hooks) {
+  // Run cleanup effects for the current fiber.
+  if (fiber.hooks) {
     fiber.hooks.forEach((hook) => hook.cleanup?.());
+  }
+
+  // Remove the DOM node if it exists.
+  if (fiber._nativeElement) {
+    let parentFiber = fiber.parent;
+    while (parentFiber && !parentFiber._nativeElement) {
+      parentFiber = parentFiber.parent;
+    }
+    const domParent = parentFiber?._nativeElement;
+    if (domParent) {
+      hostConfig!.removeChild(domParent, fiber._nativeElement);
+    }
   }
 }
 
