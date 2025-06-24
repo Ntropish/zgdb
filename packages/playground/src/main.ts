@@ -1,5 +1,4 @@
-import { l, render } from "@tsmk/loom";
-import { useState } from "@tsmk/reconciler";
+import { l, render, useState } from "@tsmk/loom";
 
 const Counter = () => {
   const [count, setCount] = useState(0);

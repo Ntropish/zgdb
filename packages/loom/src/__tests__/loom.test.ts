@@ -1,5 +1,5 @@
 import { render, l } from "..";
-import { _reset as resetReconciler } from "@tsmk/reconciler";
+import { _reset as resetReconciler, useState } from "@tsmk/reconciler";
 
 describe("Loom DOM Renderer", () => {
   let container: HTMLElement;
@@ -118,5 +118,29 @@ describe("Loom DOM Renderer", () => {
     expect(inputs[1].disabled).toBe(false);
     expect(inputs[2].checked).toBe(true);
     expect(inputs[3].checked).toBe(false);
+  });
+
+  it("should handle state changes with useState", async () => {
+    const Component = () => {
+      const [count, setCount] = useState(0);
+      return l.div(
+        { "data-testid": "container" },
+        l.button({ onclick: () => setCount(count + 1) }, `Count: ${count}`)
+      );
+    };
+
+    render(l(Component), container);
+
+    let button = container.querySelector("button");
+    expect(button?.textContent).toBe("Count: 0");
+
+    // Simulate a click
+    button?.click();
+
+    // Wait for the re-render
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    button = container.querySelector("button");
+    expect(button?.textContent).toBe("Count: 1");
   });
 });

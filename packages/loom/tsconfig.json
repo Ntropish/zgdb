@@ -3,5 +3,5 @@
   "compilerOptions": {
     "outDir": "./dist"
   },
-  "include": ["src", "../dom/example.ts", "../dom/my-example.component.ts"]
+  "include": ["src"]
 }
