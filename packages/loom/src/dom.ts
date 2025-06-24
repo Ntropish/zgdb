@@ -11,7 +11,7 @@ const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 function setAttribute(el: Element, key: string, value: any) {
   if (key.startsWith("on")) {
     const eventName = key.slice(2).toLowerCase();
-    el.addEventListener(eventName, value);
+    (el as any)[`on${eventName}`] = value;
   } else if (typeof value === "boolean") {
     if (value) {
       el.setAttribute(key, "");
@@ -77,7 +77,8 @@ const domHostConfig: HostConfig = {
         key.startsWith("on") &&
         (oldProps[key] !== newProps[key] || !(key in newProps))
       ) {
-        (el as any)[key.toLowerCase()] = null;
+        const eventName = key.slice(2).toLowerCase();
+        (el as any)[`on${eventName}`] = null;
       }
     }
 

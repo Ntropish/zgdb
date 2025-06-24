@@ -114,10 +114,11 @@ export function useState<T>(initialState: T): [T, (newState: T) => void] {
 
   const actions = oldHook ? oldHook.queue : [];
   actions.forEach((action) => {
-    hook.state = action(hook.state);
+    hook.state =
+      typeof action === "function" ? (action as any)(hook.state) : action;
   });
 
-  const setState = (action: (prevState: T) => T) => {
+  const setState = (action: T | ((prevState: T) => T)) => {
     hook.queue.push(action);
     if (scheduleUpdate) {
       scheduleUpdate();
@@ -126,7 +127,7 @@ export function useState<T>(initialState: T): [T, (newState: T) => void] {
 
   currentlyRenderingFiber.hooks!.push(hook);
   hookIndex++;
-  return [hook.state, (newState: T) => setState(() => newState)];
+  return [hook.state, setState];
 }
 
 export function use<T>(signal: {
