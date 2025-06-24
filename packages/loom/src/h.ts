@@ -1,4 +1,30 @@
-import { VNode } from "@tsmk/kernel";
+import { VNode, AnyComponentFactory } from "@tsmk/kernel";
+
+type Children =
+  | (VNode | string | boolean | undefined | null | (VNode | string)[])[]
+  | VNode
+  | string;
+
+function createVNode(
+  factory: AnyComponentFactory<any> | string,
+  props?: Record<string, any>,
+  children?: Children
+): VNode {
+  return {
+    factory,
+    props: {
+      ...props,
+      children: Array.isArray(children)
+        ? (children.flat().filter((c) => c != null && c !== false) as (
+            | VNode
+            | string
+          )[])
+        : children
+        ? [children]
+        : [],
+    },
+  };
+}
 
 /**
  * The hyperscript factory function returned for each tag.
@@ -6,47 +32,38 @@ import { VNode } from "@tsmk/kernel";
  */
 type HyperscriptFactory = (
   props?: Record<string, any>,
-  children?:
-    | (VNode | string | boolean | undefined | null | (VNode | string)[])[]
-    | VNode
-    | string
+  children?: Children
 ) => VNode;
 
-/**
- * A type that represents the h proxy, allowing access to any
- * property, which will in turn return a HyperscriptFactory.
- */
-type H = {
+export interface HProxy {
+  (
+    factory: AnyComponentFactory<any> | string,
+    props?: Record<string, any>,
+    children?: Children
+  ): VNode;
   [tag: string]: HyperscriptFactory;
-};
+}
 
-const handler: ProxyHandler<H> = {
+const handler: ProxyHandler<any> = {
   get(_target, tag: string): HyperscriptFactory {
-    // For any property access (e.g., h.div), return a function
-    // that creates a VNode with that tag as its type.
-    return (
-      props?: Record<string, any>,
-      children?:
-        | (VNode | string | boolean | undefined | null | (VNode | string)[])[]
-        | VNode
-        | string
-    ): VNode => {
-      return {
-        factory: tag,
-        props: {
-          ...props,
-          children: Array.isArray(children)
-            ? (children.flat().filter((c) => c != null && c !== false) as (
-                | VNode
-                | string
-              )[])
-            : children
-            ? [children]
-            : [],
-        },
-      };
+    // For h.div, h.span, etc.
+    return (props?: Record<string, any>, children?: Children): VNode => {
+      return createVNode(tag, props, children);
     };
+  },
+  apply(
+    _target,
+    _thisArg,
+    [factory, props, children]: [
+      AnyComponentFactory<any> | string,
+      Record<string, any>?,
+      Children?
+    ]
+  ): VNode {
+    // for h(Component, props, children)
+    return createVNode(factory, props, children);
   },
 };
 
-export const h = new Proxy<H>({} as H, handler);
+const hTarget = () => {}; // dummy function target
+export const h = new Proxy(hTarget, handler) as HProxy;

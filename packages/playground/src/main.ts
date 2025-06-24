@@ -16,12 +16,12 @@ const App = () => {
   return l.div({ style: "text-align: center; margin-top: 2rem;" }, [
     l.h1({}, "Hello, Loom with Vite!"),
     l.p({}, "This is a simple playground to test Loom components."),
-    Counter(),
+    { factory: Counter, props: {} },
   ]);
 };
 
 const rootElement = document.getElementById("root");
 
 if (rootElement) {
-  render(App(), rootElement);
+  render({ factory: App, props: {} }, rootElement);
 }
