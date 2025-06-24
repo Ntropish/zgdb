@@ -53,6 +53,11 @@ let scheduleUpdate: (() => void) | null = null;
 const roots = new Map<HostInstance, Fiber>();
 const instanceToFiberMap = new Map<HostInstance, Fiber>();
 
+// A simple counter to detect multiple instances of the reconciler.
+// This is a common source of bugs in hook-based systems.
+let instanceCounter = 0;
+instanceCounter++;
+
 // ===================================================================
 //
 //                        PUBLIC API
@@ -435,6 +440,16 @@ export function dispatchEvent(
 
 /**
  * (For Testing Purposes Only)
+ * Returns the number of times this reconciler module has been instantiated.
+ * If this is greater than 1, it's a sign of a duplicate dependency issue.
+ * @private
+ */
+export function _getInstanceCount() {
+  return instanceCounter;
+}
+
+/**
+ * (For Testing Purposes Only)
  * Resets the internal state of the reconciler.
  * @private
  */
@@ -449,4 +464,5 @@ export function _reset() {
   hookIndex = 0;
   hostConfig = null;
   logger = null;
+  instanceCounter = 0;
 }
