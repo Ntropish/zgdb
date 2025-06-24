@@ -143,4 +143,30 @@ describe("Loom DOM Renderer", () => {
     button = container.querySelector("button");
     expect(button?.textContent).toBe("Count: 1");
   });
+
+  it("should handle multiple state updates from the same element", async () => {
+    const Component = () => {
+      const [count, setCount] = useState(0);
+      return l.button(
+        { onclick: () => setCount(count + 1) },
+        `Count: ${count}`
+      );
+    };
+    render(l(Component), container);
+
+    let button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.textContent).toBe("Count: 0");
+
+    // First click
+    button.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.textContent).toBe("Count: 1");
+
+    // Second click
+    button.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.textContent).toBe("Count: 2");
+  });
 });

@@ -112,9 +112,7 @@ export function render(vnode: VNode | null, container: HTMLElement) {
   const vnodeToRender = vnode || { factory: Empty, props: {} };
   let root = roots.get(container);
 
-  if (root) {
-    root.vnode = vnodeToRender;
-  } else {
+  if (!root) {
     const update = () => {
       const currentRoot = roots.get(container);
       if (currentRoot) {
@@ -123,6 +121,8 @@ export function render(vnode: VNode | null, container: HTMLElement) {
     };
     root = { vnode: vnodeToRender, update };
     roots.set(container, root);
+  } else {
+    root.vnode = vnodeToRender;
   }
 
   root.update();
