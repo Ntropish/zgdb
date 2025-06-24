@@ -1,0 +1,19 @@
+{
+  "name": "@tsmk/playground",
+  "private": true,
+  "version": "1.0.0",
+  "main": "src/main.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tsmk/loom": "workspace:*",
+    "@tsmk/reconciler": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  }
+}
