@@ -57,7 +57,7 @@ export type CapabilityMap<TProduct> = {
  * Creates a new builder instance, configured with a set of available capabilities.
  * The builder is used to assemble a build process by applying these capabilities.
  */
-export function createBuilder<TProduct extends object>(
+export function createBuilder<TProduct extends object, TApplyReturnType = any>(
   capabilities: CapabilityMap<TProduct>
 ) {
   const steps: Step<TProduct>[] = [];
@@ -70,7 +70,7 @@ export function createBuilder<TProduct extends object>(
         throw new Error(`Capability "${String(capabilityName)}" not found.`);
       }
 
-      const result = capability.apply?.(...args);
+      const result: TApplyReturnType = capability.apply?.(...args);
 
       if (capability.build) {
         steps.push((product: TProduct) =>
