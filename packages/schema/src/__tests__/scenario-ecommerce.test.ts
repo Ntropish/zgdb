@@ -23,7 +23,7 @@ describe("E-commerce Order Processing Scenario", () => {
   });
 
   const ProductSchema = s.object({
-    id: s(s.string, s.cuid2),
+    id: s(s.string, s.cuid2, s.max(2)),
     name: s(s.string, s.minLength(3)),
     description: s.string,
     price: s(s.number, s.positive()),

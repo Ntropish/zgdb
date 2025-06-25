@@ -38,16 +38,16 @@ import { tuple as createTupleStep } from "./validators/tuple";
 // A private registry to hold the validation steps for each schema
 // created by the `s` factory. This allows for composition without
 // polluting the kernel interface itself.
-const schemaSteps = new WeakMap<Schema<any, any>, ValidationStep[]>();
+// const schemaSteps = new WeakMap<Schema<any, any>, ValidationStep[]>();
 
 /**
  * An internal helper to build a kernel and register its steps.
  */
 function buildSchema<TInput, TOutput>(
-  steps: ValidationStep[]
+  steps: ValidationStep<TInput, TOutput>[]
 ): Schema<TInput, TOutput> {
   const kernel = createSchema<TOutput>(steps) as Schema<TInput, TOutput>;
-  schemaSteps.set(kernel, steps);
+  // schemaSteps.set(kernel, steps);
 
   kernel.optional = () => {
     const newSteps: ValidationStep[] = [

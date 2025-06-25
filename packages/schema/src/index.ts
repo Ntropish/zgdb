@@ -1,9 +1,4 @@
-import {
-  Orchestrator,
-  Reactor,
-  StepHandler,
-  PipelineContext,
-} from "@tsmk/kernel";
+import EE from "eventemitter3";
 
 export type Schema<TInput, TOutput> = Reactor.Kernel<
   SchemaContextMap<TOutput>
@@ -51,17 +46,17 @@ export type ValidationIssue = {
 /**
  * The internal context object that is passed through the validation pipeline.
  */
-export interface ValidationPipelineContext extends PipelineContext {
-  value: unknown;
+export interface ValidationPipelineContext<I, O> extends PipelineContext {
+  value: I;
   issues: ValidationIssue[];
   path: (string | number)[];
-  output: any;
+  output: O;
 }
 
 /**
  * A Validation Step is a step in an Orchestrator pipeline.
  */
-export type ValidationStep = StepHandler<ValidationPipelineContext>;
+export type ValidationStep<I, O> = StepHandler<ValidationPipelineContext<I, O>>;
 
 /**
  * The result of a safe validation attempt.
@@ -103,8 +98,12 @@ export type SchemaContextMap<T> = {
  * @param steps An array of Orchestrator step handlers that perform validation.
  * @returns A new, pure Reactor.Kernel configured to handle validation events.
  */
-export function createSchema<TOutput = unknown>(
-  steps: ValidationStep[]
+export function createSchema<TInput, TOutput>(
+  steps: [
+    ValidationStep<TInput, any>,
+    ...ValidationStep<any, any>[],
+    ValidationStep<any, TOutput>
+  ]
 ): Reactor.Kernel<SchemaContextMap<TOutput>> {
   const validationPipeline = Orchestrator.create(steps);
 
@@ -112,7 +111,7 @@ export function createSchema<TOutput = unknown>(
     eventMap: {
       safeValidate: [
         async (ctx) => {
-          const pipelineCtx: ValidationPipelineContext = {
+          const pipelineCtx: ValidationPipelineContext<any, any> = {
             value: ctx.value,
             issues: [],
             path: [],
