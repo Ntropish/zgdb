@@ -64,4 +64,9 @@ export class Identity {
 
     return new Identity(privateKey, did);
   }
+
+  public async sign(data: Uint8Array): Promise<Uint8Array> {
+    const ed = await edPromise;
+    return ed.sign(data, this.privateKey);
+  }
 }

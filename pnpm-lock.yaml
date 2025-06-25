@@ -107,6 +107,9 @@ importers:
       '@noble/hashes':
         specifier: ^1.8.0
         version: 1.8.0
+      '@tsmk/builder':
+        specifier: workspace:*
+        version: link:../builder
       multiformats:
         specifier: ^13.3.7
         version: 13.3.7
