@@ -29,7 +29,7 @@ const testCapabilities: CapabilityMap<TestProduct> = {
 // Test createBuilder and its return value
 const builder: {
   apply: (capabilityName: "test" | "other", ...args: any[]) => any;
-  build: (product: TestProduct) => Promise<void>;
+  build: (product: TestProduct) => Promise<TestProduct>;
 } = createBuilder(testCapabilities);
 
 // Test apply method
@@ -37,7 +37,7 @@ builder.apply("test", "1.0.0");
 
 // Test getPipeline return value
 const result = builder.build({ version: "", steps: [] });
-expectType<Promise<void>>(result);
+expectType<Promise<TestProduct>>(result);
 
 // @ts-expect-error - 'invalid' is not a valid capability name.
 builder.apply("invalid");
