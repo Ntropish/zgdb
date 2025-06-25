@@ -1,4 +1,4 @@
-import { createBuilder, CapabilityMap, BuilderPipeline } from "./index";
+import { createBuilder, CapabilityMap } from "./index";
 
 /**
  * A marker interface for a fluent, chainable builder.
@@ -10,7 +10,7 @@ import { createBuilder, CapabilityMap, BuilderPipeline } from "./index";
  */
 export interface FluentBuilder<TProduct extends object> {
   [key: string]: ((...args: any[]) => this) | any;
-  getPipeline(): BuilderPipeline<TProduct>;
+  build(product: TProduct): Promise<TProduct>;
 }
 
 // Internal function to wrap a core builder instance in a fluent proxy.
@@ -19,8 +19,8 @@ function createFluentProxy<TProduct extends object>(
 ): FluentBuilder<TProduct> {
   return new Proxy(builder, {
     get(target, prop, receiver) {
-      if (prop === "getPipeline") {
-        return target.getPipeline;
+      if (prop === "build") {
+        return target.build;
       }
 
       return (...args: any[]) => {

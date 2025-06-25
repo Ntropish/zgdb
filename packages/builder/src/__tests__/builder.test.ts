@@ -1,4 +1,4 @@
-import { CapabilityMap, createBuilder } from "../";
+import { createBuilder } from "../";
 import { createFluentBuilder, FluentBuilder } from "../fluent";
 
 interface TestProduct {
@@ -6,18 +6,18 @@ interface TestProduct {
   steps: string[];
 }
 
-const testCapabilities: CapabilityMap<TestProduct> = {
+const testCapabilities = {
   test: {
     apply: (version: string) => {
       return `version-${version}`;
     },
-    build: (product, applyReturn, version) => {
+    build: (product: TestProduct, applyReturn: string, version: string) => {
       product.version = applyReturn;
       product.steps.push(`test-v${version}`);
     },
   },
   other: {
-    build: (product) => {
+    build: (product: TestProduct) => {
       product.steps.push("other");
     },
   },
@@ -25,19 +25,12 @@ const testCapabilities: CapabilityMap<TestProduct> = {
 
 describe("Builder", () => {
   it("should create a build orchestrator from a map of capabilities", async () => {
-    const builder = createBuilder(testCapabilities);
+    const builder = createBuilder<TestProduct>(testCapabilities);
 
     builder.apply("test", "1.0.0");
     builder.apply("other");
 
-    const pipeline = builder.getPipeline();
-
-    const product: TestProduct = {
-      version: "0.0.0",
-      steps: [],
-    };
-
-    await pipeline.run(product);
+    const product = await builder.build({ version: "0.0.0", steps: [] });
 
     expect(product.version).toBe("version-1.0.0");
     expect(product.steps).toEqual(["test-v1.0.0", "other"]);
@@ -50,41 +43,37 @@ describe("Builder", () => {
       features: string[];
     }
 
+    const subCapabilities = {
+      setConfig: {
+        build: (product: SubProduct) => {
+          product.config = "sub-config-set";
+        },
+      },
+      addFeature: {
+        build: (product: SubProduct, _: any, featureName: string) => {
+          product.features.push(featureName);
+        },
+      },
+    };
+
     // 2. Define the main product and a capability that creates/returns the sub-builder
     interface MainProduct {
       name: string;
       sub: SubProduct | null;
     }
-    const mainCapabilities: CapabilityMap<MainProduct> = {
+    const mainCapabilities = {
       useSubBuilder: {
-        apply: () =>
-          createBuilder<SubProduct>({
-            setConfig: {
-              build: (product) => {
-                product.config = product.config;
-              },
-            },
-            addFeature: {
-              build: (product, _, featureName: string) => {
-                product.features.push(featureName);
-              },
-            },
-          }),
-        build: async (product, applyReturn) => {
-          const subBuilder = applyReturn;
-          const subKernel = subBuilder.getPipeline();
-          const subProduct: SubProduct = {
-            config: "",
-            features: ["omega-star", "glaring-eyes"],
-          };
-          await subKernel.run(subProduct);
+        apply: () => createBuilder(subCapabilities),
+        build: async (product: MainProduct, subBuilder: any) => {
+          const subProduct: SubProduct = { config: "", features: [] };
+          await subBuilder.build(subProduct);
           product.sub = subProduct;
         },
       },
     };
 
     // 3. Create the main builder and get the sub-builder from its apply hook
-    const mainBuilder = createBuilder(mainCapabilities);
+    const mainBuilder = createBuilder<MainProduct>(mainCapabilities);
     const subBuilder = mainBuilder.apply("useSubBuilder");
 
     // 4. Apply capabilities to the sub-builder
@@ -93,20 +82,15 @@ describe("Builder", () => {
     subBuilder.apply("addFeature", "cool-feature-2");
 
     // 5. Get the final pipeline and run it
-    const pipeline = mainBuilder.getPipeline();
-    const finalProduct: MainProduct = {
+    const product = await mainBuilder.build({
       name: "main-product",
       sub: null,
-    };
-    await pipeline.run(finalProduct);
+    });
 
     // 6. Assert that the sub-builder ran with its applied capabilities
-    expect(finalProduct.sub).not.toBeNull();
-    expect(finalProduct.sub?.config).toBe("sub-config-set");
-    expect(finalProduct.sub?.features).toEqual([
-      "cool-feature-1",
-      "cool-feature-2",
-    ]);
+    expect(product.sub).not.toBeNull();
+    expect(product.sub?.config).toBe("sub-config-set");
+    expect(product.sub?.features).toEqual(["cool-feature-1", "cool-feature-2"]);
   });
 
   it("should support recursive builders for tree-like structures", async () => {
@@ -117,7 +101,7 @@ describe("Builder", () => {
     }
 
     // 2. Define the capabilities for the node builder
-    const nodeCapabilities: CapabilityMap<TreeNode> = {
+    const nodeCapabilities = {
       // This capability adds a child node and returns a builder for that child
       addChild: {
         apply: (name: string) => {
@@ -127,23 +111,22 @@ describe("Builder", () => {
           childBuilder.apply("setName", name);
           return childBuilder;
         },
-        build: async (product, childBuilder) => {
-          const childPipeline = childBuilder.getPipeline();
+        build: async (product: TreeNode, childBuilder: any) => {
           const childNode: TreeNode = { name: "", children: [] };
-          await childPipeline.run(childNode);
+          await childBuilder.build(childNode);
           product.children.push(childNode);
         },
       },
       // This capability sets the name of the current node
       setName: {
-        build: (product, _, name: string) => {
+        build: (product: TreeNode, _: any, name: string) => {
           product.name = name;
         },
       },
     };
 
     // 3. Build a tree using the recursive capabilities
-    const rootBuilder = createBuilder(nodeCapabilities);
+    const rootBuilder = createBuilder<TreeNode>(nodeCapabilities);
     rootBuilder.apply("setName", "root");
 
     const child1Builder = rootBuilder.apply("addChild", "child1");
@@ -153,18 +136,16 @@ describe("Builder", () => {
     child1Builder.apply("addChild", "grandchild1");
 
     // 4. Get the final pipeline and run it
-    const pipeline = rootBuilder.getPipeline();
-    const finalTree: TreeNode = { name: "", children: [] };
-    await pipeline.run(finalTree);
+    const product = await rootBuilder.build({ name: "", children: [] });
 
     // 5. Assert the final structure of the tree
-    expect(finalTree.name).toBe("root");
-    expect(finalTree.children.length).toBe(2);
-    expect(finalTree.children[0].name).toBe("child1");
-    expect(finalTree.children[0].children.length).toBe(1);
-    expect(finalTree.children[0].children[0].name).toBe("grandchild1");
-    expect(finalTree.children[1].name).toBe("child2");
-    expect(finalTree.children[1].children.length).toBe(0);
+    expect(product.name).toBe("root");
+    expect(product.children.length).toBe(2);
+    expect(product.children[0].name).toBe("child1");
+    expect(product.children[0].children.length).toBe(1);
+    expect(product.children[0].children[0].name).toBe("grandchild1");
+    expect(product.children[1].name).toBe("child2");
+    expect(product.children[1].children.length).toBe(0);
   });
 
   it("should support a recursive HTML builder", async () => {
@@ -177,29 +158,28 @@ describe("Builder", () => {
     }
 
     // 2. Define the capabilities for the HTML builder
-    const htmlCapabilities: CapabilityMap<HtmlElement> = {
+    const htmlCapabilities = {
       element: {
         apply: (tag: string, attributes: Record<string, string> = {}) => {
           const subBuilder = createBuilder(htmlCapabilities);
           subBuilder.apply("init", tag, attributes);
           return subBuilder;
         },
-        build: async (product, childBuilder) => {
-          const childPipeline = childBuilder.getPipeline();
+        build: async (product: HtmlElement, childBuilder: any) => {
           const childElement: HtmlElement = createHtmlElement();
-          await childPipeline.run(childElement);
+          await childBuilder.build(childElement);
           product.children.push(childElement);
         },
       },
       text: {
-        build: (product, _, content: string) => {
+        build: (product: HtmlElement, _: any, content: string) => {
           product.children.push(content);
         },
       },
       init: {
         build: (
-          product,
-          _,
+          product: HtmlElement,
+          _: any,
           tag: string,
           attributes: Record<string, string> = {}
         ) => {
@@ -231,7 +211,7 @@ describe("Builder", () => {
     });
 
     // 3. Build an HTML tree declaratively using a fluent, chained API
-    const rootBuilder = createBuilder(htmlCapabilities);
+    const rootBuilder = createBuilder<HtmlElement>(htmlCapabilities);
 
     rootBuilder
       .apply("init", "html", {})
@@ -241,14 +221,12 @@ describe("Builder", () => {
       .apply("text", "Hello, Builder!");
 
     // 4. Get the final pipeline and run it
-    const pipeline = rootBuilder.getPipeline();
-    const finalProduct = createHtmlElement();
-    await pipeline.run(finalProduct);
+    const product = await rootBuilder.build(createHtmlElement());
 
     // 5. Assert the final rendered HTML string
     const expected =
       '<html><body><div id="main"><p class="greeting">Hello, Builder!</p></div></body></html>';
-    expect(finalProduct.render()).toEqual(expected);
+    expect(product.render()).toEqual(expected);
   });
 
   it("should provide a fluent, proxy-based API for a recursive builder", async () => {
@@ -261,26 +239,25 @@ describe("Builder", () => {
     }
 
     // 2. Define the capabilities for the HTML builder
-    const htmlCapabilities: CapabilityMap<HtmlElement> = {
+    const htmlCapabilities = {
       element: {
         apply: (tag: string, attributes: Record<string, string> = {}) =>
           createBuilder(htmlCapabilities).apply("init", tag, attributes),
-        build: async (product, childBuilder) => {
-          const childPipeline = childBuilder.getPipeline();
+        build: async (product: HtmlElement, childBuilder: any) => {
           const childElement = createHtmlElement();
-          await childPipeline.run(childElement);
+          await childBuilder.build(childElement);
           product.children.push(childElement);
         },
       },
       text: {
-        build: (product, _, content: string) => {
+        build: (product: HtmlElement, _: any, content: string) => {
           product.children.push(content);
         },
       },
       init: {
         build: (
-          product,
-          _,
+          product: HtmlElement,
+          _: any,
           tag: string,
           attributes: Record<string, string> = {}
         ) => {
@@ -321,13 +298,11 @@ describe("Builder", () => {
     pBuilder.text("Hello, Fluent Builder!");
 
     // 4. Get the final pipeline and run it
-    const pipeline = builder.getPipeline();
-    const finalProduct = createHtmlElement();
-    await pipeline.run(finalProduct);
+    const product = await builder.build(createHtmlElement());
 
     // 5. Assert the final rendered HTML string
     const expected =
       '<html><body><div id="main"><p class="greeting">Hello, Fluent Builder!</p></div></body></html>';
-    expect(finalProduct.render()).toEqual(expected);
+    expect(product.render()).toEqual(expected);
   });
 });

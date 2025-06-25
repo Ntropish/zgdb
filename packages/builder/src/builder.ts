@@ -1,10 +1,13 @@
-//
-// The types that were previously imported from "@tsmk/kernel" are now defined locally.
-//
-export type BuilderPipeline<TProduct> = {
-  run: (product: TProduct) => Promise<void>;
-};
+/**
+ * A function that executes a series of build steps on a product.
+ */
+export type BuilderPipeline<TProduct> = (
+  product: TProduct
+) => Promise<TProduct>;
 
+/**
+ * A single step in a build process.
+ */
 type Step<TProduct> = (product: TProduct) => void | Promise<void>;
 
 /**
@@ -59,10 +62,10 @@ export function createBuilder<TProduct extends object>(
 ) {
   const steps: Step<TProduct>[] = [];
 
-  return {
+  const builder = {
     capabilities,
     apply(capabilityName: keyof typeof capabilities, ...args: any[]): any {
-      const capability = this.capabilities[capabilityName];
+      const capability = capabilities[capabilityName];
       if (!capability) {
         throw new Error(`Capability "${String(capabilityName)}" not found.`);
       }
@@ -70,27 +73,20 @@ export function createBuilder<TProduct extends object>(
       const result = capability.apply?.(...args);
 
       if (capability.build) {
-        if (result) {
-          steps.push((product: TProduct) =>
-            capability.build!(product, result, ...args)
-          );
-        } else {
-          steps.push((product: TProduct) =>
-            capability.build!(product, this, ...args)
-          );
-        }
+        steps.push((product: TProduct) =>
+          (capability.build as any)?.(product, result, ...args)
+        );
       }
 
-      return result ?? this;
+      return result ?? builder;
     },
-    getPipeline(): BuilderPipeline<TProduct> {
-      return {
-        async run(product: TProduct) {
-          for (const step of steps) {
-            await step(product);
-          }
-        },
-      };
+    async build(product: TProduct): Promise<TProduct> {
+      for (const step of steps) {
+        await step(product);
+      }
+      return product;
     },
   };
+
+  return builder;
 }

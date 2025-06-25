@@ -1,10 +1,5 @@
 import { expectType } from "tsd";
-import {
-  createBuilder,
-  BuilderCapability,
-  CapabilityMap,
-  BuilderPipeline,
-} from "./index";
+import { createBuilder, BuilderCapability, CapabilityMap } from "./index";
 
 // Define a product type
 interface TestProduct {
@@ -34,15 +29,15 @@ const testCapabilities: CapabilityMap<TestProduct> = {
 // Test createBuilder and its return value
 const builder: {
   apply: (capabilityName: "test" | "other", ...args: any[]) => any;
-  getPipeline: () => BuilderPipeline<TestProduct>;
+  build: (product: TestProduct) => Promise<void>;
 } = createBuilder(testCapabilities);
 
 // Test apply method
 builder.apply("test", "1.0.0");
 
 // Test getPipeline return value
-const kernel = builder.getPipeline();
-expectType<BuilderPipeline<TestProduct>>(kernel);
+const result = builder.build({ version: "", steps: [] });
+expectType<Promise<void>>(result);
 
 // @ts-expect-error - 'invalid' is not a valid capability name.
 builder.apply("invalid");
