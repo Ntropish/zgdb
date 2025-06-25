@@ -125,4 +125,34 @@ describe("Schema Parser", () => {
       },
     ]);
   });
+
+  it("should parse a many-to-many relationship", () => {
+    const rawPostTagSchema: RawSchema = {
+      name: "PostTag",
+      schema: z.object({
+        id: z.string(),
+        postId: z.string(),
+        tagId: z.string(),
+      }),
+      manyToMany: {
+        name: "PostTags",
+        description: "The relationship between posts and tags.",
+        left: { node: "Post", field: "tags", foreignKey: "postId" },
+        right: { node: "Tag", field: "posts", foreignKey: "tagId" },
+      },
+    };
+
+    const normalized = parseSchemas([rawPostTagSchema]);
+
+    expect(normalized).toHaveLength(1);
+    const postTagSchema = normalized[0];
+
+    expect(postTagSchema.manyToMany).toBeDefined();
+    expect(postTagSchema.manyToMany).toEqual({
+      name: "PostTags",
+      description: "The relationship between posts and tags.",
+      left: { node: "Post", field: "tags", foreignKey: "postId" },
+      right: { node: "Tag", field: "posts", foreignKey: "tagId" },
+    });
+  });
 });
