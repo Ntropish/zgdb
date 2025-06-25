@@ -33,18 +33,12 @@ export interface PolymorphicRelationship extends Relationship {
 
 /** Defines a many-to-many relationship, facilitated by a join entity. */
 export interface ManyToManyRelationship {
-  name: string;
+  name: string; // e.g., 'tags', 'followers'
+  node: string; // e.g., 'Tag', 'User'
+  through: string; // e.g., 'PostTag', 'Follow'
+  myKey: string; // e.g., 'postId', 'followerId'
+  theirKey: string; // e.g., 'tagId', 'followingId'
   description?: string;
-  left: {
-    node: string;
-    field: string;
-    foreignKey: string;
-  };
-  right: {
-    node: string;
-    field: string;
-    foreignKey: string;
-  };
 }
 
 /** Represents a single field within a schema's data structure. */
@@ -64,7 +58,7 @@ export interface NormalizedSchema {
   description?: string;
   fields: Field[];
   relationships: (Relationship | PolymorphicRelationship)[];
-  manyToMany?: ManyToManyRelationship;
+  manyToMany: ManyToManyRelationship[];
   indexes?: Index[];
 }
 
@@ -76,7 +70,11 @@ export interface RawSchema {
   name: string;
   description?: string;
   schema: z.ZodObject<any>;
-  relationships?: Record<string, any>;
-  manyToMany?: ManyToManyRelationship;
+  relationships?: {
+    [nodeName: string]: {
+      // e.g., 'User', 'Post', or 'polymorphic', or 'many-to-many'
+      [relationshipName: string]: any;
+    };
+  };
   indexes?: Index[];
 }

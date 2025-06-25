@@ -55,7 +55,7 @@ describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
     expect(emptySchema.fields).toHaveLength(0);
     expect(emptySchema.relationships).toHaveLength(0);
     expect(emptySchema.indexes).toEqual([]);
-    expect(emptySchema.manyToMany).toBeUndefined();
+    expect(emptySchema.manyToMany).toEqual([]);
   });
 
   it("should handle an empty input array", () => {

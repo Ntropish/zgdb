@@ -22,6 +22,17 @@ function generateField(field: Field): string {
 function generateTable(schema: NormalizedSchema): string {
   const fields = schema.fields.map(generateField).join("\n");
 
+  let manyToManyFields = "";
+  if (schema.manyToMany && schema.manyToMany.length > 0) {
+    const m2mComments = schema.manyToMany
+      .map(
+        (rel) =>
+          `  // Many-to-many relationship: '${rel.name}' to node '${rel.node}' through '${rel.through}'`
+      )
+      .join("\n");
+    manyToManyFields = `\n\n${m2mComments}`;
+  }
+
   let tableString = "";
 
   if (schema.description) {
@@ -29,7 +40,7 @@ function generateTable(schema: NormalizedSchema): string {
     tableString += `/// ${schema.description}\n`;
   }
 
-  tableString += `table ${schema.name} {\n${fields}\n}`;
+  tableString += `table ${schema.name} {\n${fields}${manyToManyFields}\n}`;
 
   return tableString;
 }

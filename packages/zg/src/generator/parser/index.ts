@@ -4,6 +4,7 @@ import {
   Field,
   Relationship,
   PolymorphicRelationship,
+  ManyToManyRelationship,
 } from "./types";
 import { ZodTypeAny, ZodObject } from "zod";
 import { mapZodToFlatBufferType } from "./type-map";
@@ -56,26 +57,45 @@ export function parseZodSchema(
 /**
  * Parses the `relationships` block of a raw schema into a normalized array.
  * @param relationships - The raw relationships object.
- * @returns An array of normalized Relationship objects.
+ * @returns An object containing arrays of normalized relationships.
  */
-function parseRelationships(
-  relationships: RawSchema["relationships"]
-): (Relationship | PolymorphicRelationship)[] {
-  const normalized: (Relationship | PolymorphicRelationship)[] = [];
+function parseAllRelationships(relationships: RawSchema["relationships"]): {
+  standard: (Relationship | PolymorphicRelationship)[];
+  manyToMany: ManyToManyRelationship[];
+} {
+  const standard: (Relationship | PolymorphicRelationship)[] = [];
+  const manyToMany: ManyToManyRelationship[] = [];
+
   if (!relationships) {
-    return normalized;
+    return { standard, manyToMany };
   }
 
   for (const nodeName in relationships) {
     const relGroup = relationships[nodeName];
+
+    // Handle the special 'many-to-many' block
+    if (nodeName === "many-to-many") {
+      for (const relName in relGroup) {
+        const relDef = relGroup[relName];
+        manyToMany.push({
+          name: relName,
+          node: relDef.node,
+          through: relDef.through,
+          myKey: relDef.myKey,
+          theirKey: relDef.theirKey,
+          description: relDef.description,
+        });
+      }
+      continue; // Move to the next block
+    }
+
     for (const relName in relGroup) {
       const relDef = relGroup[relName];
 
-      // Check if the relationship is polymorphic
       if (relDef.type === "polymorphic") {
-        normalized.push({
+        standard.push({
           name: relName,
-          node: nodeName, // e.g., 'polymorphic'
+          node: "polymorphic", // nodeName is 'polymorphic' here
           type: "polymorphic",
           cardinality: relDef.cardinality,
           required: relDef.required,
@@ -85,7 +105,7 @@ function parseRelationships(
           references: relDef.references,
         });
       } else {
-        normalized.push({
+        standard.push({
           name: relName,
           node: nodeName, // e.g., 'user', 'post'
           cardinality: relDef.cardinality,
@@ -97,7 +117,7 @@ function parseRelationships(
     }
   }
 
-  return normalized;
+  return { standard, manyToMany };
 }
 
 /**
@@ -111,19 +131,21 @@ export function parseSchemas(rawSchemas: RawSchema[]): NormalizedSchema[] {
   const allSchemas: NormalizedSchema[] = [];
 
   for (const rawSchema of rawSchemas) {
-    // Create the top-level schema first, but its fields will be populated transitively
-    // by the call to parseZodSchema.
+    const { standard, manyToMany } = parseAllRelationships(
+      rawSchema.relationships
+    );
+
     const topLevelSchema: NormalizedSchema = {
       name: rawSchema.name,
       description: rawSchema.description,
       fields: [], // This will be populated below
-      relationships: parseRelationships(rawSchema.relationships),
+      relationships: standard,
+      manyToMany: manyToMany,
       indexes: (rawSchema.indexes || []).map((index) => ({
         ...index,
         on: Array.isArray(index.on) ? index.on : [index.on],
         type: index.type || "btree",
       })),
-      manyToMany: rawSchema.manyToMany,
     };
 
     topLevelSchema.fields = parseZodSchema(

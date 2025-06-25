@@ -134,32 +134,43 @@ describe("Schema Parser", () => {
   });
 
   it("should parse a many-to-many relationship", () => {
-    const rawPostTagSchema: RawSchema = {
-      name: "PostTag",
-      schema: z.object({
-        id: z.string(),
-        postId: z.string(),
-        tagId: z.string(),
-      }),
-      manyToMany: {
-        name: "PostTags",
-        description: "The relationship between posts and tags.",
-        left: { node: "Post", field: "tags", foreignKey: "postId" },
-        right: { node: "Tag", field: "posts", foreignKey: "tagId" },
+    const PostSchema: RawSchema = {
+      name: "Post",
+      schema: z.object({ id: z.string() }),
+      relationships: {
+        "many-to-many": {
+          tags: {
+            node: "Tag",
+            through: "PostTag",
+            myKey: "postId",
+            theirKey: "tagId",
+            description: "Tags on the post.",
+          },
+        },
       },
     };
 
-    const normalized = parseSchemas([rawPostTagSchema]);
+    const TagSchema: RawSchema = {
+      name: "Tag",
+      schema: z.object({ id: z.string(), name: z.string() }),
+    };
 
-    expect(normalized).toHaveLength(1);
-    const postTagSchema = normalized[0];
+    const PostTagSchema: RawSchema = {
+      name: "PostTag",
+      schema: z.object({ postId: z.string(), tagId: z.string() }),
+    };
 
-    expect(postTagSchema.manyToMany).toBeDefined();
-    expect(postTagSchema.manyToMany).toEqual({
-      name: "PostTags",
-      description: "The relationship between posts and tags.",
-      left: { node: "Post", field: "tags", foreignKey: "postId" },
-      right: { node: "Tag", field: "posts", foreignKey: "tagId" },
+    const normalized = parseSchemas([PostSchema, TagSchema, PostTagSchema]);
+    const postSchema = normalized.find((s) => s.name === "Post")!;
+
+    expect(postSchema.manyToMany).toHaveLength(1);
+    expect(postSchema.manyToMany[0]).toEqual({
+      name: "tags",
+      node: "Tag",
+      through: "PostTag",
+      myKey: "postId",
+      theirKey: "tagId",
+      description: "Tags on the post.",
     });
   });
 });
