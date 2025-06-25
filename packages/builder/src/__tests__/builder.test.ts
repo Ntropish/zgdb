@@ -1,4 +1,4 @@
-import { createBuilder } from "../";
+import { CapabilityMap, createBuilder } from "../";
 import { createFluentBuilder, FluentBuilder } from "../fluent";
 
 interface TestProduct {
@@ -6,11 +6,15 @@ interface TestProduct {
   steps: string[];
 }
 
-const testCapabilities = {
+const testCapabilities: CapabilityMap<
+  TestProduct,
+  {
+    test: (version: string) => string;
+    other: () => void;
+  }
+> = {
   test: {
-    apply: (version: string) => {
-      return `version-${version}`;
-    },
+    apply: (version: string) => `version-${version}`,
     build: (product: TestProduct, applyReturn: string, version: string) => {
       product.version = applyReturn;
       product.steps.push(`test-v${version}`);
@@ -25,7 +29,7 @@ const testCapabilities = {
 
 describe("Builder", () => {
   it("should create a build orchestrator from a map of capabilities", async () => {
-    const builder = createBuilder<TestProduct>(testCapabilities);
+    const builder = createBuilder(testCapabilities);
 
     builder.apply("test", "1.0.0");
     builder.apply("other");
@@ -43,37 +47,35 @@ describe("Builder", () => {
       features: string[];
     }
 
-    const subCapabilities = {
-      setConfig: {
-        build: (product: SubProduct) => {
-          product.config = "sub-config-set";
-        },
-      },
-      addFeature: {
-        build: (product: SubProduct, _: any, featureName: string) => {
-          product.features.push(featureName);
-        },
-      },
-    };
-
     // 2. Define the main product and a capability that creates/returns the sub-builder
     interface MainProduct {
       name: string;
       sub: SubProduct | null;
     }
-    const mainCapabilities = {
+
+    // 3. Create the main builder and get the sub-builder from its apply hook
+    const mainBuilder = createBuilder({
       useSubBuilder: {
-        apply: () => createBuilder(subCapabilities),
+        apply: () =>
+          createBuilder({
+            setConfig: {
+              build: (product: SubProduct) => {
+                product.config = "sub-config-set";
+              },
+            },
+            addFeature: {
+              build: (product: SubProduct, _: any, featureName: string) => {
+                product.features.push(featureName);
+              },
+            },
+          }),
         build: async (product: MainProduct, subBuilder: any) => {
           const subProduct: SubProduct = { config: "", features: [] };
           await subBuilder.build(subProduct);
           product.sub = subProduct;
         },
       },
-    };
-
-    // 3. Create the main builder and get the sub-builder from its apply hook
-    const mainBuilder = createBuilder<MainProduct>(mainCapabilities);
+    });
     const subBuilder = mainBuilder.apply("useSubBuilder");
 
     // 4. Apply capabilities to the sub-builder
@@ -101,7 +103,9 @@ describe("Builder", () => {
     }
 
     // 2. Define the capabilities for the node builder
-    const nodeCapabilities = {
+
+    // 3. Build a tree using the recursive capabilities
+    const rootBuilder = createBuilder({
       // This capability adds a child node and returns a builder for that child
       addChild: {
         apply: (name: string) => {
@@ -123,10 +127,7 @@ describe("Builder", () => {
           product.name = name;
         },
       },
-    };
-
-    // 3. Build a tree using the recursive capabilities
-    const rootBuilder = createBuilder<TreeNode>(nodeCapabilities);
+    });
     rootBuilder.apply("setName", "root");
 
     const child1Builder = rootBuilder.apply("addChild", "child1");
@@ -134,6 +135,7 @@ describe("Builder", () => {
 
     // Add a grandchild to the first child
     child1Builder.apply("addChild", "grandchild1");
+    child2Builder.apply("addChild", "grandchild2");
 
     // 4. Get the final pipeline and run it
     const product = await rootBuilder.build({ name: "", children: [] });
@@ -286,8 +288,7 @@ describe("Builder", () => {
     });
 
     // 3. Build an HTML tree using the fluent, chained API
-    const builder: FluentBuilder<HtmlElement> =
-      createFluentBuilder(htmlCapabilities);
+    const builder = createFluentBuilder(htmlCapabilities);
 
     const pBuilder = builder
       .init("html")

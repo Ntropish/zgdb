@@ -49,28 +49,40 @@ export type BuilderCapability<
 /**
  * A map of named capabilities that can be used by the builder.
  */
-export type CapabilityMap<TProduct> = {
-  [name: string]: BuilderCapability<TProduct, any, any>;
+export type CapabilityMap<TProduct, TEventMap extends Record<string, any>> = {
+  [name in keyof TEventMap]: BuilderCapability<
+    TProduct,
+    Parameters<TEventMap[name]>,
+    ReturnType<TEventMap[name]>
+  >;
 };
 
 /**
  * Creates a new builder instance, configured with a set of available capabilities.
  * The builder is used to assemble a build process by applying these capabilities.
  */
-export function createBuilder<TProduct extends object, TApplyReturnType = any>(
-  capabilities: CapabilityMap<TProduct>
-) {
+export function createBuilder<
+  TProduct extends object,
+  TEventMap extends Record<string, any>
+>(capabilities: CapabilityMap<TProduct, TEventMap>) {
   const steps: Step<TProduct>[] = [];
 
-  const builder = {
+  const builder: {
+    capabilities: CapabilityMap<TProduct, TEventMap>;
+    apply: BuilderCapabilityApplyHandler<any, any>;
+    build: BuilderPipeline<TProduct>;
+  } = {
     capabilities,
-    apply(capabilityName: keyof typeof capabilities, ...args: any[]): any {
+    apply(
+      capabilityName: keyof typeof capabilities,
+      ...args: Parameters<TEventMap[keyof TEventMap]>
+    ): any {
       const capability = capabilities[capabilityName];
       if (!capability) {
         throw new Error(`Capability "${String(capabilityName)}" not found.`);
       }
 
-      const result: TApplyReturnType = capability.apply?.(...args);
+      const result = capability.apply?.(...args);
 
       if (capability.build) {
         steps.push((product: TProduct) =>

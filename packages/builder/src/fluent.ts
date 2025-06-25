@@ -1,5 +1,14 @@
 import { createBuilder, CapabilityMap } from "./index";
 
+export type FluentBuilder<
+  TProduct extends object,
+  TEventMap extends Record<string, any>
+> = {
+  [key in keyof TEventMap]: (
+    ...args: Parameters<TEventMap[key]>
+  ) => FluentBuilder<TProduct, TEventMap>;
+};
+
 /**
  * A marker interface for a fluent, chainable builder.
  * To achieve full type-safety for nested builders, it is recommended
@@ -8,50 +17,44 @@ import { createBuilder, CapabilityMap } from "./index";
  * @example
  * const builder: FluentBuilder<HtmlElement> = createFluentBuilder(caps);
  */
-export interface FluentBuilder<TProduct extends object> {
-  [key: string]: ((...args: any[]) => this) | any;
-  build(product: TProduct): Promise<TProduct>;
-}
 
 // Internal function to wrap a core builder instance in a fluent proxy.
-function createFluentProxy<TProduct extends object>(
-  builder: ReturnType<typeof createBuilder<any>>
-): FluentBuilder<TProduct> {
+function createFluentProxy<
+  TProduct extends object,
+  TEventMap extends Record<string, any>
+>(
+  builder: ReturnType<typeof createBuilder<TProduct, TEventMap>>
+): FluentBuilder<TProduct, TEventMap> {
   return new Proxy(builder, {
     get(target, prop, receiver) {
+      if (typeof prop === "symbol") {
+        throw new Error("Symbol is not allowed as a capability name.");
+      }
+
       if (prop === "build") {
         return target.build;
       }
 
-      return (...args: any[]) => {
+      const capability = target.capabilities[prop as string];
+
+      if (!capability) {
+        throw new Error(`Capability "${String(prop)}" not found.`);
+      }
+
+      type EventHandler = TEventMap[typeof prop];
+      type EventArgs = Parameters<EventHandler>;
+
+      return (...args: EventArgs[]) => {
         const lastArg = args[args.length - 1];
         const hasCallback = typeof lastArg === "function";
         const applyArgs = hasCallback ? args.slice(0, -1) : args;
 
         const result = target.apply(prop as string, ...applyArgs);
 
-        // If a callback is provided for nesting, call it with the new builder proxy.
-        if (hasCallback) {
-          if (result && typeof result.apply === "function") {
-            const subBuilderProxy = createFluentProxy(result);
-            lastArg(subBuilderProxy);
-          }
-          // Return the original proxy to allow chaining on the parent.
-          return receiver;
-        }
-
-        // If no callback, handle standard chaining.
-        if (result === target) {
-          return receiver;
-        }
-        if (result && typeof result.apply === "function") {
-          return createFluentProxy(result);
-        }
-
         return result;
       };
     },
-  }) as FluentBuilder<TProduct>;
+  }) as FluentBuilder<TProduct, TEventMap>;
 }
 
 /**
@@ -63,9 +66,10 @@ function createFluentProxy<TProduct extends object>(
  * @param capabilities A map of capabilities to be made available on the builder.
  * @returns A fluent, chainable builder.
  */
-export function createFluentBuilder<TProduct extends object>(
-  capabilities: CapabilityMap<TProduct>
-): FluentBuilder<TProduct> {
+export function createFluentBuilder<
+  TProduct extends object,
+  TEventMap extends Record<string, any>
+>(capabilities: CapabilityMap<TProduct>): FluentBuilder<TProduct, TEventMap> {
   const builder = createBuilder(capabilities);
   return createFluentProxy(builder);
 }
