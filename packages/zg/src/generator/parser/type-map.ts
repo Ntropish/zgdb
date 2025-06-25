@@ -56,6 +56,7 @@ export function mapZodToFlatBufferType(
       description: `Nested schema for ${fieldName} of ${parentName}`,
       fields: [], // We will populate this recursively
       relationships: [],
+      manyToMany: [],
       indexes: [],
     };
 
