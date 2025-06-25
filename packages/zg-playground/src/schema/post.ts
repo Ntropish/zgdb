@@ -29,13 +29,6 @@ export default {
         mappedBy: "regards",
       },
     },
-    "post-tag": {
-      tags: {
-        cardinality: "many",
-        description: "The tags applied to this post.",
-        mappedBy: "postId",
-      },
-    },
     image: {
       images: {
         cardinality: "many",

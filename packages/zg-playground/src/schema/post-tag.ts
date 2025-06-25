@@ -24,4 +24,16 @@ export default {
       },
     },
   },
+  manyToMany: {
+    left: {
+      node: "Post",
+      field: "tags",
+      foreignKey: "postId",
+    },
+    right: {
+      node: "Tag",
+      field: "posts",
+      foreignKey: "tagId",
+    },
+  },
 };
