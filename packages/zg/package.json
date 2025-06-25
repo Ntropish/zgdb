@@ -1,35 +1,34 @@
 {
-  "name": "@tsmk/router",
+  "name": "@tsmk/zg",
   "version": "1.0.0",
-  "description": "A generic, protocol-agnostic router for tsmk",
+  "description": "",
   "main": "dist/index.js",
-  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "run-p build test:jest",
-    "test:all": "run-p test test:types",
+    "test": "run-s build test:jest",
     "test:jest": "jest --detectOpenHandles --verbose",
-    "test:types": "tsd"
+    "test:types": "tsd",
+    "test:all": "run-p build test:jest test:types"
   },
-  "dependencies": {
-    "@types/history": "^5.0.0",
-    "history": "^5.3.0",
-    "@types/jest": "^29.5.12"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/node": "^20.12.12",
-    "concurrently": "^8.2.2",
     "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
-    "npm-run-all": "^4.1.5",
     "ts-jest": "^29.1.2",
+    "typescript": "^5.4.5",
+    "@types/jest": "^29.5.12",
     "tsd": "^0.31.0",
-    "typescript": "^5.4.5"
+    "concurrently": "^8.2.2",
+    "npm-run-all": "^4.1.5",
+    "@types/node": "^20.12.12"
   },
-  "tsd": {
-    "directory": "src"
-  },
+  "keywords": [
+    "tsmk",
+    "builder",
+    "composable"
+  ],
+  "author": "",
+  "license": "ISC",
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "jsdom",
@@ -43,5 +42,8 @@
     "roots": [
       "<rootDir>/src"
     ]
+  },
+  "tsd": {
+    "directory": "src"
   }
 }
