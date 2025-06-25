@@ -1,4 +1,3 @@
-import { Orchestrator } from "@tsmk/kernel";
 import { CapabilityMap, createBuilder } from "../";
 import { createFluentBuilder, FluentBuilder } from "../fluent";
 
@@ -50,18 +49,6 @@ describe("Builder", () => {
       config: string;
       features: string[];
     }
-    const subCapabilities: CapabilityMap<SubProduct> = {
-      setConfig: {
-        build: (product) => {
-          product.config = "sub-config-set";
-        },
-      },
-      addFeature: {
-        build: (product, _, featureName: string) => {
-          product.features.push(featureName);
-        },
-      },
-    };
 
     // 2. Define the main product and a capability that creates/returns the sub-builder
     interface MainProduct {
@@ -70,7 +57,19 @@ describe("Builder", () => {
     }
     const mainCapabilities: CapabilityMap<MainProduct> = {
       useSubBuilder: {
-        apply: () => createBuilder(subCapabilities),
+        apply: () =>
+          createBuilder<SubProduct>({
+            setConfig: {
+              build: (product) => {
+                product.config = "sub-config-set";
+              },
+            },
+            addFeature: {
+              build: (product, _, featureName: string) => {
+                product.features.push(featureName);
+              },
+            },
+          }),
         build: async (product, subBuilder) => {
           const subKernel = subBuilder.getPipeline();
           const subProduct: SubProduct = { config: "", features: [] };

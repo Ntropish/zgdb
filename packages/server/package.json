@@ -20,9 +20,7 @@
   ],
   "author": "TSMK",
   "license": "ISC",
-  "dependencies": {
-    "@tsmk/kernel": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/jest": "^29.5.12",
     "@types/node": "^20.12.12",

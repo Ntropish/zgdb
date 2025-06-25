@@ -1,5 +1,4 @@
-import { Orchestrator, PipelineContext } from "@tsmk/kernel";
-import { createBuilder, CapabilityMap } from "./index";
+import { createBuilder, CapabilityMap, BuilderPipeline } from "./index";
 
 /**
  * A marker interface for a fluent, chainable builder.
@@ -9,13 +8,13 @@ import { createBuilder, CapabilityMap } from "./index";
  * @example
  * const builder: FluentBuilder<HtmlElement> = createFluentBuilder(caps);
  */
-export interface FluentBuilder<TProduct extends PipelineContext> {
+export interface FluentBuilder<TProduct extends object> {
   [key: string]: ((...args: any[]) => this) | any;
-  getPipeline(): Orchestrator.Kernel<TProduct>;
+  getPipeline(): BuilderPipeline<TProduct>;
 }
 
 // Internal function to wrap a core builder instance in a fluent proxy.
-function createFluentProxy<TProduct extends PipelineContext>(
+function createFluentProxy<TProduct extends object>(
   builder: ReturnType<typeof createBuilder<any>>
 ): FluentBuilder<TProduct> {
   return new Proxy(builder, {
@@ -64,7 +63,7 @@ function createFluentProxy<TProduct extends PipelineContext>(
  * @param capabilities A map of capabilities to be made available on the builder.
  * @returns A fluent, chainable builder.
  */
-export function createFluentBuilder<TProduct extends PipelineContext>(
+export function createFluentBuilder<TProduct extends object>(
   capabilities: CapabilityMap<TProduct>
 ): FluentBuilder<TProduct> {
   const builder = createBuilder(capabilities);

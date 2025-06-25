@@ -1,6 +1,10 @@
 import { expectType } from "tsd";
-import { Orchestrator } from "@tsmk/kernel";
-import { createBuilder, BuilderCapability, CapabilityMap } from "./index";
+import {
+  createBuilder,
+  BuilderCapability,
+  CapabilityMap,
+  BuilderPipeline,
+} from "./index";
 
 // Define a product type
 interface TestProduct {
@@ -29,8 +33,8 @@ const testCapabilities: CapabilityMap<TestProduct> = {
 
 // Test createBuilder and its return value
 const builder: {
-  apply: (capabilityName: "test" | "other", ...args: any[]) => void;
-  getPipeline: () => Orchestrator.Kernel<TestProduct>;
+  apply: (capabilityName: "test" | "other", ...args: any[]) => any;
+  getPipeline: () => BuilderPipeline<TestProduct>;
 } = createBuilder(testCapabilities);
 
 // Test apply method
@@ -38,7 +42,7 @@ builder.apply("test", "1.0.0");
 
 // Test getPipeline return value
 const kernel = builder.getPipeline();
-expectType<Orchestrator.Kernel<TestProduct>>(kernel);
+expectType<BuilderPipeline<TestProduct>>(kernel);
 
 // @ts-expect-error - 'invalid' is not a valid capability name.
 builder.apply("invalid");

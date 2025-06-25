@@ -12,10 +12,7 @@
     "test:types": "tsd",
     "test:all": "run-p test test:types"
   },
-  "dependencies": {
-    "@tsmk/kernel": "workspace:*",
-    "@tsmk/signals": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "jest": "^29.7.0",
     "ts-jest": "^29.1.2",
