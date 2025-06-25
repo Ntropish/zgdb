@@ -10,12 +10,16 @@ import { mapZodToFlatBufferType } from "./type-map";
 
 /**
  * Parses the Zod schema definition to extract a normalized list of fields.
+ * This function is now recursive and populates a shared list of schemas.
  * @param zodSchema - The Zod schema object from a raw schema.
- * @returns An array of normalized Field objects.
+ * @param parentName - The name of the parent schema.
+ * @param allSchemas - The accumulator for all discovered schemas.
+ * @returns An array of normalized Field objects for the current schema.
  */
-function parseZodSchema(
+export function parseZodSchema(
   zodSchema: ZodObject<any>,
-  parentName: string
+  parentName: string,
+  allSchemas: NormalizedSchema[]
 ): Field[] {
   const fields: Field[] = [];
   const shape = zodSchema.shape;
@@ -24,23 +28,25 @@ function parseZodSchema(
     const originalFieldDef = shape[fieldName] as ZodTypeAny;
     let unwrappedFieldDef = originalFieldDef;
 
-    // Handle optional types by unwrapping to the inner type to get the correct type name.
-    if (unwrappedFieldDef._def.typeName === "ZodOptional") {
+    // Handle optional and default types by unwrapping to the inner type.
+    const typeName = unwrappedFieldDef._def.typeName;
+    if (typeName === "ZodOptional" || typeName === "ZodDefault") {
       unwrappedFieldDef = unwrappedFieldDef._def.innerType;
     }
 
     const type = mapZodToFlatBufferType(
-      unwrappedFieldDef._def,
+      unwrappedFieldDef,
       parentName,
-      fieldName
+      fieldName,
+      allSchemas
     );
 
     fields.push({
       name: fieldName,
       type: type,
-      // `isOptional` must be called on the original definition, before unwrapping.
-      required: !originalFieldDef.isOptional(),
-      // description is not available on the zod object directly in this form
+      // A field is required unless it's EXPLICITLY optional.
+      // .default() implies a value will always be present.
+      required: originalFieldDef._def.typeName !== "ZodOptional",
     });
   }
 
@@ -96,26 +102,40 @@ function parseRelationships(
 
 /**
  * The main parser function that transforms raw schemas into the Intermediate Representation (IR).
+ * It now discovers and returns nested schemas as well.
  *
  * @param rawSchemas - An array of raw schema objects from the loader.
- * @returns An array of normalized schema objects.
+ * @returns An array of all normalized schema objects, including nested ones.
  */
 export function parseSchemas(rawSchemas: RawSchema[]): NormalizedSchema[] {
-  const normalizedSchemas: NormalizedSchema[] = [];
+  const allSchemas: NormalizedSchema[] = [];
 
   for (const rawSchema of rawSchemas) {
-    const fields = parseZodSchema(rawSchema.schema, rawSchema.name);
-    const relationships = parseRelationships(rawSchema.relationships);
-
-    normalizedSchemas.push({
+    // Create the top-level schema first, but its fields will be populated transitively
+    // by the call to parseZodSchema.
+    const topLevelSchema: NormalizedSchema = {
       name: rawSchema.name,
       description: rawSchema.description,
-      fields,
-      relationships,
-      indexes: rawSchema.indexes || [],
+      fields: [], // This will be populated below
+      relationships: parseRelationships(rawSchema.relationships),
+      indexes: (rawSchema.indexes || []).map((index) => ({
+        ...index,
+        on: Array.isArray(index.on) ? index.on : [index.on],
+        type: index.type || "btree",
+      })),
       manyToMany: rawSchema.manyToMany,
-    });
+    };
+
+    topLevelSchema.fields = parseZodSchema(
+      rawSchema.schema,
+      rawSchema.name,
+      allSchemas
+    );
+
+    // Add the fully-populated top-level schema to the list.
+    // Any nested schemas will have already been added to allSchemas by the call above.
+    allSchemas.push(topLevelSchema);
   }
 
-  return normalizedSchemas;
+  return allSchemas;
 }

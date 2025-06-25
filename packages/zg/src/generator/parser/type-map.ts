@@ -1,4 +1,6 @@
-import { ZodTypeAny } from "zod";
+import { ZodTypeAny, ZodObject } from "zod";
+import { NormalizedSchema } from "./types";
+import { parseZodSchema } from ".";
 
 // A simplified mapping from Zod types to FlatBuffer scalar types.
 // This can be expanded to include more complex types and logic.
@@ -14,36 +16,62 @@ const ZOD_TO_FLATBUFFER_TYPE_MAP: Record<string, string> = {
 };
 
 /**
- * Maps a Zod type definition to its corresponding FlatBuffer type.
+ * Recursively maps a Zod type definition to its FlatBuffer type.
+ * If a nested ZodObject is found, it creates a new NormalizedSchema for it
+ * and adds it to the `allSchemas` accumulator.
  *
- * @param zodDef - The Zod type definition object.
+ * @param zodType - The Zod type object.
  * @param parentName - The name of the parent object.
  * @param fieldName - The name of the field.
+ * @param allSchemas - The accumulator for all discovered schemas.
  * @returns The corresponding FlatBuffer type as a string.
  */
 export function mapZodToFlatBufferType(
-  zodDef: ZodTypeAny["_def"],
+  zodType: ZodTypeAny,
   parentName: string,
-  fieldName: string
+  fieldName: string,
+  allSchemas: NormalizedSchema[]
 ): string {
-  const typeName = zodDef.typeName;
+  const typeName = zodType._def.typeName;
 
   if (typeName === "ZodArray") {
+    // Recursively call for the inner type of the array
     const innerType = mapZodToFlatBufferType(
-      zodDef.type._def,
+      zodType._def.type,
       parentName,
-      fieldName
+      fieldName,
+      allSchemas
     );
     return `[${innerType}]`;
   }
 
   if (typeName === "ZodObject") {
-    // For nested objects, we generate a new table name based on the parent and field name.
-    // e.g., User + metadata -> User_Metadata
-    return `${parentName}_${
+    const newSchemaName = `${parentName}_${
       fieldName.charAt(0).toUpperCase() + fieldName.slice(1)
     }`;
+
+    // This is a new, nested schema that we need to define.
+    const newSchema: NormalizedSchema = {
+      name: newSchemaName,
+      description: `Nested schema for ${fieldName} of ${parentName}`,
+      fields: [], // We will populate this recursively
+      relationships: [],
+      indexes: [],
+    };
+
+    // IMPORTANT: Add the schema to the list *before* parsing its fields.
+    // This prevents infinite recursion if the object refers to itself.
+    allSchemas.push(newSchema);
+
+    // Recursively parse the fields of this new schema.
+    newSchema.fields = parseZodSchema(
+      zodType as ZodObject<any>,
+      newSchemaName,
+      allSchemas
+    );
+
+    return newSchemaName;
   }
 
-  return ZOD_TO_FLATBUFFER_TYPE_MAP[typeName] || "string"; // Default to string
+  return ZOD_TO_FLATBUFFER_TYPE_MAP[typeName] || "string"; // Default to string for primitives
 }

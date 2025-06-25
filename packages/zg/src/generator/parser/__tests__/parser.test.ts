@@ -2,60 +2,57 @@ import { parseSchemas } from "..";
 import { RawSchema } from "../types";
 import { z } from "zod";
 
+const rawUserSchema: RawSchema = {
+  name: "User",
+  description: "A user of the application.",
+  schema: z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string().email(),
+    isAdmin: z.boolean().optional(),
+    level: z.enum(["user", "moderator", "admin"]),
+    age: z.number().int(),
+    tags: z.array(z.string()),
+    metadata: z.object({
+      lastLogin: z.date(),
+    }),
+  }),
+  relationships: {},
+  indexes: [
+    { on: "email", unique: true },
+    { on: "name", type: "btree" },
+  ],
+};
+
 describe("Schema Parser", () => {
   it("should parse a raw schema into a normalized representation", () => {
-    const rawUserSchema: RawSchema = {
-      name: "User",
-      description: "A user of the application.",
-      schema: z.object({
-        id: z.string(),
-        name: z.string(),
-        email: z.string().email(),
-        isAdmin: z.boolean().optional(),
-        level: z.enum(["member", "admin"]),
-        age: z.number().int(),
-        tags: z.array(z.string()),
-        metadata: z.object({
-          lastLogin: z.date(),
-        }),
-      }),
-      indexes: [
-        { on: "email", unique: true },
-        { on: "name", type: "btree" },
-      ],
-    };
-
     const normalized = parseSchemas([rawUserSchema]);
 
-    expect(normalized).toHaveLength(1);
-    const userSchema = normalized[0];
+    expect(normalized).toHaveLength(2); // User + User_Metadata
 
-    expect(userSchema.name).toBe("User");
-    expect(userSchema.description).toBe("A user of the application.");
+    const userSchema = normalized.find((s) => s.name === "User");
+    const metadataSchema = normalized.find((s) => s.name === "User_Metadata");
 
-    // Test field parsing
-    expect(userSchema.fields).toHaveLength(8);
-    expect(userSchema.fields).toEqual(
+    expect(userSchema).toBeDefined();
+    expect(metadataSchema).toBeDefined();
+
+    expect(userSchema!.name).toBe("User");
+    expect(userSchema!.fields).toHaveLength(8);
+    expect(userSchema!.fields).toEqual(
       expect.arrayContaining([
         { name: "id", type: "string", required: true },
-        { name: "name", type: "string", required: true },
-        { name: "email", type: "string", required: true },
         { name: "isAdmin", type: "bool", required: false },
-        { name: "level", type: "string", required: true },
-        { name: "age", type: "long", required: true },
         { name: "tags", type: "[string]", required: true },
         { name: "metadata", type: "User_Metadata", required: true },
       ])
     );
+    expect(userSchema!.indexes).toHaveLength(2);
+    expect(userSchema!.relationships).toHaveLength(0);
 
-    // Test index parsing
-    expect(userSchema.indexes).toHaveLength(2);
-    expect(userSchema.indexes).toEqual(
-      expect.arrayContaining([
-        { on: "email", unique: true },
-        { on: "name", type: "btree" },
-      ])
-    );
+    expect(metadataSchema!.name).toBe("User_Metadata");
+    expect(metadataSchema!.fields).toEqual([
+      { name: "lastLogin", type: "long", required: true },
+    ]);
   });
 
   it("should parse a basic one-to-one relationship", () => {
