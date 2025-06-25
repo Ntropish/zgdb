@@ -5,12 +5,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "npm-run-all build tests",
     "build": "tsc",
-    "tests": "concurrently \"npm run test:jest\" \"npm run test:types\"",
+    "test": "run-s build test:jest",
     "test:jest": "jest --detectOpenHandles --verbose",
     "test:types": "tsd",
-    "test:all": "run-p test test:types"
+    "test:all": "run-p build test:jest test:types"
   },
   "dependencies": {},
   "devDependencies": {

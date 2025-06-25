@@ -33,8 +33,16 @@ function createFluentProxy<
         throw new Error("Symbol is not allowed as a capability name.");
       }
 
+      if (prop === "capabilities") {
+        return target.capabilities;
+      }
+
       if (prop === "build") {
         return target.build;
+      }
+
+      if (prop === "apply") {
+        return target.apply;
       }
 
       const capability = target.capabilities[prop as string];
@@ -53,7 +61,11 @@ function createFluentProxy<
 
         const result = target.apply(prop as string, ...applyArgs);
 
-        return result;
+        if (result && typeof result.build === "function") {
+          return createFluentProxy(result);
+        }
+
+        return receiver;
       };
     },
   }) as FluentBuilder<TProduct, TEventMap>;

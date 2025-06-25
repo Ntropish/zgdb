@@ -6,14 +6,7 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "--filter",
-        "@tsmk/loom",
-        "test",
-        "--",
-        "--runInBand",
-        "${file}"
-      ],
+      "runtimeArgs": ["--filter", "@tsmk/builder", "--", "test", "${file}"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
