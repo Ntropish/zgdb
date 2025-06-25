@@ -61,7 +61,7 @@ describe("Builder", () => {
           createBuilder<SubProduct>({
             setConfig: {
               build: (product) => {
-                product.config = "sub-config-set";
+                product.config = product.config;
               },
             },
             addFeature: {
@@ -70,9 +70,13 @@ describe("Builder", () => {
               },
             },
           }),
-        build: async (product, subBuilder) => {
+        build: async (product, applyReturn) => {
+          const subBuilder = applyReturn;
           const subKernel = subBuilder.getPipeline();
-          const subProduct: SubProduct = { config: "", features: [] };
+          const subProduct: SubProduct = {
+            config: "",
+            features: ["omega-star", "glaring-eyes"],
+          };
           await subKernel.run(subProduct);
           product.sub = subProduct;
         },
