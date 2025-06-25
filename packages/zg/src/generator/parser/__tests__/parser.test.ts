@@ -12,6 +12,12 @@ describe("Schema Parser", () => {
         name: z.string(),
         email: z.string().email(),
         isAdmin: z.boolean().optional(),
+        level: z.enum(["member", "admin"]),
+        age: z.number().int(),
+        tags: z.array(z.string()),
+        metadata: z.object({
+          lastLogin: z.date(),
+        }),
       }),
       indexes: [
         { on: "email", unique: true },
@@ -28,13 +34,17 @@ describe("Schema Parser", () => {
     expect(userSchema.description).toBe("A user of the application.");
 
     // Test field parsing
-    expect(userSchema.fields).toHaveLength(4);
+    expect(userSchema.fields).toHaveLength(8);
     expect(userSchema.fields).toEqual(
       expect.arrayContaining([
         { name: "id", type: "string", required: true },
         { name: "name", type: "string", required: true },
         { name: "email", type: "string", required: true },
-        { name: "isAdmin", type: "boolean", required: false },
+        { name: "isAdmin", type: "bool", required: false },
+        { name: "level", type: "string", required: true },
+        { name: "age", type: "long", required: true },
+        { name: "tags", type: "[string]", required: true },
+        { name: "metadata", type: "User_Metadata", required: true },
       ])
     );
 

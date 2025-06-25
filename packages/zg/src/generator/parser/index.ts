@@ -6,13 +6,17 @@ import {
   PolymorphicRelationship,
 } from "./types";
 import { ZodTypeAny, ZodObject } from "zod";
+import { mapZodToFlatBufferType } from "./type-map";
 
 /**
  * Parses the Zod schema definition to extract a normalized list of fields.
  * @param zodSchema - The Zod schema object from a raw schema.
  * @returns An array of normalized Field objects.
  */
-function parseZodSchema(zodSchema: ZodObject<any>): Field[] {
+function parseZodSchema(
+  zodSchema: ZodObject<any>,
+  parentName: string
+): Field[] {
   const fields: Field[] = [];
   const shape = zodSchema.shape;
 
@@ -25,17 +29,11 @@ function parseZodSchema(zodSchema: ZodObject<any>): Field[] {
       unwrappedFieldDef = unwrappedFieldDef._def.innerType;
     }
 
-    const typeName = unwrappedFieldDef._def.typeName;
-
-    // TODO: Add more robust type mapping
-    let type = "string";
-    if (typeName === "ZodNumber") {
-      type = "number";
-    } else if (typeName === "ZodDate") {
-      type = "date";
-    } else if (typeName === "ZodBoolean") {
-      type = "boolean";
-    }
+    const type = mapZodToFlatBufferType(
+      unwrappedFieldDef._def,
+      parentName,
+      fieldName
+    );
 
     fields.push({
       name: fieldName,
@@ -106,7 +104,7 @@ export function parseSchemas(rawSchemas: RawSchema[]): NormalizedSchema[] {
   const normalizedSchemas: NormalizedSchema[] = [];
 
   for (const rawSchema of rawSchemas) {
-    const fields = parseZodSchema(rawSchema.schema);
+    const fields = parseZodSchema(rawSchema.schema, rawSchema.name);
     const relationships = parseRelationships(rawSchema.relationships);
 
     normalizedSchemas.push({
