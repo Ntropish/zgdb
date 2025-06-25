@@ -1,10 +1,28 @@
 // UCAN and DID implementation will go here.
 
-// import * as ed25519 from "@noble/ed25519";
+// import * as ed from "@noble/ed25519";
 // import { base58btc } from "multiformats/bases/base58";
 
-const ed25519ModulePromise = import("@noble/ed25519");
-const base58btcModulePromise = import("multiformats/bases/base58");
+// import "react-native-get-random-values";
+// import { sha512 } from "@noble/hashes/sha512";
+// ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
+
+// ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
+// ed.etc.sha512Async = (...m) =>
+//   Promise.resolve(ed.etc.sha512Sync?.(...m) ?? new Uint8Array());
+
+async function setupEd() {
+  const ed = await import("@noble/ed25519");
+  const { base58btc } = await import("multiformats/bases/base58");
+  const { sha512 } = await import("@noble/hashes/sha512");
+  ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
+  ed.etc.sha512Async = (...m) =>
+    Promise.resolve(ed.etc.sha512Sync?.(...m) ?? new Uint8Array());
+
+  return ed;
+}
+
+const edPromise = setupEd();
 
 // Ed25519 public keys are prefixed with 0xed01 in the multicodec table.
 const ED25519_PREFIX = new Uint8Array([0xed, 0x01]);
@@ -19,11 +37,21 @@ export class Identity {
   }
 
   public static async create(): Promise<Identity> {
-    const ed25519 = await ed25519ModulePromise;
-    const { base58btc } = await base58btcModulePromise;
+    const ed = await edPromise;
+    const { base58btc } = await import("multiformats/bases/base58");
 
-    const privateKey = ed25519.utils.randomPrivateKey();
-    const publicKey = await ed25519.getPublicKey(privateKey);
+    // Polyfill for noble crypto libraries in environments that don't
+    // have a native crypto module. This is needed for Jest tests.
+    // @ts-ignore
+    if (!ed.utils.sha512Sync) {
+      // @ts-ignore
+      ed.utils.sha512Sync = (...m: Uint8Array[]) =>
+        // @ts-ignore
+        sha512(ed.utils.concatBytes(...m));
+    }
+
+    const privateKey = ed.utils.randomPrivateKey();
+    const publicKey = await ed.getPublicKey(privateKey);
 
     // Construct the did:key string according to the multiformats spec.
     const prefixedPublicKey = new Uint8Array(
