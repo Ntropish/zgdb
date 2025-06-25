@@ -1,4 +1,4 @@
-import { createBuilder, CapabilityMap } from "./index";
+import { createBuilder, CapabilityMap, BuilderPipeline } from "./index";
 
 export type FluentBuilder<
   TProduct extends object,
@@ -7,6 +7,8 @@ export type FluentBuilder<
   [key in keyof TEventMap]: (
     ...args: Parameters<TEventMap[key]>
   ) => FluentBuilder<TProduct, TEventMap>;
+} & {
+  build: BuilderPipeline<TProduct>;
 };
 
 /**
@@ -69,7 +71,9 @@ function createFluentProxy<
 export function createFluentBuilder<
   TProduct extends object,
   TEventMap extends Record<string, any>
->(capabilities: CapabilityMap<TProduct>): FluentBuilder<TProduct, TEventMap> {
+>(
+  capabilities: CapabilityMap<TProduct, TEventMap>
+): FluentBuilder<TProduct, TEventMap> {
   const builder = createBuilder(capabilities);
   return createFluentProxy(builder);
 }

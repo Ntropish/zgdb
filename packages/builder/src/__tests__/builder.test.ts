@@ -1,5 +1,15 @@
-import { CapabilityMap, createBuilder } from "../";
+import {
+  CapabilityMap,
+  createBuilder,
+  BuilderCapability,
+  BuilderPipeline,
+} from "../";
 import { createFluentBuilder, FluentBuilder } from "../fluent";
+
+type Builder<
+  TProduct extends object,
+  TEventMap extends Record<string, any>
+> = ReturnType<typeof createBuilder<TProduct, TEventMap>>;
 
 interface TestProduct {
   version: string;
@@ -103,19 +113,25 @@ describe("Builder", () => {
     }
 
     // 2. Define the capabilities for the node builder
+    type NodeBuilder = Builder<TreeNode, NodeEventMap>;
+    interface NodeEventMap {
+      addChild(name: string): NodeBuilder;
+      setName(name: string): void;
+    }
 
-    // 3. Build a tree using the recursive capabilities
-    const rootBuilder = createBuilder({
+    const nodeCapabilities: CapabilityMap<TreeNode, NodeEventMap> = {
       // This capability adds a child node and returns a builder for that child
       addChild: {
         apply: (name: string) => {
           // The returned builder has the same capabilities, enabling recursion
-          const childBuilder = createBuilder(nodeCapabilities);
+          const childBuilder = createBuilder<TreeNode, NodeEventMap>(
+            nodeCapabilities
+          );
           // Set the name for the child node being built
           childBuilder.apply("setName", name);
           return childBuilder;
         },
-        build: async (product: TreeNode, childBuilder: any) => {
+        build: async (product: TreeNode, childBuilder: NodeBuilder) => {
           const childNode: TreeNode = { name: "", children: [] };
           await childBuilder.build(childNode);
           product.children.push(childNode);
@@ -127,7 +143,10 @@ describe("Builder", () => {
           product.name = name;
         },
       },
-    });
+    };
+
+    // 3. Build a tree using the recursive capabilities
+    const rootBuilder = createBuilder<TreeNode, NodeEventMap>(nodeCapabilities);
     rootBuilder.apply("setName", "root");
 
     const child1Builder = rootBuilder.apply("addChild", "child1");
@@ -147,7 +166,8 @@ describe("Builder", () => {
     expect(product.children[0].children.length).toBe(1);
     expect(product.children[0].children[0].name).toBe("grandchild1");
     expect(product.children[1].name).toBe("child2");
-    expect(product.children[1].children.length).toBe(0);
+    expect(product.children[1].children.length).toBe(1);
+    expect(product.children[1].children[0].name).toBe("grandchild2");
   });
 
   it("should support a recursive HTML builder", async () => {
@@ -159,16 +179,32 @@ describe("Builder", () => {
       render(): string;
     }
 
+    type HtmlBuilder = Builder<HtmlElement, HtmlEventMap>;
+    type FluentHtmlBuilder = FluentBuilder<HtmlElement, HtmlEventMap> & {
+      build: BuilderPipeline<HtmlElement>;
+    };
+    interface HtmlEventMap {
+      element(
+        tag: string,
+        attributes?: Record<string, string>
+      ): FluentHtmlBuilder;
+      text(content: string): void;
+      init(tag: string, attributes?: Record<string, string>): void;
+    }
+
     // 2. Define the capabilities for the HTML builder
-    const htmlCapabilities = {
+    const htmlCapabilities: CapabilityMap<HtmlElement, HtmlEventMap> = {
       element: {
         apply: (tag: string, attributes: Record<string, string> = {}) => {
-          const subBuilder = createBuilder(htmlCapabilities);
-          subBuilder.apply("init", tag, attributes);
-          return subBuilder;
+          return createFluentBuilder<HtmlElement, HtmlEventMap>(
+            htmlCapabilities
+          ).init(tag, attributes) as FluentHtmlBuilder;
         },
-        build: async (product: HtmlElement, childBuilder: any) => {
-          const childElement: HtmlElement = createHtmlElement();
+        build: async (
+          product: HtmlElement,
+          childBuilder: FluentHtmlBuilder
+        ) => {
+          const childElement = createHtmlElement();
           await childBuilder.build(childElement);
           product.children.push(childElement);
         },
@@ -212,22 +248,23 @@ describe("Builder", () => {
       },
     });
 
-    // 3. Build an HTML tree declaratively using a fluent, chained API
-    const rootBuilder = createBuilder<HtmlElement>(htmlCapabilities);
+    // 3. Build an HTML tree using the fluent, chained API
+    const builder = createFluentBuilder(htmlCapabilities);
 
-    rootBuilder
-      .apply("init", "html", {})
-      .apply("element", "body")
-      .apply("element", "div", { id: "main" })
-      .apply("element", "p", { class: "greeting" })
-      .apply("text", "Hello, Builder!");
+    const pBuilder = builder
+      .init("html")
+      .element("body")
+      .element("div", { id: "main" })
+      .element("p", { class: "greeting" });
+
+    pBuilder.text("Hello, Fluent Builder!");
 
     // 4. Get the final pipeline and run it
-    const product = await rootBuilder.build(createHtmlElement());
+    const product = await builder.build(createHtmlElement());
 
     // 5. Assert the final rendered HTML string
     const expected =
-      '<html><body><div id="main"><p class="greeting">Hello, Builder!</p></div></body></html>';
+      '<html><body><div id="main"><p class="greeting">Hello, Fluent Builder!</p></div></body></html>';
     expect(product.render()).toEqual(expected);
   });
 
@@ -240,12 +277,30 @@ describe("Builder", () => {
       render(): string;
     }
 
+    type HtmlBuilder = Builder<HtmlElement, HtmlEventMap>;
+    type FluentHtmlBuilder = FluentBuilder<HtmlElement, HtmlEventMap>;
+    interface HtmlEventMap {
+      element(
+        tag: string,
+        attributes?: Record<string, string>
+      ): FluentHtmlBuilder;
+      text(content: string): void;
+      init(tag: string, attributes?: Record<string, string>): void;
+    }
+
     // 2. Define the capabilities for the HTML builder
-    const htmlCapabilities = {
+    const htmlCapabilities: CapabilityMap<HtmlElement, HtmlEventMap> = {
       element: {
-        apply: (tag: string, attributes: Record<string, string> = {}) =>
-          createBuilder(htmlCapabilities).apply("init", tag, attributes),
-        build: async (product: HtmlElement, childBuilder: any) => {
+        apply: (
+          tag: string,
+          attributes: Record<string, string> = {}
+        ): HtmlBuilder =>
+          createBuilder<HtmlElement, HtmlEventMap>(htmlCapabilities).apply(
+            "init",
+            tag,
+            attributes
+          ) as HtmlBuilder,
+        build: async (product: HtmlElement, childBuilder: HtmlBuilder) => {
           const childElement = createHtmlElement();
           await childBuilder.build(childElement);
           product.children.push(childElement);
@@ -288,7 +343,10 @@ describe("Builder", () => {
     });
 
     // 3. Build an HTML tree using the fluent, chained API
-    const builder = createFluentBuilder(htmlCapabilities);
+    const builder: FluentHtmlBuilder = createFluentBuilder<
+      HtmlElement,
+      HtmlEventMap
+    >(htmlCapabilities);
 
     const pBuilder = builder
       .init("html")
@@ -299,7 +357,7 @@ describe("Builder", () => {
     pBuilder.text("Hello, Fluent Builder!");
 
     // 4. Get the final pipeline and run it
-    const product = await builder.build(createHtmlElement());
+    const product = await (builder as any).build(createHtmlElement());
 
     // 5. Assert the final rendered HTML string
     const expected =
