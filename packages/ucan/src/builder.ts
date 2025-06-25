@@ -16,6 +16,7 @@ export interface UCANPayload {
   audience: string;
   capabilities: Capability[];
   expiration: number;
+  prf?: string; // Proof (a parent UCAN)
 }
 
 // Define the state that our builder will manage
@@ -27,6 +28,7 @@ type BuilderCapabilities = {
   audience: (did: string) => void;
   withCapability: (cap: Capability) => void;
   expiresIn: (seconds: number) => void;
+  delegate: (proof: string) => void;
 };
 
 // Create a typed shorthand for our specific fluent builder
@@ -60,6 +62,11 @@ export function createUcanBuilder(): UCANBuilder {
         state.expiration = Math.floor(Date.now() / 1000) + seconds;
       },
     },
+    delegate: {
+      build: (state, _, proof) => {
+        state.prf = proof;
+      },
+    },
   };
 
   return createFluentBuilder<BuilderState, BuilderCapabilities>(capabilities);
@@ -85,6 +92,21 @@ export async function sign(
   const signature = Buffer.from(signatureBytes).toString("base64url");
 
   return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+function isAttenuationValid(child: UCANPayload, parent: UCANPayload): boolean {
+  return child.capabilities.every((childCap) =>
+    parent.capabilities.some((parentCap) => {
+      if (childCap.with !== parentCap.with) {
+        return false;
+      }
+      if (parentCap.can.endsWith("*")) {
+        const prefix = parentCap.can.slice(0, -1);
+        return childCap.can.startsWith(prefix);
+      }
+      return childCap.can === parentCap.can;
+    })
+  );
 }
 
 export async function verify(token: string): Promise<boolean> {
@@ -120,7 +142,27 @@ export async function verify(token: string): Promise<boolean> {
   );
   const signature = Buffer.from(encodedSignature, "base64url");
 
-  return ed.verify(signature, dataToVerify, publicKey);
+  const isSignatureValid = await ed.verify(signature, dataToVerify, publicKey);
+
+  if (!isSignatureValid) {
+    return false;
+  }
+
+  // 4. If a proof exists, recursively verify the chain and check attenuation.
+  if (payload.prf) {
+    const parentPayload = JSON.parse(
+      Buffer.from(payload.prf.split(".")[1], "base64url").toString()
+    ) as UCANPayload;
+
+    if (!isAttenuationValid(payload, parentPayload)) {
+      return false;
+    }
+
+    return verify(payload.prf);
+  }
+
+  // If we've reached here, the UCAN is valid and has no more proofs to check.
+  return true;
 }
 
 async function setupEd() {

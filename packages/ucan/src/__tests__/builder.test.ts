@@ -78,4 +78,72 @@ describe("UCAN Builder", () => {
     const isValid = await verify(token);
     expect(isValid).toBe(false);
   });
+
+  it("should successfully delegate a capability", async () => {
+    const rootIssuer = await Identity.create();
+    const delegatee = await Identity.create();
+    const audience = await Identity.create();
+
+    // 1. Root user creates a UCAN with broad permissions for the delegatee
+    const rootUcanPayload = await createUcanBuilder()
+      .issuer(rootIssuer.did)
+      .audience(delegatee.did)
+      .withCapability({ with: "my-service", can: "crud/*" })
+      .expiresIn(300)
+      .build({});
+    const rootUcanToken = await sign(
+      rootUcanPayload as UCANPayload,
+      rootIssuer
+    );
+
+    // 2. The delegatee creates a new UCAN, delegating a more specific permission to the final audience
+    const delegatedUcanPayload = await createUcanBuilder()
+      .issuer(delegatee.did)
+      .audience(audience.did)
+      .withCapability({ with: "my-service", can: "crud/read" })
+      .expiresIn(60)
+      .delegate(rootUcanToken) // New capability
+      .build({});
+    const delegatedUcanToken = await sign(
+      delegatedUcanPayload as UCANPayload,
+      delegatee
+    );
+
+    // 3. Verify the delegated UCAN. This should now check the full proof chain.
+    const isValid = await verify(delegatedUcanToken);
+    expect(isValid).toBe(true);
+  });
+
+  it("should fail to verify a delegated UCAN with invalid capabilities", async () => {
+    const rootIssuer = await Identity.create();
+    const delegatee = await Identity.create();
+    const audience = await Identity.create();
+
+    // 1. Root user creates a UCAN with specific permissions
+    const rootUcanToken = await sign(
+      (await createUcanBuilder()
+        .issuer(rootIssuer.did)
+        .audience(delegatee.did)
+        .withCapability({ with: "my-service", can: "crud/read" })
+        .expiresIn(300)
+        .build({})) as UCANPayload,
+      rootIssuer
+    );
+
+    // 2. The delegatee attempts to escalate privileges to 'write'
+    const delegatedUcanToken = await sign(
+      (await createUcanBuilder()
+        .issuer(delegatee.did)
+        .audience(audience.did)
+        .withCapability({ with: "my-service", can: "crud/write" }) // Invalid escalation
+        .expiresIn(60)
+        .delegate(rootUcanToken)
+        .build({})) as UCANPayload,
+      delegatee
+    );
+
+    // 3. Verification should fail because crud/write is not a subset of crud/read.
+    const isValid = await verify(delegatedUcanToken);
+    expect(isValid).toBe(false);
+  });
 });
