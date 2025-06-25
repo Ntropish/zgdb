@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { RawSchema } from "@tsmk/zg";
 
-export default {
+const schema: RawSchema = {
   name: "Follow",
   description:
     "A directional relationship indicating one user follows another.",
@@ -25,3 +26,5 @@ export default {
     },
   },
 };
+
+export default schema;

@@ -1,11 +1,6 @@
 import { readdir } from "fs/promises";
 import { resolve } from "path";
-
-// A simplified representation of the raw schema file.
-export interface RawSchema {
-  name: string;
-  [key: string]: any;
-}
+import { RawSchema } from "../parser/types";
 
 /**
  * Discovers and loads all user-defined schema files from a given directory.

@@ -44,6 +44,9 @@ importers:
       ejs:
         specifier: ^3.1.10
         version: 3.1.10
+      zod:
+        specifier: ^3.0.0
+        version: 3.25.67
     devDependencies:
       '@types/ejs':
         specifier: ^3.1.5
@@ -79,6 +82,9 @@ importers:
         specifier: ^3.25.67
         version: 3.25.67
     devDependencies:
+      '@tsmk/zg':
+        specifier: workspace:*
+        version: link:../zg
       '@types/jest':
         specifier: ^29.5.12
         version: 29.5.14

@@ -15,6 +15,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@tsmk/zg": "workspace:*",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.12.12",
     "concurrently": "^8.2.2",
