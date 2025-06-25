@@ -8,6 +8,7 @@ export default {
     title: z.string(),
     content: z.string(),
     author: z.string(),
+    createdAt: z.date(),
   }),
   relationships: {
     user: {
@@ -50,4 +51,16 @@ export default {
       },
     },
   },
+  indexes: [
+    {
+      on: ["author", "createdAt"],
+      description:
+        "Index to efficiently query a user's posts, sorted by creation date.",
+    },
+    {
+      on: "content",
+      type: "fulltext",
+      description: "Enable full-text search on post content.",
+    },
+  ],
 };

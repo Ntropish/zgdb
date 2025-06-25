@@ -50,4 +50,16 @@ export default {
       },
     },
   },
+  indexes: [
+    {
+      on: "email",
+      unique: true,
+      description:
+        "Ensure user emails are unique for authentication and fast lookup.",
+    },
+    {
+      on: "name",
+      description: "Index user names for sorting and searching.",
+    },
+  ],
 };

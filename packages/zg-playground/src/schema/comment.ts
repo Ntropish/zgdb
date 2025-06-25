@@ -8,6 +8,7 @@ export default {
     content: z.string(),
     author: z.string(),
     regards: z.string(),
+    createdAt: z.date(),
   }),
   relationships: {
     user: {
@@ -32,4 +33,15 @@ export default {
       },
     },
   },
+  indexes: [
+    {
+      on: ["regards", "createdAt"],
+      description:
+        "Index to efficiently query a post's comments, sorted by creation date.",
+    },
+    {
+      on: "author",
+      description: "Index to efficiently query a user's comments.",
+    },
+  ],
 };
