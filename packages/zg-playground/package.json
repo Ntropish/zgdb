@@ -1,5 +1,5 @@
 {
-  "name": "@tsmk/builder",
+  "name": "@tsmk/zg-playground",
   "version": "1.0.0",
   "description": "A composable, event-driven builder tool using tsmk kernels.",
   "main": "dist/index.js",
