@@ -24,5 +24,12 @@ export default {
         required: true,
       },
     },
+    reaction: {
+      reactions: {
+        cardinality: "many",
+        description: "Reactions on this comment.",
+        mappedBy: "target",
+      },
+    },
   },
 };

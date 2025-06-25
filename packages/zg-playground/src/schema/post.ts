@@ -28,5 +28,26 @@ export default {
         mappedBy: "regards",
       },
     },
+    "post-tag": {
+      tags: {
+        cardinality: "many",
+        description: "The tags applied to this post.",
+        mappedBy: "postId",
+      },
+    },
+    image: {
+      images: {
+        cardinality: "many",
+        description: "Images included in this post.",
+        mappedBy: "postId",
+      },
+    },
+    reaction: {
+      reactions: {
+        cardinality: "many",
+        description: "Reactions on this post.",
+        mappedBy: "target",
+      },
+    },
   },
 };

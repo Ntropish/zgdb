@@ -1,0 +1,27 @@
+import { z } from "zod";
+
+export default {
+  name: "PostTag",
+  description: "The join entity connecting a Post and a Tag.",
+  schema: z.object({
+    id: z.string(),
+    postId: z.string(),
+    tagId: z.string(),
+  }),
+  relationships: {
+    post: {
+      post: {
+        cardinality: "one",
+        description: "The post being tagged.",
+        required: true,
+      },
+    },
+    tag: {
+      tag: {
+        cardinality: "one",
+        description: "The tag being applied.",
+        required: true,
+      },
+    },
+  },
+};
