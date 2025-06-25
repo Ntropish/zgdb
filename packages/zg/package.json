@@ -11,16 +11,19 @@
     "test:types": "tsd",
     "test:all": "run-p build test:jest test:types"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ejs": "^3.1.10"
+  },
   "devDependencies": {
     "jest": "^29.7.0",
     "ts-jest": "^29.1.2",
     "typescript": "^5.4.5",
     "@types/jest": "^29.5.12",
+    "@types/ejs": "^3.1.5",
+    "@types/node": "^20.12.12",
     "tsd": "^0.31.0",
     "concurrently": "^8.2.2",
-    "npm-run-all": "^4.1.5",
-    "@types/node": "^20.12.12"
+    "npm-run-all": "^4.1.5"
   },
   "keywords": [
     "tsmk",

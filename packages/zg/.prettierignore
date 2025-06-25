@@ -1,0 +1,3 @@
+# Ignore the EJS template file, as its content is not HTML-like
+# and Prettier misinterprets the syntax.
+src/templates/schema.fbs.ejs 

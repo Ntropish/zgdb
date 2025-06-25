@@ -1,0 +1,10 @@
+{
+  "overrides": [
+    {
+      "files": "packages/zg/src/templates/schema.fbs.ejs",
+      "options": {
+        "parser": "typescript"
+      }
+    }
+  ]
+}
