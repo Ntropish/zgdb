@@ -215,4 +215,24 @@ describe("Schema Parser", () => {
       targetField: "author",
     });
   });
+
+  it("should parse an auth block", () => {
+    const rawAuthSchema: RawSchema = {
+      name: "AuthTest",
+      schema: z.object({ id: z.string() }),
+      auth: {
+        create: [{ capability: "auth:create" }],
+        read: [{ policy: "owner" }, { capability: "auth:read" }],
+      },
+    };
+
+    const normalized = parseSchemas([rawAuthSchema]);
+    const authSchema = normalized.find((s) => s.name === "AuthTest")!;
+
+    expect(authSchema.auth).toBeDefined();
+    expect(authSchema.auth).toEqual({
+      create: [{ capability: "auth:create" }],
+      read: [{ policy: "owner" }, { capability: "auth:read" }],
+    });
+  });
 });

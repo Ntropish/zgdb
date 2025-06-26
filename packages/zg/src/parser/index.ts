@@ -146,6 +146,7 @@ export function parseSchemas(rawSchemas: RawSchema[]): NormalizedSchema[] {
         on: Array.isArray(index.on) ? index.on : [index.on],
         type: index.type || "btree",
       })),
+      auth: rawSchema.auth || {},
     };
 
     topLevelSchema.fields = parseZodSchema(

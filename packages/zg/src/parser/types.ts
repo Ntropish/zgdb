@@ -61,7 +61,23 @@ export interface NormalizedSchema {
   relationships: (Relationship | PolymorphicRelationship)[];
   manyToMany: ManyToManyRelationship[];
   indexes?: Index[];
+  auth: AuthBlock;
 }
+
+/**
+ * An authorization rule, which can be either a policy check or a capability check.
+ */
+export type AuthRule =
+  | { policy: string; description?: string }
+  | { capability: string; description?: string };
+
+/**
+ * A block defining authorization rules for various actions on a schema.
+ * The keys are action names (e.g., 'create', 'read', 'addComment').
+ */
+export type AuthBlock = {
+  [action: string]: AuthRule[];
+};
 
 /**
  * Represents the raw, user-defined schema file format.
@@ -78,4 +94,5 @@ export interface RawSchema {
     };
   };
   indexes?: Index[];
+  auth?: AuthBlock;
 }
