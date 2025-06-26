@@ -6,11 +6,12 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "test": "run-s build test:jest",
-    "test:jest": "jest --detectOpenHandles --verbose",
-    "test:types": "tsd",
-    "test:all": "run-p build test:jest test:types"
+    "build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
   },
   "dependencies": {
     "ejs": "^3.1.10"
@@ -41,20 +42,6 @@
   ],
   "author": "",
   "license": "ISC",
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "jsdom",
-    "testPathIgnorePatterns": [
-      "/dist/",
-      "\\.test-d\\.ts$"
-    ],
-    "moduleNameMapper": {
-      "^@tsmk/(.*)$": "<rootDir>/../$1/src"
-    },
-    "roots": [
-      "<rootDir>/src"
-    ]
-  },
   "tsd": {
     "directory": "src"
   }
