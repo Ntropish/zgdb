@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "test": "vitest run",
+    "test": "vitest run --open=false",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "lint": "eslint . --ext .ts",

@@ -1,124 +1,154 @@
-import {
-  NormalizedSchema,
-  Field,
-  Relationship,
-  ManyToManyRelationship,
-} from "../parser/types.js";
+import { NormalizedSchema, Field } from "../parser/types.js";
 import { topologicalSort } from "./topological-sort.js";
 
-function generateTsField(field: Field): string {
-  // This needs to map FBS types to TS types
+function mapTsType(fbsType: string): string {
   const typeMap: Record<string, string> = {
     string: "string",
     long: "number",
     bool: "boolean",
   };
-
-  // Handle table types, e.g., User_Profile -> Promise<ZGUserProfile>
-  const isTableType = !typeMap[field.type] && !field.type.startsWith("[");
-  const isTableArrayType = field.type.startsWith("[");
-
-  let tsType = "any";
-  if (typeMap[field.type]) {
-    tsType = typeMap[field.type];
-  } else if (isTableType) {
-    tsType = `Promise<ZG${field.type} | null>`;
-  } else if (isTableArrayType) {
-    const baseType = field.type.replace(/\[|\]/g, "");
-    tsType = `Promise<ZG${baseType}[] | null>`;
-  }
-
-  return `  ${field.name}: ${tsType};`;
+  return typeMap[fbsType] || "any"; // Default for nested tables etc.
 }
 
-function generateTsInterface(schema: NormalizedSchema): string {
-  const fields = schema.fields.map(generateTsField).join("\n");
-
-  const rels = schema.relationships
-    .map((rel) => {
-      const nodeType = `ZG${rel.node}`;
-      const type =
-        rel.cardinality === "one"
-          ? `Promise<${nodeType} | null>`
-          : `Promise<${nodeType}[]>`;
-      return `  ${rel.name}: ${type};`;
-    })
+function generateInterface(schema: NormalizedSchema): string {
+  const fields = schema.fields
+    .map((f) => `  ${f.name}: ${mapTsType(f.type)};`)
     .join("\n");
 
-  const m2mRels = schema.manyToMany
-    .map((rel) => {
-      const nodeType = `ZG${rel.node}`;
-      return `  ${rel.name}: Promise<${nodeType}[]>;`;
-    })
-    .join("\n");
-
-  const allFields = [fields, rels, m2mRels].filter(Boolean).join("\n\n");
-
-  return `export interface ZG${schema.name} {\n${allFields}\n}`;
+  // TODO: Add relationships to interface
+  return `export interface I${schema.name} {\n${fields}\n}`;
 }
 
-function generateMetaData(schema: NormalizedSchema): string {
-  const rels = schema.relationships
+function generateNodeClass(schema: NormalizedSchema): string {
+  const fields = schema.fields
     .map(
-      (rel) =>
-        `    ${rel.name}: { type: '${rel.cardinality}', node: '${rel.node}'${
-          rel.mappedBy ? `, mappedBy: '${rel.mappedBy}'` : ""
-        } },`
+      (f) => `  get ${f.name}(): ${mapTsType(f.type)} {
+    return this.fbb.${f.name}();
+  }`
     )
-    .join("\n");
+    .join("\n\n");
 
-  const m2mRels = schema.manyToMany
-    .map(
-      (rel) =>
-        `    ${rel.name}: { type: 'many', node: '${rel.node}', through: '${rel.through}' },`
-    )
-    .join("\n");
+  // TODO: Add relationship accessors
 
-  return `export const ${schema.name}Meta = {
-  getRootAs: LowLevel.${schema.name}.getRootAs${schema.name},
-  relationships: {
-${rels}
-  },
-  manyToMany: {
-${m2mRels}
-  },
-};`;
+  return `export class ${schema.name}Node extends ZgBaseNode<LowLevel.${schema.name}> {
+  // --- Fields ---
+${fields}
+
+  // --- Relationships ---
+  // (to be implemented)
+}`;
 }
 
-/**
- * Generates the content for the high-level schema.zg.ts file.
- * @param schemas An array of all normalized schemas.
- * @returns The content of the schema.zg.ts file as a string.
- */
+function generateDbAccessors(schema: NormalizedSchema): string {
+  const schemaNameLower =
+    schema.name.charAt(0).toLowerCase() + schema.name.slice(1);
+  const { auth } = schema;
+
+  const generateAuthCheck = (
+    action: "create" | "read" | "update" | "delete"
+  ) => {
+    if (!auth || !auth[action] || auth[action].length === 0) {
+      return `        // No '${action}' auth rules defined for ${schema.name}`;
+    }
+
+    const checks = auth[action]
+      .map((rule) => {
+        if ("policy" in rule && rule.policy === "owner") {
+          // This is a placeholder. Real implementation will need more context.
+          return `        // TODO: Implement policy check for 'owner' on ${action}`;
+        }
+        if ("capability" in rule && rule.capability) {
+          return `        if (this.authContext.hasCapability('${rule.capability}')) return;`;
+        }
+        return `        // Unsupported rule on ${action}: ${JSON.stringify(
+          rule
+        )}`;
+      })
+      .join("\n");
+
+    return `
+        const checkAuth = async () => {
+${checks}
+          throw new Error('Authorization failed for ${action} on ${schema.name}');
+        };
+        await checkAuth();`;
+  };
+
+  return `
+  get ${schemaNameLower}s() {
+    return {
+      get: async (id: string): Promise<${schema.name}Node | null> => {
+        if (!this.authContext) throw new Error("Auth context not set");
+${generateAuthCheck("read")}
+        const result = await this.db.get<LowLevel.${schema.name}, ${
+    schema.name
+  }Node>('${schema.name}', id, (db, fbb, ac) => new ${
+    schema.name
+  }Node(db, fbb, ac));
+        return result;
+      },
+      create: async (data: Partial<I${schema.name}>>): Promise<${
+    schema.name
+  }Node> => {
+        if (!this.authContext) throw new Error("Auth context not set");
+${generateAuthCheck("create")}
+        return this.db.create<LowLevel.${schema.name}, ${schema.name}Node>('${
+    schema.name
+  }', data, (db, fbb, ac) => new ${schema.name}Node(db, fbb, ac));
+      },
+      update: async (id: string, data: Partial<I${schema.name}>>): Promise<${
+    schema.name
+  }Node> => {
+        if (!this.authContext) throw new Error("Auth context not set");
+${generateAuthCheck("update")}
+        return this.db.update<LowLevel.${schema.name}, ${schema.name}Node>('${
+    schema.name
+  }', id, data, (db, fbb, ac) => new ${schema.name}Node(db, fbb, ac));
+      },
+      delete: async (id: string): Promise<void> => {
+        if (!this.authContext) throw new Error("Auth context not set");
+${generateAuthCheck("delete")}
+        return this.db.delete('${schema.name}', id);
+      }
+    };
+  }`;
+}
+
 export function generateZgFile(schemas: NormalizedSchema[]): string {
-  const fileHeader = `// Generated by ZG. Do not edit.\n\n`;
-  const imports = `import { ZGDatabase, ZGNode } from '@tsmk/zg-client';\nimport * as LowLevel from './schema_generated';\n\n`;
-
-  // Sort schemas to ensure consistent output order
   const sortedSchemas = topologicalSort(schemas);
 
-  const interfaces = sortedSchemas.map(generateTsInterface).join("\n\n");
-  const metadata = sortedSchemas.map(generateMetaData).join("\n\n");
+  const interfaces = sortedSchemas.map(generateInterface).join("\n\n");
+  const nodeClasses = sortedSchemas.map(generateNodeClass).join("\n\n");
+  const dbAccessors = sortedSchemas.map(generateDbAccessors).join("\n");
 
-  const schemaManifest = `export const schema = {\n${sortedSchemas
-    .map((s) => `  ${s.name}: ${s.name}Meta,`)
-    .join("\n")}\n};`;
+  return `// Generated by ZG. Do not edit.
 
-  const dbInterfaceEntries = sortedSchemas
-    .map((s) => `  ${s.name}: ZG${s.name};`)
-    .join("\n");
-  const createDbFn = `\nexport function createDatabase(config: any): ZGDatabase<{\n${dbInterfaceEntries}\n}> {\n  return new ZGDatabase(schema, config);\n}`;
+import { ZgDatabase, ZgBaseNode, ZgAuthContext } from '@tsmk/zg-client';
+import * as LowLevel from './schema_generated.js';
 
-  return (
-    fileHeader +
-    imports +
-    interfaces +
-    "\n\n" +
-    metadata +
-    "\n\n" +
-    schemaManifest +
-    "\n" +
-    createDbFn +
-    "\n"
-  );
+// --- Interfaces ---
+${interfaces}
+
+// --- Node Classes ---
+${nodeClasses}
+
+// --- Database Class ---
+export class ZgClient {
+  private db: ZgDatabase;
+  private authContext: ZgAuthContext | null = null;
+
+  constructor(config: any) {
+    this.db = new ZgDatabase(config);
+  }
+
+  setAuthContext(context: ZgAuthContext) {
+    this.authContext = context;
+  }
+${dbAccessors}
+}
+
+export function createZgClient(config: any): ZgClient {
+  return new ZgClient(config);
+}
+`;
 }
