@@ -11,48 +11,49 @@ import { topologicalSort } from "./topological-sort.js";
 export function generateFbs(schemas: NormalizedSchema[]): string {
   const builder = createFbsBuilder();
 
+  // A real implementation might pull this from a global config
+  builder.namespace("MyGeneratedSchema");
+
   const sortedSchemas = topologicalSort(schemas);
 
   for (const schema of sortedSchemas) {
-    builder.table(schema.name, (table) => {
-      if (schema.description) {
-        table.comment(schema.description);
+    const tableBuilder = builder.table(schema.name);
+
+    if (schema.description) {
+      tableBuilder.docs(schema.description);
+    }
+
+    if (schema.auth && Object.keys(schema.auth).length > 0) {
+      const rules = Object.entries(schema.auth)
+        .map(([action, rules]) => {
+          if (rules.length === 0) return null;
+          const ruleDescriptions = rules
+            .map((rule) => {
+              if ("policy" in rule) return `    - Policy: ${rule.policy}`;
+              return `    - Capability: ${rule.capability}`;
+            })
+            .join("\\n");
+          return `  - ${action}: requires ONE OF:\\n${ruleDescriptions}`;
+        })
+        .filter(Boolean)
+        .join("\\n");
+
+      if (rules) {
+        tableBuilder.docs(`Authorization Rules:\\n${rules}`);
       }
+    }
 
-      if (schema.auth && Object.keys(schema.auth).length > 0) {
-        const rules = Object.entries(schema.auth)
-          .map(([action, rules]) => {
-            if (rules.length === 0) return null;
-            const ruleDescriptions = rules
-              .map((rule) => {
-                if ("policy" in rule) return `    - Policy: ${rule.policy}`;
-                return `    - Capability: ${rule.capability}`;
-              })
-              .join("\n");
-            return `  - ${action}: requires ONE OF:\n${ruleDescriptions}`;
-          })
-          .filter(Boolean)
-          .join("\n");
+    for (const field of schema.fields) {
+      tableBuilder.field(field.name, field.type);
+    }
 
-        if (rules) {
-          table.comment(`Authorization Rules:\n${rules}`);
-        }
+    if (schema.manyToMany && schema.manyToMany.length > 0) {
+      for (const rel of schema.manyToMany) {
+        tableBuilder.docs(
+          `Many-to-many relationship: '${rel.name}' to node '${rel.node}' through '${rel.through}'`
+        );
       }
-
-      for (const field of schema.fields) {
-        table.field(field.name, field.type);
-      }
-
-      if (schema.manyToMany && schema.manyToMany.length > 0) {
-        for (const rel of schema.manyToMany) {
-          table.comment(
-            `Many-to-many relationship: '${rel.name}' to node '${rel.node}' through '${rel.through}'`
-          );
-        }
-      }
-
-      return table;
-    });
+    }
   }
 
   return builder.toString();

@@ -14,8 +14,8 @@
     "lint:fix": "eslint . --ext .ts --fix"
   },
   "dependencies": {
-    "ejs": "^3.1.10",
-    "@tsmk/fbs-builder": "workspace:*"
+    "@tsmk/fbs-builder": "workspace:*",
+    "ejs": "^3.1.10"
   },
   "peerDependencies": {
     "zod": "^3.0.0"
@@ -34,6 +34,7 @@
     "tsd": "^0.31.0",
     "typescript": "^5.4.5",
     "vite": "^7.0.0",
+    "vite-plugin-dts": "^4.5.4",
     "vitest": "^3.2.4"
   },
   "keywords": [

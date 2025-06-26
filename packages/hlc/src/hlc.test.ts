@@ -1,13 +1,9 @@
-import { HybridLogicalClock } from "./index";
+import { describe, it, expect } from "vitest";
+import { HybridLogicalClock } from "./index.js";
 
 describe("HybridLogicalClock", () => {
-  it("should be defined", () => {
-    // This will fail until we create the class
-    expect(HybridLogicalClock).toBeDefined();
-  });
-
   it("should initialize with a given wall-clock time and a logical counter of 0", () => {
-    const wallTime = 1672531200000; // A fixed point in time: 2023-01-01 00:00:00 UTC
+    const wallTime = 1672531200000; // 2023-01-01 00:00:00 UTC
     const hlc = HybridLogicalClock.fromWallTime(wallTime);
     expect(hlc.physicalTime).toBe(wallTime);
     expect(hlc.logicalCounter).toBe(0);
@@ -29,13 +25,11 @@ describe("HybridLogicalClock", () => {
       const initialTime = 1672531200000;
       const hlc = HybridLogicalClock.fromWallTime(initialTime);
 
-      // Pass the same time to simulate a rapid sequence of events
       const newHlc = hlc.increment(initialTime);
 
       expect(newHlc.physicalTime).toBe(initialTime);
       expect(newHlc.logicalCounter).toBe(1);
 
-      // Check that it increments again
       const newerHlc = newHlc.increment(initialTime);
       expect(newerHlc.physicalTime).toBe(initialTime);
       expect(newerHlc.logicalCounter).toBe(2);
@@ -44,14 +38,10 @@ describe("HybridLogicalClock", () => {
 
   describe("update", () => {
     it("should adopt the remote timestamp if it is far ahead of the local clock", () => {
-      const localHlc = HybridLogicalClock.fromWallTime(1000); // Local clock at time 1000
-      const remoteHlc = HybridLogicalClock.fromWallTime(5000); // Remote clock at time 5000
-
-      // The current wall time is now behind the remote clock, isolating the remote-as-max case
+      const localHlc = HybridLogicalClock.fromWallTime(1000);
+      const remoteHlc = HybridLogicalClock.fromWallTime(5000);
       const wallTime = 4999;
       const updatedHlc = localHlc.update(remoteHlc, wallTime);
-
-      // It should adopt the remote's physical time and increment its logical counter
       expect(updatedHlc.physicalTime).toBe(remoteHlc.physicalTime);
       expect(updatedHlc.logicalCounter).toBe(remoteHlc.logicalCounter + 1);
     });
@@ -75,19 +65,17 @@ describe("HybridLogicalClock", () => {
     });
 
     it("should increment the max logical counter when physical times are identical", () => {
-      // Create two clocks with the same physical time but different logical counters
-      let localHlc = HybridLogicalClock.fromWallTime(5000); // counter is 0
-      localHlc = localHlc.increment(5000); // counter is 1
+      let localHlc = HybridLogicalClock.fromWallTime(5000);
+      localHlc = localHlc.increment(5000);
 
-      let remoteHlc = HybridLogicalClock.fromWallTime(5000); // counter is 0
-      remoteHlc = remoteHlc.increment(5000); // counter is 1
-      remoteHlc = remoteHlc.increment(5000); // counter is 2
+      let remoteHlc = HybridLogicalClock.fromWallTime(5000);
+      remoteHlc = remoteHlc.increment(5000);
+      remoteHlc = remoteHlc.increment(5000);
 
-      const wallTime = 4999; // Wall time is behind
+      const wallTime = 4999;
       const updatedHlc = localHlc.update(remoteHlc, wallTime);
 
       expect(updatedHlc.physicalTime).toBe(5000);
-      // It should take the max of the two counters (2) and add 1
       expect(updatedHlc.logicalCounter).toBe(3);
     });
   });

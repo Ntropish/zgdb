@@ -159,6 +159,9 @@ importers:
       vite-plugin-dts:
         specifier: ^4.5.4
         version: 4.5.4(@types/node@20.19.1)(rollup@4.44.0)(typescript@5.8.3)(vite@7.0.0(@types/node@20.19.1))
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@20.19.1)(@vitest/ui@3.2.4)
 
   packages/prolly-log:
     devDependencies:
@@ -342,6 +345,9 @@ importers:
       vite:
         specifier: ^7.0.0
         version: 7.0.0(@types/node@20.19.1)
+      vite-plugin-dts:
+        specifier: ^4.5.4
+        version: 4.5.4(@types/node@20.19.1)(rollup@4.44.0)(typescript@5.8.3)(vite@7.0.0(@types/node@20.19.1))
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@20.19.1)(@vitest/ui@3.2.4)

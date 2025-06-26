@@ -16,7 +16,8 @@
     "ts-jest": "^29.1.2",
     "typescript": "^5.4.5",
     "vite": "^7.0.0",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.2.4"
   },
   "jest": {
     "preset": "ts-jest",
