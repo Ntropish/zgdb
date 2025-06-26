@@ -1,4 +1,4 @@
-import { FbsBuilder } from "@tsmk/fbs-builder";
+import { createFbsBuilder } from "@tsmk/fbs-builder";
 import { NormalizedSchema } from "../parser/types.js";
 import { topologicalSort } from "./topological-sort.js";
 
@@ -9,7 +9,7 @@ import { topologicalSort } from "./topological-sort.js";
  * @returns The content of the .fbs file as a string.
  */
 export function generateFbs(schemas: NormalizedSchema[]): string {
-  const builder = new FbsBuilder();
+  const builder = createFbsBuilder();
 
   const sortedSchemas = topologicalSort(schemas);
 
