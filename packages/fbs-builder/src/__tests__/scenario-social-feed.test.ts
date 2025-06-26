@@ -4,6 +4,7 @@ import {
   createInitialFbsFileState,
   renderFbs,
 } from "../index.js";
+import { runFlatc } from "./test-utils.js";
 
 describe("Scenario Test: EchoSphere - Social Media Feed Item", () => {
   it("should generate a schema for a polymorphic social media feed", async () => {
@@ -79,5 +80,8 @@ describe("Scenario Test: EchoSphere - Social Media Feed Item", () => {
 
     // The output will be compared against a snapshot.
     expect(result).toMatchSnapshot();
+
+    // It should also be a valid FlatBuffers schema.
+    await runFlatc(result, "social_feed.fbs");
   });
 });

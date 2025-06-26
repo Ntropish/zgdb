@@ -10,17 +10,17 @@ struct GeneMarker {
   confidence: float;
 }
 
-/// Contains the full results of a single DNA sequencing run.
+/// Represents a single DNA sequence and its identified markers.
 table SequencingResult {
-  uuid: string (key);
-  timestamp: Timestamp (required);
+  id: string (key);
+  raw_sequence: [ubyte];
   markers: [GeneMarker];
-  electropherogram: [ubyte];
 }
 
 /// A batch containing multiple sequencing results.
 table ResultBatch {
   batch_id: string;
+  run_date: Google.Protobuf.Timestamp;
   results: [SequencingResult];
 }
 

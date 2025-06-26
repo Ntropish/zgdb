@@ -4,6 +4,7 @@ import {
   createInitialFbsFileState,
   renderFbs,
 } from "../index.js";
+import { runFlatc } from "./test-utils.js";
 
 describe("Scenario Test: Project Chimera - Genetic Sequencing Data", () => {
   it("should generate a schema for storing genetic sequence batches", async () => {
@@ -11,47 +12,45 @@ describe("Scenario Test: Project Chimera - Genetic Sequencing Data", () => {
     const initialState = createInitialFbsFileState();
 
     /**
-     * SCENARIO: In "Project Chimera," researchers are analyzing genetic
-     * sequences. They need a file format to store batches of sequencing
-     * results. Each result contains metadata, a series of identified genes
-     * with their confidence scores, and the raw electropherogram data from
-     * the sequencing machine.
+     * SCENARIO: A bioinformatics lab needs to store large batches of genetic
+     * sequencing results. Efficiency is crucial for handling massive amounts
+     * of data. The schema needs to be compact and allow for quick access
+     * to specific data points.
      *
      * FEATURES TESTED:
-     * - `include` to import external type definitions (e.g., for timestamps).
-     * - `vector` of `ubyte` for raw binary data.
-     * - `vector` of `struct` for efficient storage of repetitive, structured data.
-     * - Multiple tables to represent a structured dataset.
-     * - `float` data type for confidence scores.
+     * - `include` for using types defined in other files (e.g., a standard Timestamp).
+     * - `struct` for compact, fixed-layout data (`GeneMarker`).
+     * - `vector` of bytes (`[ubyte]`) for raw sequence data.
+     * - `vector` of structs (`[GeneMarker]`) for identified genes.
+     * - Namespacing to organize the schema.
      */
 
     builder.namespace("Chimera.Genetics");
-    builder.include("timestamp.fbs"); // Assuming a shared timestamp definition
+    builder.include("timestamp.fbs");
 
-    // Genes are identified as a position and a confidence score. A struct is
-    // very efficient for this, especially when we have millions of them.
+    // A struct to mark a specific gene's location and the confidence score.
+    // Structs are used here for memory efficiency with large vectors.
     builder
       .struct("GeneMarker")
       .docs("Marks an identified gene at a specific position with a score.")
       .field("position", "uint")
       .field("confidence", "float");
 
-    // The main table for a single sequencing result.
+    // A table to hold a single sequencing result, including the raw data
+    // and a list of identified markers.
     builder
       .table("SequencingResult")
-      .docs("Contains the full results of a single DNA sequencing run.")
-      .field("uuid", "string", { attributes: { key: true } })
-      .field("timestamp", "Timestamp", {
-        attributes: { required: true },
-      }) // Assuming Timestamp is defined in `timestamp.fbs`
-      .field("markers", "GeneMarker", { isVector: true })
-      .field("electropherogram", "ubyte", { isVector: true }); // Raw data
+      .docs("Represents a single DNA sequence and its identified markers.")
+      .field("id", "string", { attributes: { key: true } })
+      .field("raw_sequence", "[ubyte]") // [ubyte] is a vector of bytes
+      .field("markers", "GeneMarker", { isVector: true });
 
     // A batch can contain multiple results. This is our root type.
     builder
       .table("ResultBatch")
       .docs("A batch containing multiple sequencing results.")
       .field("batch_id", "string")
+      .field("run_date", "Google.Protobuf.Timestamp")
       .field("results", "SequencingResult", { isVector: true });
 
     builder.root_type("ResultBatch");
@@ -62,5 +61,11 @@ describe("Scenario Test: Project Chimera - Genetic Sequencing Data", () => {
 
     // The output will be compared against a snapshot.
     expect(result).toMatchSnapshot();
+
+    // It should also be a valid FlatBuffers schema.
+    const timestampFbs =
+      "namespace Google.Protobuf;\n\ntable Timestamp { seconds: long; nanos: int; }";
+    const includeFiles = new Map([["timestamp.fbs", timestampFbs]]);
+    await runFlatc(result, "genetic_sequencing.fbs", includeFiles);
   });
 });
