@@ -1,0 +1,45 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Scenario Test: EchoSphere - Social Media Feed Item > should generate a schema for a polymorphic social media feed 1`] = `
+"namespace EchoSphere.Feed;
+/// Content for a simple text-based post.
+table TextContent {
+  text: string;
+}
+
+/// Metadata for a single photo.
+struct PhotoMetadata {
+  width: ushort;
+  height: ushort;
+}
+
+/// Content for a gallery post with multiple photos.
+table GalleryContent {
+  urls: [string];
+  metadata: [PhotoMetadata];
+}
+
+/// Content for an interactive poll.
+table PollContent {
+  question: string;
+  options: [string];
+}
+
+/// A union of all possible content types for a feed item.
+union Content {
+  TextContent,
+  GalleryContent,
+  PollContent,
+}
+
+/// The root container for an item on the social media feed.
+table FeedItem {
+  id: ulong (key);
+  author_id: string;
+  likes: uint = 0;
+  old_thread_id: string (deprecated);
+  content: Content (required);
+}
+
+root_type FeedItem;"
+`;

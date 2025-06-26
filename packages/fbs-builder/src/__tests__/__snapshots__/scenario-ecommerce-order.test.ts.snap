@@ -1,0 +1,39 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Scenario Test: NexusMart - E-commerce Order Manifest > should generate a schema for a self-contained order manifest file 1`] = `
+"namespace NexusMart.Orders;
+/// A standard postal address.
+table Address {
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  zip: string;
+}
+
+/// Represents a customer.
+table Customer {
+  id: string (key);
+  name: string;
+  billing_address: Address;
+}
+
+/// Represents a product in the catalog.
+table Product {
+  sku: string (required);
+  name: string;
+  quantity: ushort = 1;
+}
+
+/// The root table for an order manifest.
+table Order {
+  order_id: string;
+  customer: Customer;
+  products: [Product];
+  shipping_address: Address;
+}
+
+root_type Order;
+file_identifier "NEXO";
+file_extension "order";"
+`;

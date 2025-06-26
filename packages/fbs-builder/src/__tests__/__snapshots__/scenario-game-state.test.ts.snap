@@ -1,0 +1,55 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Scenario Test: The Chronicles of Eldoria - Player Save State > should generate a schema for a complex player save file 1`] = `
+"namespace Eldoria.Saves;
+/// A simple 3D position in the game world.
+struct Position {
+  x: float;
+  y: float;
+  z: float;
+}
+
+/// Enumerates the possible character classes.
+enum CharacterClass: ubyte {
+  Warrior = 0,
+  Mage = 1,
+  Archer = 2,
+}
+
+/// Represents a weapon with damage and elemental attributes.
+table Weapon {
+  damage: short;
+  elemental_type: string;
+}
+
+/// Represents a piece of armor with defense points.
+table Armor {
+  defense: short;
+}
+
+/// A consumable potion with a specific effect.
+table Potion {
+  effect: string;
+  duration_seconds: int;
+}
+
+/// A union that can hold any type of inventory item.
+union InventoryItem {
+  Weapon,
+  Armor,
+  Potion,
+}
+
+/// The root table for a player's save data.
+table PlayerState {
+  name: string (required);
+  character_class: CharacterClass = "Warrior";
+  hp: int;
+  mana: int;
+  pos: Position;
+  inventory: [InventoryItem];
+}
+
+root_type PlayerState;
+file_identifier "EPSA";"
+`;

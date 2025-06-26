@@ -1,0 +1,35 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Scenario Test: QuantumLeap - Centralized App Configuration > should generate a schema for a complex application configuration file 1`] = `
+"namespace QuantumLeap.Config;
+/// The deployment profile for the application.
+enum Profile: byte {
+  Development = 0,
+  Staging = 1,
+  Production = 2,
+}
+
+/// Configuration for the public-facing API service.
+table ApiConfig {
+  host: string = "0.0.0.0";
+  port: ushort = 8080;
+  tls_enabled: bool = false;
+  threads: ubyte = 4;
+}
+
+/// Configuration for the background worker service.
+table WorkerConfig {
+  queue_name: string = "default_queue";
+  retries: ubyte = 3;
+  timeout_ms: uint = 30000;
+}
+
+/// The root configuration for the QuantumLeap application.
+table AppConfig {
+  profile: Profile = "Development";
+  api: ApiConfig;
+  worker: WorkerConfig;
+}
+
+root_type AppConfig;"
+`;
