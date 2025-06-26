@@ -1,4 +1,8 @@
-import { createFbsBuilder } from "@tsmk/fbs-builder";
+import {
+  createFbsBuilder,
+  createInitialFbsFileState,
+  renderFbs,
+} from "@tsmk/fbs-builder";
 import { NormalizedSchema } from "../parser/types.js";
 import { topologicalSort } from "./topological-sort.js";
 
@@ -8,7 +12,9 @@ import { topologicalSort } from "./topological-sort.js";
  * @param schemas - An array of all normalized schemas, including nested ones.
  * @returns The content of the .fbs file as a string.
  */
-export function generateFbs(schemas: NormalizedSchema[]): string {
+export async function generateFbs(
+  schemas: NormalizedSchema[]
+): Promise<string> {
   const builder = createFbsBuilder();
 
   // A real implementation might pull this from a global config
@@ -44,7 +50,7 @@ export function generateFbs(schemas: NormalizedSchema[]): string {
     }
 
     for (const field of schema.fields) {
-      tableBuilder.field(field.name, field.type);
+      tableBuilder.field(field.name, field.type as any);
     }
 
     if (schema.manyToMany && schema.manyToMany.length > 0) {
@@ -56,5 +62,7 @@ export function generateFbs(schemas: NormalizedSchema[]): string {
     }
   }
 
-  return builder.toString();
+  const initialState = createInitialFbsFileState();
+  const finalState = await builder.build(initialState);
+  return renderFbs(finalState);
 }

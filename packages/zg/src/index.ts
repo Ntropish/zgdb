@@ -34,7 +34,7 @@ export async function run(
 
   // --- 2. Parse and Generate FBS content ---
   const normalizedSchemas = parseSchemas(schemas);
-  const fbsContent = generateFbs(normalizedSchemas);
+  const fbsContent = await generateFbs(normalizedSchemas);
   const fbsFilePath = path.join(outputDir, "schema.fbs");
   await fs.writeFile(fbsFilePath, fbsContent);
   logger.log(`✅ Successfully generated ${fbsFilePath}`);
