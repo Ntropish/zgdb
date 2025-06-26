@@ -159,5 +159,31 @@ export function parseSchemas(rawSchemas: RawSchema[]): NormalizedSchema[] {
     allSchemas.push(topLevelSchema);
   }
 
+  // Final pass: resolve one-to-many relationships
+  for (const schema of allSchemas) {
+    for (const rel of schema.relationships) {
+      if (rel.mappedBy) {
+        const targetSchema = allSchemas.find((s) => s.name === rel.node);
+        if (!targetSchema) {
+          throw new Error(
+            `Could not find target schema '${rel.node}' for relationship '${rel.name}' on schema '${schema.name}'.`
+          );
+        }
+
+        const targetRelation = targetSchema.relationships.find(
+          (r) => r.name === rel.mappedBy
+        );
+
+        if (!targetRelation) {
+          throw new Error(
+            `Could not find 'mappedBy' relation '${rel.mappedBy}' on target schema '${rel.node}'.`
+          );
+        }
+
+        rel.targetField = rel.mappedBy;
+      }
+    }
+  }
+
   return allSchemas;
 }

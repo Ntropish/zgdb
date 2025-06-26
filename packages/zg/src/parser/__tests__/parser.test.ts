@@ -173,4 +173,46 @@ describe("Schema Parser", () => {
       description: "Tags on the post.",
     });
   });
+
+  it("should parse a one-to-many relationship", () => {
+    const UserSchema: RawSchema = {
+      name: "User",
+      schema: z.object({ id: z.string() }),
+      relationships: {
+        Post: {
+          posts: {
+            cardinality: "many",
+            mappedBy: "author",
+            description: "Posts by the user.",
+          },
+        },
+      },
+    };
+
+    const PostSchema: RawSchema = {
+      name: "Post",
+      schema: z.object({ id: z.string(), authorId: z.string() }),
+      relationships: {
+        User: {
+          author: { cardinality: "one", required: true },
+        },
+      },
+    };
+
+    const normalized = parseSchemas([UserSchema, PostSchema]);
+    const userSchema = normalized.find((s) => s.name === "User")!;
+    const userPostsRelation = userSchema.relationships.find(
+      (r) => r.name === "posts"
+    )!;
+
+    expect(userPostsRelation).toBeDefined();
+    expect(userPostsRelation).toEqual({
+      name: "posts",
+      node: "Post",
+      cardinality: "many",
+      description: "Posts by the user.",
+      mappedBy: "author",
+      targetField: "author",
+    });
+  });
 });

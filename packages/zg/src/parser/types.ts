@@ -21,6 +21,7 @@ export interface Relationship {
   required?: boolean;
   description?: string;
   mappedBy?: string;
+  targetField?: string;
 }
 
 /** Defines a polymorphic relationship. */

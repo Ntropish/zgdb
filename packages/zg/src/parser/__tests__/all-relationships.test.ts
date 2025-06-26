@@ -50,10 +50,39 @@ describe("Schema Parser Deep Edge Cases: All Relationship Types", () => {
       // but we can test its reverse mapping here conceptually.
     };
 
-    const normalized = parseSchemas([rawProjectSchema]);
+    const rawTaskSchema: RawSchema = {
+      name: "task",
+      schema: z.object({ id: z.string(), projectId: z.string() }),
+      relationships: {
+        Project: {
+          project: { cardinality: "one", required: true },
+        },
+      },
+    };
 
-    expect(normalized).toHaveLength(1);
-    const projectSchema = normalized[0];
+    const rawUserSchema: RawSchema = {
+      name: "user",
+      schema: z.object({ id: z.string() }),
+    };
+    const rawImageSchema: RawSchema = {
+      name: "image",
+      schema: z.object({ id: z.string() }),
+    };
+    const rawFileSchema: RawSchema = {
+      name: "file",
+      schema: z.object({ id: z.string() }),
+    };
+
+    const normalized = parseSchemas([
+      rawProjectSchema,
+      rawTaskSchema,
+      rawUserSchema,
+      rawImageSchema,
+      rawFileSchema,
+    ]);
+
+    expect(normalized).toHaveLength(5);
+    const projectSchema = normalized.find((s) => s.name === "Project")!;
 
     expect(projectSchema.name).toBe("Project");
 
@@ -85,6 +114,7 @@ describe("Schema Parser Deep Edge Cases: All Relationship Types", () => {
           required: undefined, // required is optional
           description: "The tasks associated with the project.",
           mappedBy: "project",
+          targetField: "project",
         },
       ])
     );
