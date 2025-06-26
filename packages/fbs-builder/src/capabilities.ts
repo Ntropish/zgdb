@@ -3,10 +3,11 @@ import {
   FluentBuilder,
   CapabilityMap,
 } from "@tsmk/builder";
-import { FbsAuthRule, FbsFileState, FbsTableState } from "./types.js";
+import { FbsAuthRule, FbsTableState } from "./types.js";
 
-// Define the state objects
-type FileBuilderState = FbsFileState;
+// The TProduct for the main builder is an array of rendered string blocks.
+type FileBuilderState = string[];
+// The TProduct for the table builder is the intermediate state for a single table.
 type TableBuilderState = FbsTableState;
 
 // Define the event maps (the methods available on the builders)
@@ -24,6 +25,35 @@ type FileEventMap = {
 // Define typed builders for convenience
 export type FbsTableBuilder = FluentBuilder<TableBuilderState, TableEventMap>;
 export type FbsFileBuilder = FluentBuilder<FileBuilderState, FileEventMap>;
+
+/**
+ * Renders a single, populated FbsTableState object into a string.
+ * This is a local helper, not a separate process.
+ */
+function renderTable(table: FbsTableState): string {
+  const lines: string[] = [];
+  if (table.docs.length > 0) {
+    lines.push(...table.docs.map((doc) => `/// ${doc}`));
+  }
+
+  const authRules: string[] = [];
+  for (const [authType, rules] of table.authRules.entries()) {
+    const ruleValues = rules.map((r) => `"${r.value}"`).join(", ");
+    authRules.push(`${authType}: [${ruleValues}]`);
+  }
+
+  if (authRules.length > 0) {
+    lines.push(`table ${table.name} (${authRules.join(", ")}) {`);
+  } else {
+    lines.push(`table ${table.name} {`);
+  }
+
+  for (const field of table.fields) {
+    lines.push(`  ${field.name}: ${field.type};`);
+  }
+  lines.push("}");
+  return lines.join("\n");
+}
 
 /**
  * Creates a stateless builder for configuring an FBS table.
@@ -67,22 +97,21 @@ export function createFbsBuilder(): FbsFileBuilder {
        * The 'build' hook is for execution. It receives the file's state,
        * the table builder instance from 'apply', and the original arguments.
        */
-      build: async (state, tableBuilder, name) => {
+      build: async (product, tableBuilder, name) => {
         const tableState: FbsTableState = {
           name,
           docs: [],
           fields: [],
           authRules: new Map(),
         };
-        // We execute the table builder's pipeline, which mutates the tableState
         await tableBuilder.build(tableState);
-        // And then we add the completed table state to the file state
-        state.tables.set(name, tableState);
+        const renderedTable = renderTable(tableState);
+        product.push(renderedTable);
       },
     },
     root_type: {
-      build: (state, _, name) => {
-        state.rootType = name;
+      build: (product, _, name) => {
+        product.push(`root_type ${name};`);
       },
     },
   };

@@ -1,24 +1,16 @@
 import { describe, it, expect } from "vitest";
-import {
-  createFbsBuilder,
-  FbsFileState,
-  renderFbsFile,
-  FbsTableBuilder,
-} from "../index.js";
+import { createFbsBuilder, FbsTableBuilder } from "../index.js";
 
 describe("fbs-builder", () => {
   it("should build a simple fbs file with chained calls", async () => {
     const builder = createFbsBuilder();
 
-    // The initial state that the final build() will mutate.
-    const initialState: FbsFileState = {
-      tables: new Map(),
-      rootType: null,
-    };
+    // The initial product is an empty array of strings.
+    const initialProduct: string[] = [];
 
     // Queue up build steps using the fluent, chained API.
-    const userTableBuilder = builder.table("User") as any as FbsTableBuilder;
-    userTableBuilder
+    const userTable = builder.table("User") as any as FbsTableBuilder;
+    userTable
       .docs("A user in the system")
       .field("id", "string")
       .field("name", "string")
@@ -27,8 +19,8 @@ describe("fbs-builder", () => {
         { type: "capability", value: "admin" },
       ]);
 
-    const postTableBuilder = builder.table("Post") as any as FbsTableBuilder;
-    postTableBuilder
+    const postTable = builder.table("Post") as any as FbsTableBuilder;
+    postTable
       .field("id", "string")
       .field("content", "string")
       .field("owner", "User");
@@ -50,11 +42,11 @@ table Post {
 root_type User;`;
 
     // Execute the entire build pipeline.
-    const finalState = await builder.build(initialState);
-    const result = renderFbsFile(finalState);
+    const fbsBlocks = await builder.build(initialProduct);
+    const result = fbsBlocks.join("\n\n");
 
-    expect(result.replace(/\\r\\n/g, "\\n")).toBe(
-      expected.replace(/\\r\\n/g, "\\n")
+    expect(result.replace(/\\r\\n/g, "\n")).toBe(
+      expected.replace(/\\r\\n/g, "\n")
     );
   });
 });

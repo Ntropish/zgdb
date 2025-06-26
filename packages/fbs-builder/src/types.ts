@@ -14,8 +14,3 @@ export interface FbsTableState {
   fields: FbsField[];
   authRules: Map<string, FbsAuthRule[]>;
 }
-
-export interface FbsFileState {
-  tables: Map<string, FbsTableState>;
-  rootType: string | null;
-}
