@@ -2,6 +2,7 @@
 
 exports[`Scenario Test: NexusMart - E-commerce Order Manifest > should generate a schema for a self-contained order manifest file 1`] = `
 "namespace NexusMart.Orders;
+
 /// A standard postal address.
 table Address {
   line1: string;

@@ -2,6 +2,7 @@
 
 exports[`Scenario Test: The Chronicles of Eldoria - Player Save State > should generate a schema for a complex player save file 1`] = `
 "namespace Eldoria.Saves;
+
 /// A simple 3D position in the game world.
 struct Position {
   x: float;

@@ -2,6 +2,7 @@
 
 exports[`Scenario Test: QuantumLeap - Centralized App Configuration > should generate a schema for a complex application configuration file 1`] = `
 "namespace QuantumLeap.Config;
+
 /// The deployment profile for the application.
 enum Profile: byte {
   Development = 0,

@@ -157,44 +157,48 @@ function renderUnion(u: FbsUnionState): string {
 }
 
 export function renderFbs(fileState: FbsFileState): string {
-  const lines: string[] = [];
-  if (fileState.namespace) {
-    lines.push(`namespace ${fileState.namespace};`);
-  }
+  const header: string[] = [];
   if (fileState.includes.length > 0) {
-    lines.push(...fileState.includes.map((inc) => `include "${inc}";`));
-    lines.push(""); // for spacing
+    header.push(...fileState.includes.map((inc) => `include "${inc}";`));
+  }
+  if (fileState.namespace) {
+    header.push(`namespace ${fileState.namespace};`);
   }
 
-  for (const decl of fileState.declarations) {
-    switch (decl.kind) {
-      case "table":
-        lines.push(renderTable(decl as FbsTableState));
-        break;
-      case "struct":
-        lines.push(renderStruct(decl as FbsStructState));
-        break;
-      case "enum":
-        lines.push(renderEnum(decl as FbsEnumState));
-        break;
-      case "union":
-        lines.push(renderUnion(decl as FbsUnionState));
-        break;
-    }
-    lines.push(""); // for spacing
-  }
+  const declarations = fileState.declarations
+    .map((decl) => {
+      switch (decl.kind) {
+        case "table":
+          return renderTable(decl as FbsTableState);
+        case "struct":
+          return renderStruct(decl as FbsStructState);
+        case "enum":
+          return renderEnum(decl as FbsEnumState);
+        case "union":
+          return renderUnion(decl as FbsUnionState);
+        default:
+          return null;
+      }
+    })
+    .filter((s) => s !== null)
+    .join("\n\n");
 
+  const footer: string[] = [];
   if (fileState.rootType) {
-    lines.push(`root_type ${fileState.rootType};`);
+    footer.push(`root_type ${fileState.rootType};`);
   }
   if (fileState.fileIdentifier) {
-    lines.push(`file_identifier "${fileState.fileIdentifier}";`);
+    footer.push(`file_identifier "${fileState.fileIdentifier}";`);
   }
   if (fileState.fileExtension) {
-    lines.push(`file_extension "${fileState.fileExtension}";`);
+    footer.push(`file_extension "${fileState.fileExtension}";`);
   }
 
-  return lines.join("\n");
+  const allParts = [header.join("\n"), declarations, footer.join("\n")].filter(
+    (part) => part.length > 0
+  );
+
+  return allParts.join("\n\n");
 }
 
 /**

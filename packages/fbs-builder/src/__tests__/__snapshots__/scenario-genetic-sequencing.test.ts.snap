@@ -1,8 +1,8 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`Scenario Test: Project Chimera - Genetic Sequencing Data > should generate a schema for storing genetic sequence batches 1`] = `
-"namespace Chimera.Genetics;
-include "timestamp.fbs";
+"include "timestamp.fbs";
+namespace Chimera.Genetics;
 
 /// Marks an identified gene at a specific position with a score.
 struct GeneMarker {

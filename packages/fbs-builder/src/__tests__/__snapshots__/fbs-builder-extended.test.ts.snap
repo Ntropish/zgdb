@@ -1,8 +1,8 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`fbs-builder-extended > should build a complex fbs file with all features 1`] = `
-"namespace MyGame.Sample;
-include "other_definitions.fbs";
+"include "other_definitions.fbs";
+namespace MyGame.Sample;
 
 /// An enum for colors
 enum Color: ubyte {

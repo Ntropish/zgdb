@@ -2,6 +2,7 @@
 
 exports[`Scenario Test: EchoSphere - Social Media Feed Item > should generate a schema for a polymorphic social media feed 1`] = `
 "namespace EchoSphere.Feed;
+
 /// Content for a simple text-based post.
 table TextContent {
   text: string;
