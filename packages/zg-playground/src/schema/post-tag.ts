@@ -9,15 +9,15 @@ export default {
     tagId: z.string(),
   }),
   relationships: {
-    post: {
-      post: {
+    Post: {
+      postId: {
         cardinality: "one",
         description: "The post being tagged.",
         required: true,
       },
     },
-    tag: {
-      tag: {
+    Tag: {
+      tagId: {
         cardinality: "one",
         description: "The tag being applied.",
         required: true,

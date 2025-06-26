@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { RawSchema } from "@tsmk/zg";
 
-const schema: RawSchema = {
+export default {
   name: "Follow",
   description:
     "A directional relationship indicating one user follows another.",
@@ -12,13 +11,13 @@ const schema: RawSchema = {
     createdAt: z.date(),
   }),
   relationships: {
-    user: {
-      follower: {
+    User: {
+      followerId: {
         cardinality: "one",
         description: "The user who is initiating the follow.",
         required: true,
       },
-      following: {
+      followingId: {
         cardinality: "one",
         description: "The user who is being followed.",
         required: true,
@@ -26,5 +25,3 @@ const schema: RawSchema = {
     },
   },
 };
-
-export default schema;

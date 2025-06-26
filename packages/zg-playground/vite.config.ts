@@ -1,27 +1,23 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
 import { glob } from "glob";
+import { fileURLToPath } from "node:url";
 
-// Find all .ts files in the src/schema directory, which will be our entry points
-const entryPoints = glob
-  .sync("src/schema/**/*.ts")
-  .map((file) => resolve(__dirname, file));
+// Recreate __dirname for ES module scope
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
   build: {
     outDir: "dist",
+    lib: {
+      entry: resolve(__dirname, "src/index.ts"),
+      name: "zg-playground",
+      fileName: "index",
+      formats: ["es"],
+    },
     rollupOptions: {
-      input: entryPoints,
-      preserveEntrySignatures: "strict",
-      output: {
-        // preserveModules will ensure the directory structure is kept
-        preserveModules: true,
-        // dir is the output directory
-        dir: "dist",
-        // format is es module
-        format: "es",
-      },
       external: ["zod", "@tsmk/zg"],
     },
+    manifest: false,
   },
 });

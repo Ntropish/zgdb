@@ -18,14 +18,14 @@ export default {
     userId: z.string().optional(),
   }),
   relationships: {
-    post: {
-      post: {
+    Post: {
+      postId: {
         cardinality: "one",
         description: "The post this image is associated with, if any.",
       },
     },
-    user: {
-      user: {
+    User: {
+      userId: {
         cardinality: "one",
         description: "The user this image is a profile picture for, if any.",
       },

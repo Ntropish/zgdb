@@ -12,7 +12,7 @@ export default {
     targetType: z.enum(["post", "comment"]),
   }),
   relationships: {
-    user: {
+    User: {
       author: {
         cardinality: "one",
         description: "The user who made the reaction.",
@@ -27,7 +27,7 @@ export default {
         type: "polymorphic",
         discriminator: "targetType",
         foreignKey: "targetId",
-        references: ["post", "comment"],
+        references: ["Post", "Comment"],
       },
     },
   },

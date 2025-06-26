@@ -9,21 +9,21 @@ export default {
     email: z.string().email(),
   }),
   relationships: {
-    post: {
+    Post: {
       posts: {
         cardinality: "many",
         description: "Posts written by the user.",
         mappedBy: "author",
       },
     },
-    comment: {
+    Comment: {
       comments: {
         cardinality: "many",
         description: "Comments written by the user.",
         mappedBy: "author",
       },
     },
-    follow: {
+    Follow: {
       followers: {
         cardinality: "many",
         description: "Users who are following this user.",
@@ -35,14 +35,14 @@ export default {
         mappedBy: "followerId",
       },
     },
-    image: {
+    Image: {
       profilePicture: {
         cardinality: "one",
         description: "The user's profile picture.",
         mappedBy: "userId",
       },
     },
-    reaction: {
+    Reaction: {
       reactions: {
         cardinality: "many",
         description: "Reactions made by the user.",

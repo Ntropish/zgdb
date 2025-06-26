@@ -11,14 +11,14 @@ export default {
     createdAt: z.date(),
   }),
   relationships: {
-    user: {
+    User: {
       author: {
         cardinality: "one",
         description: "The user who wrote the post.",
         required: true,
       },
     },
-    comment: {
+    Comment: {
       comments: {
         cardinality: "many",
         description: "Comments on this post.",
@@ -26,17 +26,17 @@ export default {
          * This relationship is the reverse of the 'regards' relationship on the Comment node.
          * The 'mappedBy' property indicates that the foreign key is stored on the other node.
          */
-        mappedBy: "regards",
+        mappedBy: "author",
       },
     },
-    image: {
+    Image: {
       images: {
         cardinality: "many",
         description: "Images included in this post.",
         mappedBy: "postId",
       },
     },
-    reaction: {
+    Reaction: {
       reactions: {
         cardinality: "many",
         description: "Reactions on this post.",

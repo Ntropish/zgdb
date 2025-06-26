@@ -11,7 +11,7 @@ export function parseArgs(argv: string[]) {
     .option("schemas", {
       alias: "s",
       type: "string",
-      description: "A glob pattern to find schema definition files.",
+      description: "Path to the schema definition file (or a glob pattern).",
       demandOption: true,
     })
     .option("output", {

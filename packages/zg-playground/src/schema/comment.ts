@@ -11,21 +11,21 @@ export default {
     createdAt: z.date(),
   }),
   relationships: {
-    user: {
+    User: {
       author: {
         cardinality: "one",
         description: "The user who wrote the comment",
         required: true,
       },
     },
-    post: {
+    Post: {
       regards: {
         cardinality: "one",
         description: "The post that the comment is about",
         required: true,
       },
     },
-    reaction: {
+    Reaction: {
       reactions: {
         cardinality: "many",
         description: "Reactions on this comment.",
