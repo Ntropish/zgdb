@@ -4,7 +4,7 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "types": ["jest", "node"],
+    "types": ["node"],
     "outDir": "./dist"
   },
   "include": ["src"],

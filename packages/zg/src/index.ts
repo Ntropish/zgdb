@@ -9,14 +9,24 @@ import { promisify } from "util";
 
 const execPromise = promisify(exec);
 
+export interface ZgRunLogger {
+  log: (message: string) => void;
+  error: (message: string) => void;
+}
+
 /**
  * The main build script for ZG. It orchestrates the entire process
  * from parsing raw schemas to generating the final client code.
  *
  * @param schemas - An array of raw schema definitions.
  * @param outputDir - The directory to write the generated files to.
+ * @param logger - An optional logger object for capturing output.
  */
-export async function run(schemas: RawSchema[], outputDir: string) {
+export async function run(
+  schemas: RawSchema[],
+  outputDir: string,
+  logger: ZgRunLogger = { log: () => {}, error: () => {} }
+) {
   // --- 1. Ensure output directory exists ---
   await fs.mkdir(outputDir, { recursive: true });
 
@@ -25,7 +35,7 @@ export async function run(schemas: RawSchema[], outputDir: string) {
   const fbsContent = generateFbs(normalizedSchemas);
   const fbsFilePath = path.join(outputDir, "schema.fbs");
   await fs.writeFile(fbsFilePath, fbsContent);
-  console.log(`✅ Successfully generated ${fbsFilePath}`);
+  logger.log(`✅ Successfully generated ${fbsFilePath}`);
 
   // --- 3. Run flatc to generate low-level accessors ---
   const flatcCommand = `flatc --ts --gen-onefile -o "${outputDir}" "${fbsFilePath}"`;
@@ -36,10 +46,10 @@ export async function run(schemas: RawSchema[], outputDir: string) {
       if (stderr.toLowerCase().includes("error")) {
         throw new Error(`flatc error: ${stderr}`);
       }
-      console.log(`flatc output:\n${stderr}`);
+      logger.log(`flatc output:\n${stderr}`);
     }
     if (stdout) {
-      console.log(`flatc output:\n${stdout}`);
+      logger.log(`flatc output:\n${stdout}`);
     }
 
     // After running, explicitly check if the file was created.
@@ -50,10 +60,10 @@ export async function run(schemas: RawSchema[], outputDir: string) {
       // flatc generates `schema.ts`, so we check for that and rename it.
       await fs.access(flatcOutputPath);
       await fs.rename(flatcOutputPath, generatedTsPath);
-      console.log(`✅ Successfully compiled FBS to ${generatedTsPath}`);
+      logger.log(`✅ Successfully compiled FBS to ${generatedTsPath}`);
     } catch {
       const dirContents = await fs.readdir(outputDir);
-      console.error(`Directory contents: [${dirContents.join(", ")}]`);
+      logger.error(`Directory contents: [${dirContents.join(", ")}]`);
       throw new Error(
         `flatc ran without throwing but did not produce the expected output file: ${generatedTsPath}`
       );
@@ -63,7 +73,7 @@ export async function run(schemas: RawSchema[], outputDir: string) {
     if (err instanceof Error) {
       errorMessage = err.message;
     }
-    console.error(`❌ Error executing flatc.
+    logger.error(`❌ Error executing flatc.
     Command: ${flatcCommand}
     Error: ${errorMessage}
     Is 'flatc' installed and in your system's PATH?`);
@@ -74,7 +84,7 @@ export async function run(schemas: RawSchema[], outputDir: string) {
   const zgClientContent = generateZgFile(normalizedSchemas);
   const zgFilePath = path.join(outputDir, "schema.zg.ts");
   await fs.writeFile(zgFilePath, zgClientContent);
-  console.log(`✅ Successfully generated high-level client at ${zgFilePath}`);
+  logger.log(`✅ Successfully generated high-level client at ${zgFilePath}`);
 
-  console.log("\n🎉 ZG build process complete!");
+  logger.log("\n🎉 ZG build process complete!");
 }
