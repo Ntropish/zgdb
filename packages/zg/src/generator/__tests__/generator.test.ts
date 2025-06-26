@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { toMatchSpecificSnapshot } from "jest-specific-snapshot";
-import { parseSchemas } from "../../parser/index";
-import { RawSchema } from "../../parser/types";
-import { generateFbs } from "../generator";
+import { parseSchemas } from "../../parser/index.js";
+import { RawSchema } from "../../parser/types.js";
+import { generateFbs } from "../generator.js";
 
 // The type definitions for 'jest-specific-snapshot' are not fully compatible
 // with modern versions of Jest's types, so we use a type assertion to resolve it.
@@ -24,6 +24,10 @@ describe("FBS Generator", () => {
           }),
         }),
       }),
+      auth: {
+        read: [{ policy: "owner" }],
+        update: [{ policy: "owner" }, { capability: "admin" }],
+      },
     };
 
     // 2. Parse it into our IR.

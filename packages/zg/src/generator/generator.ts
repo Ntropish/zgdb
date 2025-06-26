@@ -22,6 +22,27 @@ function generateField(field: Field): string {
 function generateTable(schema: NormalizedSchema): string {
   const fields = schema.fields.map(generateField).join("\n");
 
+  let authComments = "";
+  if (schema.auth && Object.keys(schema.auth).length > 0) {
+    const rules = Object.entries(schema.auth)
+      .map(([action, rules]) => {
+        if (rules.length === 0) return null;
+        const ruleDescriptions = rules
+          .map((rule) => {
+            if ("policy" in rule) return `    //     - Policy: ${rule.policy}`;
+            return `    //     - Capability: ${rule.capability}`;
+          })
+          .join("\n");
+        return `    //   - ${action}: requires ONE OF:\n${ruleDescriptions}`;
+      })
+      .filter(Boolean)
+      .join("\n");
+
+    if (rules) {
+      authComments = `\n///\n/// Authorization Rules:\n${rules}\n`;
+    }
+  }
+
   let manyToManyFields = "";
   if (schema.manyToMany && schema.manyToMany.length > 0) {
     const m2mComments = schema.manyToMany
@@ -40,7 +61,7 @@ function generateTable(schema: NormalizedSchema): string {
     tableString += `/// ${schema.description}\n`;
   }
 
-  tableString += `table ${schema.name} {\n${fields}${manyToManyFields}\n}`;
+  tableString += `${authComments}\ntable ${schema.name} {\n${fields}${manyToManyFields}\n}`;
 
   return tableString;
 }
