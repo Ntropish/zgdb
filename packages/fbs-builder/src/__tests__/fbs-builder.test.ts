@@ -16,11 +16,7 @@ describe("fbs-builder", () => {
     userTable
       .docs("A user in the system")
       .field("id", "string", { attributes: { key: true } })
-      .field("name", "string")
-      .auth("auth", [
-        { type: "policy", value: "user_is_self" },
-        { type: "capability", value: "admin" },
-      ]);
+      .field("name", "string");
 
     const postTable: FbsTableBuilder = builder.table("Post");
     postTable
@@ -31,7 +27,7 @@ describe("fbs-builder", () => {
     builder.root_type("User");
 
     const expected = `/// A user in the system
-table User (auth: { policy: ["user_is_self"], capability: ["admin"] }) {
+table User {
   id: string (key);
   name: string;
 }

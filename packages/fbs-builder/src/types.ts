@@ -21,11 +21,6 @@ export interface FbsField {
   attributes: Map<string, string | boolean>;
 }
 
-export type FbsAuthRule = {
-  type: "policy" | "capability";
-  value: string;
-};
-
 export interface FbsDeclaration {
   kind: "table" | "struct" | "enum" | "union";
   name: string;
@@ -36,7 +31,6 @@ export interface FbsTableState extends FbsDeclaration {
   kind: "table";
   fields: FbsField[];
   attributes: Map<string, string | boolean>;
-  authRules: Map<string, FbsAuthRule[]>; // This seems custom, will keep it for now
 }
 
 export interface FbsStructState extends FbsDeclaration {

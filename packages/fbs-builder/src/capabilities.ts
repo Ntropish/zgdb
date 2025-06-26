@@ -4,7 +4,6 @@ import {
   CapabilityMap,
 } from "@tsmk/builder";
 import {
-  FbsAuthRule,
   FbsTableState,
   FbsFileState,
   FbsStructState,
@@ -52,7 +51,6 @@ type TableEventMap = {
     }
   ) => void;
   attribute: (name: string, value: string | boolean) => void;
-  auth: (name: string, rules: FbsAuthRule[]) => void;
 };
 
 type FileEventMap = {
@@ -110,16 +108,6 @@ function renderTable(table: FbsTableState): string {
   const tableAttributes: string[] = [];
   for (const [key, value] of table.attributes.entries()) {
     tableAttributes.push(value === true ? key : `${key}: "${value}"`);
-  }
-
-  // Handle custom auth rules by converting them to a metadata attribute
-  if (table.authRules.size > 0) {
-    const authEntries: string[] = [];
-    for (const [authType, rules] of table.authRules.entries()) {
-      const ruleValues = rules.map((r) => `"${r.value}"`).join(", ");
-      authEntries.push(`${authType}: [${ruleValues}]`);
-    }
-    tableAttributes.push(`auth: { ${authEntries.join(", ")} }`);
   }
 
   const attrStr =
@@ -238,11 +226,6 @@ function createTableBuilder(): FbsTableBuilder {
         state.attributes.set(name, value);
       },
     },
-    auth: {
-      build: (state, _, name, rules) => {
-        state.authRules.set(name, rules);
-      },
-    },
   };
   return createFluentBuilder(capabilities);
 }
@@ -324,7 +307,6 @@ export function createFbsBuilder(): FbsFileBuilder {
           docs: [],
           fields: [],
           attributes: new Map(),
-          authRules: new Map(),
         };
         await tableBuilder.build(tableState);
         product.declarations.push(tableState);
