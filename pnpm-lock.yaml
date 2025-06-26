@@ -106,6 +106,40 @@ importers:
         specifier: ^5.4.5
         version: 5.8.3
 
+  packages/fbs-builder:
+    dependencies:
+      '@tsmk/builder':
+        specifier: workspace:*
+        version: link:../builder
+    devDependencies:
+      '@types/jest':
+        specifier: ^29.5.12
+        version: 29.5.14
+      '@types/jest-specific-snapshot':
+        specifier: ^0.5.9
+        version: 0.5.9
+      '@types/node':
+        specifier: ^20.12.12
+        version: 20.19.1
+      '@vitest/ui':
+        specifier: ^3.2.4
+        version: 3.2.4(vitest@3.2.4)
+      npm-run-all:
+        specifier: ^4.1.5
+        version: 4.1.5
+      tsd:
+        specifier: ^0.31.0
+        version: 0.31.2
+      typescript:
+        specifier: ^5.4.5
+        version: 5.8.3
+      vite:
+        specifier: ^7.0.0
+        version: 7.0.0(@types/node@20.19.1)
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@20.19.1)(@vitest/ui@3.2.4)
+
   packages/hlc:
     devDependencies:
       '@types/jest':

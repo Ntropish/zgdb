@@ -6,7 +6,7 @@ import { topologicalSort } from "./topological-sort.js";
  * @param field - The normalized field object.
  * @returns A string representing the field in FBS format.
  */
-function generateField(field: Field): string {
+export function generateField(field: Field): string {
   // FlatBuffers doesn't have a concept of "required" for non-scalar types in the same way.
   // They are optional by default. The `required` keyword exists but has specific semantics
   // related to forward/backward compatibility and is often avoided.
@@ -19,7 +19,7 @@ function generateField(field: Field): string {
  * @param schema - The normalized schema object.
  * @returns A string representing the table in FBS format.
  */
-function generateTable(schema: NormalizedSchema): string {
+export function generateTable(schema: NormalizedSchema): string {
   const fields = schema.fields.map(generateField).join("\n");
 
   let authComments = "";
