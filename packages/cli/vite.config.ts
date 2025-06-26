@@ -1,19 +1,31 @@
 import { defineConfig } from "vite";
+import dts from "vite-plugin-dts";
 
 export default defineConfig({
   build: {
+    ssr: true,
     lib: {
       entry: "src/index.ts",
       name: "zg-cli",
       fileName: "index",
-      formats: ["es"],
+      formats: ["es", "cjs"],
     },
     outDir: "dist",
     rollupOptions: {
       // Don't bundle dependencies
-      external: ["yargs/yargs", "yargs/helpers", "@tsmk/zg", "path", "zod"],
+      external: [
+        "path",
+        "fs",
+        "child_process",
+        "util",
+        "yargs/helpers",
+        "yargs/yargs",
+        "@tsmk/zg",
+        "glob",
+      ],
     },
   },
+  plugins: [dts()],
   // Vitest configuration will go here later
   test: {},
 });

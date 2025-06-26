@@ -1,6 +1,5 @@
-export type { RawSchema } from "./parser/types.js";
-
 import { RawSchema } from "./parser/types.js";
+
 import { parseSchemas } from "./parser/index.js";
 import { generateFbs } from "./generator/generator.js";
 import { generateZgFile } from "./generator/zg-file-generator.js";
@@ -102,3 +101,5 @@ export async function run(options: ZgRunOptions) {
 
   logger.log("\n🎉 ZG build process complete!");
 }
+
+export type { RawSchema };

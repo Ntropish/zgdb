@@ -14,7 +14,7 @@ export default defineConfig({
     rollupOptions: {
       // Make sure to externalize deps that shouldn't be bundled
       // into your library
-      external: [],
+      external: ["fs", "path", "child_process", "util"],
       output: {
         // Provide global variables to use in the UMD build
         // for externalized deps

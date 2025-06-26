@@ -5,6 +5,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
+  "bin": {
+    "zg": "dist/index.js"
+  },
   "scripts": {
     "build": "vite build",
     "test": "vitest run --open=false",
@@ -15,8 +18,10 @@
   },
   "dependencies": {
     "@tsmk/zg": "workspace:*",
+    "@types/glob": "^8.1.0",
     "@types/yargs": "^17.0.33",
     "ejs": "^3.1.10",
+    "glob": "^11.0.3",
     "yargs": "^18.0.0"
   },
   "peerDependencies": {
@@ -33,6 +38,7 @@
     "tsd": "^0.31.0",
     "typescript": "^5.4.5",
     "vite": "^7.0.0",
+    "vite-plugin-dts": "^4.5.4",
     "vitest": "^3.2.4"
   },
   "keywords": [
