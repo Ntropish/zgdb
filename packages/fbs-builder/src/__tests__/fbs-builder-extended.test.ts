@@ -60,54 +60,6 @@ describe("fbs-builder-extended", () => {
     // Render the final state to a string
     const result = renderFbs(finalState);
 
-    const expected = `namespace MyGame.Sample;
-include "other_definitions.fbs";
-
-/// An enum for colors
-enum Color: ubyte {
-  Red = 1,
-  Green = 2,
-  Blue = 3,
-}
-
-/// A simple 3D vector.
-struct Vec3 {
-  x: float;
-  y: float;
-  z: float;
-}
-
-/// A union of all possible components.
-union Any {
-  Monster,
-  Weapon,
-}
-
-/// A monster in the game.
-table Monster (priority: "1") {
-  pos: Vec3;
-  hp: short = 100;
-  name: string (required);
-  inventory: [ubyte];
-  color: Color = "Blue";
-  friends: [Monster];
-  equipped: Any;
-}
-
-table Weapon {
-  name: string;
-  damage: short;
-}
-
-root_type Monster;
-file_identifier "MONS";
-file_extension "mon";
-`;
-
-    // Using .trim() to remove leading/trailing whitespace and comparing
-    // line by line after splitting to avoid OS-specific newline issues.
-    expect(result.trim().split(/\\r?\\n/)).toEqual(
-      expected.trim().split(/\\r?\\n/)
-    );
+    expect(result).toMatchSnapshot();
   });
 });
