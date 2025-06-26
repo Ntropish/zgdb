@@ -1,7 +1,7 @@
-import { RawSchema } from "./generator/parser/types";
-import { parseSchemas } from "./generator/parser";
-import { generateFbs } from "./generator/generator";
-import { generateZgFile } from "./generator/zg-file-generator";
+import { RawSchema } from "./parser/types.js";
+import { parseSchemas } from "./parser/index.js";
+import { generateFbs } from "./generator/generator.js";
+import { generateZgFile } from "./generator/zg-file-generator.js";
 import { promises as fs } from "fs";
 import path from "path";
 import { exec } from "child_process";

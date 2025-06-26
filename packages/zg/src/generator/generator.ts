@@ -1,5 +1,5 @@
-import { NormalizedSchema, Field } from "./parser/types";
-import { topologicalSort } from "./topological-sort";
+import { NormalizedSchema, Field } from "../parser/types.js";
+import { topologicalSort } from "./topological-sort.js";
 
 /**
  * Generates the FBS definition for a single field.

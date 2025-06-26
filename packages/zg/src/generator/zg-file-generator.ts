@@ -3,8 +3,8 @@ import {
   Field,
   Relationship,
   ManyToManyRelationship,
-} from "./parser/types";
-import { topologicalSort } from "./topological-sort";
+} from "../parser/types.js";
+import { topologicalSort } from "./topological-sort.js";
 
 function generateTsField(field: Field): string {
   // This needs to map FBS types to TS types

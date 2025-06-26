@@ -5,9 +5,9 @@ import {
   Relationship,
   PolymorphicRelationship,
   ManyToManyRelationship,
-} from "./types";
+} from "./types.js";
 import { ZodTypeAny, ZodObject } from "zod";
-import { mapZodToFlatBufferType } from "./type-map";
+import { mapZodToFlatBufferType } from "./type-map.js";
 
 /**
  * Parses the Zod schema definition to extract a normalized list of fields.

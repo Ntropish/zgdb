@@ -1,5 +1,5 @@
-import { run } from "..";
-import { RawSchema } from "../generator/parser/types";
+import { run } from "../index.js";
+import { RawSchema } from "../parser/types.js";
 import { z } from "zod";
 import { promises as fs } from "fs";
 import path from "path";

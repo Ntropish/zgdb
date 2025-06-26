@@ -1,5 +1,5 @@
-import { parseSchemas } from "..";
-import { RawSchema } from "../types";
+import { parseSchemas } from "../index.js";
+import { RawSchema } from "../types.js";
 import { z } from "zod";
 
 describe("Schema Parser Deep Edge Cases: Complex Array and Union Types", () => {

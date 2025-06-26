@@ -1,6 +1,6 @@
 import { readdir } from "fs/promises";
 import { resolve } from "path";
-import { RawSchema } from "../parser/types";
+import { RawSchema } from "../../parser/types.js";
 
 /**
  * Discovers and loads all user-defined schema files from a given directory.

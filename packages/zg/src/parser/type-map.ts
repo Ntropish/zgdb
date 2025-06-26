@@ -1,6 +1,6 @@
 import { ZodTypeAny, ZodObject } from "zod";
-import { NormalizedSchema } from "./types";
-import { parseZodSchema } from ".";
+import { NormalizedSchema } from "./types.js";
+import { parseZodSchema } from "./index.js";
 
 // A simplified mapping from Zod types to FlatBuffer scalar types.
 // This can be expanded to include more complex types and logic.

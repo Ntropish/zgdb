@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { toMatchSpecificSnapshot } from "jest-specific-snapshot";
-import { parseSchemas } from "../parser";
-import { RawSchema } from "../parser/types";
+import { parseSchemas } from "../../parser/index";
+import { RawSchema } from "../../parser/types";
 import { generateFbs } from "../generator";
 
 // The type definitions for 'jest-specific-snapshot' are not fully compatible

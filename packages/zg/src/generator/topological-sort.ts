@@ -1,4 +1,4 @@
-import { NormalizedSchema } from "./parser/types";
+import { NormalizedSchema } from "../parser/types.js";
 
 /**
  * Performs a topological sort on the schemas to ensure that

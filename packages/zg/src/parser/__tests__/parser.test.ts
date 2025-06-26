@@ -1,5 +1,5 @@
-import { parseSchemas } from "..";
-import { RawSchema } from "../types";
+import { parseSchemas } from "../index.js";
+import { RawSchema } from "../types.js";
 import { z } from "zod";
 
 const rawUserSchema: RawSchema = {
