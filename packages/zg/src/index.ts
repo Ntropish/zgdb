@@ -16,19 +16,31 @@ export interface ZgRunLogger {
   error: (message: string) => void;
 }
 
+export interface ZgRunOptions {
+  /** An array of raw schema definitions to be processed. */
+  schemas: RawSchema[];
+  /** The absolute path to the output directory. */
+  outputDir: string;
+  /** An optional logger for capturing build output. */
+  logger?: ZgRunLogger;
+  /** An optional path to the flatc compiler. Defaults to searching the system PATH. */
+  flatcPath?: string;
+}
+
 /**
  * The main build script for ZG. It orchestrates the entire process
  * from parsing raw schemas to generating the final client code.
  *
- * @param schemas - An array of raw schema definitions.
- * @param outputDir - The directory to write the generated files to.
- * @param logger - An optional logger object for capturing output.
+ * @param options - The configuration options for the run.
  */
-export async function run(
-  schemas: RawSchema[],
-  outputDir: string,
-  logger: ZgRunLogger = { log: () => {}, error: () => {} }
-) {
+export async function run(options: ZgRunOptions) {
+  const {
+    schemas,
+    outputDir,
+    logger = { log: () => {}, error: () => {} },
+    flatcPath = "flatc",
+  } = options;
+
   // --- 1. Ensure output directory exists ---
   await fs.mkdir(outputDir, { recursive: true });
 
@@ -40,7 +52,7 @@ export async function run(
   logger.log(`✅ Successfully generated ${fbsFilePath}`);
 
   // --- 3. Run flatc to generate low-level accessors ---
-  const flatcCommand = `flatc --ts --gen-onefile -o "${outputDir}" "${fbsFilePath}"`;
+  const flatcCommand = `${flatcPath} --ts --gen-onefile -o "${outputDir}" "${fbsFilePath}"`;
   try {
     const { stdout, stderr } = await execPromise(flatcCommand);
     if (stderr) {
