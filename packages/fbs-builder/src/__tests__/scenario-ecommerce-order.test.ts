@@ -4,6 +4,7 @@ import {
   createInitialFbsFileState,
   renderFbs,
 } from "../index.js";
+import { runFlatc } from "./test-utils.js";
 
 describe("Scenario Test: NexusMart - E-commerce Order Manifest", () => {
   it("should generate a schema for a self-contained order manifest file", async () => {
@@ -71,5 +72,8 @@ describe("Scenario Test: NexusMart - E-commerce Order Manifest", () => {
 
     // The output will be compared against a snapshot.
     expect(result).toMatchSnapshot();
+
+    // It should also be a valid FlatBuffers schema.
+    await runFlatc(result, "ecommerce_order.fbs");
   });
 });

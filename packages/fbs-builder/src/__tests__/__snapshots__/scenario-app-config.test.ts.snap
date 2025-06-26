@@ -12,7 +12,7 @@ enum Profile: byte {
 
 /// Configuration for the public-facing API service.
 table ApiConfig {
-  host: string = "0.0.0.0";
+  host: string;
   port: ushort = 8080;
   tls_enabled: bool = false;
   threads: ubyte = 4;
@@ -20,16 +20,33 @@ table ApiConfig {
 
 /// Configuration for the background worker service.
 table WorkerConfig {
-  queue_name: string = "default_queue";
+  queue_name: string;
   retries: ubyte = 3;
   timeout_ms: uint = 30000;
 }
 
-/// The root configuration for the QuantumLeap application.
+enum Theme: ubyte {
+  Light = 0,
+  Dark = 1,
+  System = 2,
+}
+
+enum UpdateChannel: ubyte {
+  Stable = 0,
+  Beta = 1,
+  Nightly = 2,
+}
+
+table FeatureFlags {
+  enable_experimental_analytics: bool = false;
+  enable_new_login_flow: bool = true;
+}
+
 table AppConfig {
-  profile: Profile = "Development";
-  api: ApiConfig;
-  worker: WorkerConfig;
+  theme: Theme = 2;
+  auto_update_enabled: bool = true;
+  update_channel: UpdateChannel = 0;
+  feature_flags: FeatureFlags;
 }
 
 root_type AppConfig;"

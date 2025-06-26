@@ -4,6 +4,7 @@ import {
   createInitialFbsFileState,
   renderFbs,
 } from "../index.js";
+import { runFlatc } from "./test-utils.js";
 
 describe("Scenario Test: QuantumLeap - Centralized App Configuration", () => {
   it("should generate a schema for a complex application configuration file", async () => {
@@ -39,7 +40,7 @@ describe("Scenario Test: QuantumLeap - Centralized App Configuration", () => {
     builder
       .table("ApiConfig")
       .docs("Configuration for the public-facing API service.")
-      .field("host", "string", { defaultValue: "0.0.0.0" })
+      .field("host", "string")
       .field("port", "ushort", { defaultValue: 8080 })
       .field("tls_enabled", "bool", { defaultValue: false })
       .field("threads", "ubyte", { defaultValue: 4 });
@@ -48,17 +49,34 @@ describe("Scenario Test: QuantumLeap - Centralized App Configuration", () => {
     builder
       .table("WorkerConfig")
       .docs("Configuration for the background worker service.")
-      .field("queue_name", "string", { defaultValue: "default_queue" })
+      .field("queue_name", "string")
       .field("retries", "ubyte", { defaultValue: 3 })
       .field("timeout_ms", "uint", { defaultValue: 30000 });
+
+    builder
+      .enum("Theme", "ubyte")
+      .value("Light", 0)
+      .value("Dark", 1)
+      .value("System", 2);
+
+    builder
+      .enum("UpdateChannel", "ubyte")
+      .value("Stable", 0)
+      .value("Beta", 1)
+      .value("Nightly", 2);
+
+    builder
+      .table("FeatureFlags")
+      .field("enable_experimental_analytics", "bool", { defaultValue: false })
+      .field("enable_new_login_flow", "bool", { defaultValue: true });
 
     // The root configuration object that brings everything together.
     builder
       .table("AppConfig")
-      .docs("The root configuration for the QuantumLeap application.")
-      .field("profile", "Profile", { defaultValue: "Development" })
-      .field("api", "ApiConfig")
-      .field("worker", "WorkerConfig");
+      .field("theme", "Theme", { defaultValue: 2 })
+      .field("auto_update_enabled", "bool", { defaultValue: true })
+      .field("update_channel", "UpdateChannel", { defaultValue: 0 })
+      .field("feature_flags", "FeatureFlags");
 
     builder.root_type("AppConfig");
 
@@ -68,5 +86,8 @@ describe("Scenario Test: QuantumLeap - Centralized App Configuration", () => {
 
     // The output will be compared against a snapshot.
     expect(result).toMatchSnapshot();
+
+    // It should also be a valid FlatBuffers schema.
+    await runFlatc(result, "app_config.fbs");
   });
 });

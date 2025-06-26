@@ -4,6 +4,7 @@ import {
   createInitialFbsFileState,
   renderFbs,
 } from "../index.js";
+import { runFlatc } from "./test-utils.js";
 
 describe("Scenario Test: The Chronicles of Eldoria - Player Save State", () => {
   it("should generate a schema for a complex player save file", async () => {
@@ -11,82 +12,68 @@ describe("Scenario Test: The Chronicles of Eldoria - Player Save State", () => {
     const initialState = createInitialFbsFileState();
 
     /**
-     * SCENARIO: We are building the save file format for a fantasy RPG, "The
-     * Chronicles of Eldoria". A player's save state needs to store their
-     * character's stats, inventory, equipped items, and current location.
-     * The inventory can contain various items like weapons, armor, or
-     * potions, each with different properties.
+     * SCENARIO: A save-game format for a fantasy RPG. The format needs to
+     * be robust and support complex, nested data structures, including a
+     * player's stats, their 3D position in the world, and a polymorphic
+     * inventory system that can hold different types of items (weapons,
+     * armor, potions, etc.).
      *
      * FEATURES TESTED:
-     * - `namespace` to prevent type collisions.
-     * - `struct` for simple, fixed-size data (Position).
-     * - `enum` for character classes.
-     * - `union` for a heterogeneous list of items.
-     * - `table` for complex, extensible objects.
-     * - `vector` of unions for the inventory.
-     * - `root_type` and `file_identifier` for the save file format.
+     * - A `struct` for a simple, fixed-layout data structure (`Vec3`).
+     * - A `union` for polymorphic data (`InventoryItem`).
+     * - A `table` (`Player`) that contains other tables, structs, and unions.
+     * - Vectors of tables (`[InventoryItem]`).
      */
 
-    builder.namespace("Eldoria.Saves");
-    builder.file_identifier("EPSA"); // Eldoria Player Save
+    builder.namespace("Eldoria.SaveGame");
 
-    // A simple struct for 3D coordinates. Structs are ideal for
-    // simple, fixed-size data that won't change.
+    // A simple struct for 3D coordinates.
     builder
-      .struct("Position")
-      .docs("A simple 3D position in the game world.")
+      .struct("Vec3")
+      .docs("A 3D vector for representing positions or directions.")
       .field("x", "float")
       .field("y", "float")
       .field("z", "float");
 
-    // An enum for the player's class.
-    builder
-      .enum("CharacterClass", "ubyte")
-      .docs("Enumerates the possible character classes.")
-      .value("Warrior", 0)
-      .value("Mage", 1)
-      .value("Archer", 2);
-
-    // Tables for the different types of items a player can have.
+    // -- INVENTORY ITEM TYPES --
     builder
       .table("Weapon")
-      .docs("Represents a weapon with damage and elemental attributes.")
+      .field("id", "string")
       .field("damage", "short")
-      .field("elemental_type", "string");
-
+      .field("speed", "float");
     builder
       .table("Armor")
-      .docs("Represents a piece of armor with defense points.")
-      .field("defense", "short");
+      .field("id", "string")
+      .field("defense", "short")
+      .field("weight", "float");
+    builder.table("Potion").field("id", "string").field("effect", "string");
 
-    builder
-      .table("Potion")
-      .docs("A consumable potion with a specific effect.")
-      .field("effect", "string")
-      .field("duration_seconds", "int");
-
-    // A union represents a value that can be one of several table types.
-    // This is perfect for our inventory, which can hold different items.
+    // The union that allows the inventory to hold any of the item types.
     builder
       .union("InventoryItem")
-      .docs("A union that can hold any type of inventory item.")
+      .docs("A union of all possible items a player can have.")
       .value("Weapon")
       .value("Armor")
       .value("Potion");
 
-    // The main table for the player's state. This is the root of our schema.
+    // -- PLAYER DATA --
     builder
-      .table("PlayerState")
-      .docs("The root table for a player's save data.")
-      .field("name", "string", { attributes: { required: true } })
-      .field("character_class", "CharacterClass", { defaultValue: "Warrior" })
+      .table("PlayerStats")
       .field("hp", "int")
+      .field("max_hp", "int")
       .field("mana", "int")
-      .field("pos", "Position") // Embedding our struct
-      .field("inventory", "InventoryItem", { isVector: true }); // A vector of our union
+      .field("max_mana", "int")
+      .field("level", "ubyte");
 
-    // Finally, we declare the root type for this schema.
-    builder.root_type("PlayerState");
+    // The root table for the player's save state.
+    builder
+      .table("Player")
+      .field("name", "string")
+      .field("position", "Vec3")
+      .field("stats", "PlayerStats")
+      .field("inventory", "InventoryItem", { isVector: true });
+
+    builder.root_type("Player");
 
     // Build and render the schema
     const finalState = await builder.build(initialState);
@@ -94,5 +81,8 @@ describe("Scenario Test: The Chronicles of Eldoria - Player Save State", () => {
 
     // The output will be compared against a snapshot.
     expect(result).toMatchSnapshot();
+
+    // It should also be a valid FlatBuffers schema.
+    await runFlatc(result, "game_state.fbs");
   });
 });
