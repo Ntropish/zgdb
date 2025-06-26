@@ -1,4 +1,5 @@
 import { createBuilder } from "../index.js";
+import { describe, it, expect, beforeEach } from "vitest";
 
 describe("Builder Edge Cases: Error Handling", () => {
   it("should halt the build process on the first error encountered", async () => {

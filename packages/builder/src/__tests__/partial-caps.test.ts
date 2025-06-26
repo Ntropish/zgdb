@@ -1,4 +1,5 @@
 import { createBuilder, CapabilityMap } from "../index.js";
+import { describe, it, expect, beforeEach } from "vitest";
 
 describe("Builder Edge Cases: Partial Capabilities", () => {
   interface Product {

@@ -5,6 +5,7 @@ import {
   BuilderPipeline,
 } from "../index.js";
 import { createFluentBuilder, FluentBuilder } from "../fluent.js";
+import { describe, it, expect } from "vitest";
 
 type Builder<
   TProduct extends object,

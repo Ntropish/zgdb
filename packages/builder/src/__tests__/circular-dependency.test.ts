@@ -1,4 +1,5 @@
 import { createBuilder, CapabilityMap } from "../index.js";
+import { describe, it, expect } from "vitest";
 
 type Builder<
   TProduct extends object,
