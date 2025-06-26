@@ -14,7 +14,8 @@
     "lint:fix": "eslint . --ext .ts --fix"
   },
   "dependencies": {
-    "ejs": "^3.1.10"
+    "ejs": "^3.1.10",
+    "@tsmk/fbs-builder": "workspace:*"
   },
   "peerDependencies": {
     "zod": "^3.0.0"

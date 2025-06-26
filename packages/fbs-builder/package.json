@@ -13,11 +13,8 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix"
   },
-  "dependencies": {
-    "@tsmk/builder": "workspace:*"
-  },
-  "peerDependencies": {},
   "devDependencies": {
+    "@tsmk/builder": "workspace:*",
     "@types/jest": "^29.5.12",
     "@types/jest-specific-snapshot": "^0.5.9",
     "@types/node": "^20.12.12",
@@ -26,6 +23,7 @@
     "tsd": "^0.31.0",
     "typescript": "^5.4.5",
     "vite": "^7.0.0",
+    "vite-plugin-dts": "^4.5.4",
     "vitest": "^3.2.4"
   },
   "keywords": [

@@ -3,8 +3,8 @@ import {
   createBuilder,
   BuilderCapability,
   BuilderPipeline,
-} from "../";
-import { createFluentBuilder, FluentBuilder } from "../fluent";
+} from "../index.js";
+import { createFluentBuilder, FluentBuilder } from "../fluent.js";
 
 type Builder<
   TProduct extends object,

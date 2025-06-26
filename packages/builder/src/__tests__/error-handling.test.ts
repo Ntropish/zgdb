@@ -1,4 +1,4 @@
-import { createBuilder } from "../";
+import { createBuilder } from "../index.js";
 
 describe("Builder Edge Cases: Error Handling", () => {
   it("should halt the build process on the first error encountered", async () => {

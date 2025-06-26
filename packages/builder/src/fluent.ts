@@ -1,4 +1,4 @@
-import { createBuilder, CapabilityMap, BuilderPipeline } from "./index";
+import { createBuilder, CapabilityMap, BuilderPipeline } from "./index.js";
 
 export type FluentBuilder<
   TProduct extends object,

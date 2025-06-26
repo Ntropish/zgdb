@@ -1,4 +1,4 @@
-import { createBuilder, CapabilityMap } from "../";
+import { createBuilder, CapabilityMap } from "../index.js";
 
 describe("Builder Edge Cases: Partial Capabilities", () => {
   interface Product {
