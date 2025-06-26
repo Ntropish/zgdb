@@ -6,7 +6,9 @@ export type FluentBuilder<
 > = {
   [key in keyof TEventMap]: (
     ...args: Parameters<TEventMap[key]>
-  ) => FluentBuilder<TProduct, TEventMap>;
+  ) => ReturnType<TEventMap[key]> extends void
+    ? FluentBuilder<TProduct, TEventMap>
+    : ReturnType<TEventMap[key]>;
 } & {
   build: BuilderPipeline<TProduct>;
 };

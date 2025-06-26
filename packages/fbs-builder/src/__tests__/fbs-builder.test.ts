@@ -9,7 +9,7 @@ describe("fbs-builder", () => {
     const initialProduct: string[] = [];
 
     // Queue up build steps using the fluent, chained API.
-    const userTable = builder.table("User") as any as FbsTableBuilder;
+    const userTable = builder.table("User");
     userTable
       .docs("A user in the system")
       .field("id", "string")
@@ -19,7 +19,7 @@ describe("fbs-builder", () => {
         { type: "capability", value: "admin" },
       ]);
 
-    const postTable = builder.table("Post") as any as FbsTableBuilder;
+    const postTable: FbsTableBuilder = builder.table("Post");
     postTable
       .field("id", "string")
       .field("content", "string")
