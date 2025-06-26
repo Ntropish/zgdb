@@ -1,18 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { createFbsBuilder, FbsTableBuilder } from "../index.js";
+import {
+  createFbsBuilder,
+  FbsTableBuilder,
+  createInitialFbsFileState,
+  renderFbs,
+} from "../index.js";
 
 describe("fbs-builder", () => {
   it("should build a simple fbs file with chained calls", async () => {
     const builder = createFbsBuilder();
-
-    // The initial product is an empty array of strings.
-    const initialProduct: string[] = [];
+    const initialState = createInitialFbsFileState();
 
     // Queue up build steps using the fluent, chained API.
     const userTable = builder.table("User");
     userTable
       .docs("A user in the system")
-      .field("id", "string")
+      .field("id", "string", { attributes: { key: true } })
       .field("name", "string")
       .auth("auth", [
         { type: "policy", value: "user_is_self" },
@@ -28,8 +31,8 @@ describe("fbs-builder", () => {
     builder.root_type("User");
 
     const expected = `/// A user in the system
-table User (auth: ["user_is_self", "admin"]) {
-  id: string;
+table User (auth: { policy: ["user_is_self"], capability: ["admin"] }) {
+  id: string (key);
   name: string;
 }
 
@@ -42,11 +45,21 @@ table Post {
 root_type User;`;
 
     // Execute the entire build pipeline.
-    const fbsBlocks = await builder.build(initialProduct);
-    const result = fbsBlocks.join("\n\n");
+    const finalState = await builder.build(initialState);
+    const result = renderFbs(finalState);
 
-    expect(result.replace(/\\r\\n/g, "\n")).toBe(
-      expected.replace(/\\r\\n/g, "\n")
+    // Using .trim() to remove leading/trailing whitespace and comparing
+    // line by line after splitting to avoid OS-specific newline issues.
+    expect(
+      result
+        .trim()
+        .split(/\\r?\\n/)
+        .join("\\n")
+    ).toBe(
+      expected
+        .trim()
+        .split(/\\r?\\n/)
+        .join("\\n")
     );
   });
 });
