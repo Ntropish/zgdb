@@ -152,10 +152,19 @@ describe("ProllyTree with Store", () => {
     it("should correctly diff additions between two branches", async () => {
       const branch1 = await baseTree.put(enc.encode("a"), enc.encode("1"));
       const branch2 = await baseTree.put(enc.encode("b"), enc.encode("2"));
-      // const diffs = await branch1.diff(branch2);
-      // expect(diffs).toEqual([
-      //   // Expected diff format needs to be defined
-      // ]);
+      const diffs = await branch1.diff(branch2);
+      expect(diffs).toEqual([
+        {
+          key: enc.encode("a"),
+          localValue: undefined,
+          remoteValue: enc.encode("1"),
+        },
+        {
+          key: enc.encode("b"),
+          localValue: undefined,
+          remoteValue: enc.encode("2"),
+        },
+      ]);
     });
   });
 });

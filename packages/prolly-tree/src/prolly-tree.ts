@@ -21,32 +21,26 @@ export class ProllyTree {
     base: ProllyTree,
     resolver: ConflictResolver
   ): Promise<ProllyTree> {
-    const [localRoot, remoteRoot, baseRoot] = await Promise.all([
-      local.store.getNode(local.rootHash),
-      remote.store.getNode(remote.rootHash),
-      base.store.getNode(base.rootHash),
-    ]);
+    const localDiffs = await base.diff(local);
+    const remoteDiffs = await base.diff(remote);
 
-    if (!localRoot || !remoteRoot || !baseRoot) {
-      throw new Error("One or more trees has no root node");
-    }
-
-    // The merge result could be a split, so we handle it like in `put`
-    const mergeResult = await this._merge(
-      localRoot,
-      remoteRoot,
-      baseRoot,
-      resolver,
-      local.store // Assume all stores are the same for now
+    const mergedDiffs = await ProllyTree._mergeDiffs(
+      localDiffs,
+      remoteDiffs,
+      resolver
     );
 
-    if (mergeResult) {
-      // TODO: Handle root split from merge
-      return new ProllyTree(local.store, mergeResult.newAddress, local.config);
-    } else {
-      // No changes between local and remote from base
-      return local;
+    let workingTree = base;
+    for (const diff of mergedDiffs) {
+      if (diff.remoteValue !== undefined) {
+        // This covers additions and modifications
+        workingTree = await workingTree.put(diff.key, diff.remoteValue);
+      } else {
+        // This covers deletions
+        workingTree = await workingTree.delete(diff.key);
+      }
     }
+    return workingTree;
   }
 
   async get(key: Uint8Array): Promise<Uint8Array | undefined> {
@@ -123,6 +117,17 @@ export class ProllyTree {
       // No change was made, so we can return the same tree instance.
       return this;
     }
+  }
+
+  async diff(other: ProllyTree): Promise<Diff[]> {
+    const [thisRoot, otherRoot] = await Promise.all([
+      this.store.getNode(this.rootHash),
+      other.store.getNode(other.rootHash),
+    ]);
+    if (!thisRoot || !otherRoot) {
+      throw new Error("One or both trees have no root node");
+    }
+    return this._diff(thisRoot, otherRoot);
   }
 
   // Recursive helper for put
@@ -334,127 +339,208 @@ export class ProllyTree {
     }
   }
 
-  private static async _merge(
-    localNode: LeafNode | InternalNode,
-    remoteNode: LeafNode | InternalNode,
-    baseNode: LeafNode | InternalNode,
-    resolver: ConflictResolver,
-    store: BlockStore
-  ): Promise<{ newAddress: Uint8Array; splitKey?: Uint8Array } | null> {
-    // For now, we only handle leaf nodes
-    if (
-      isLeafNode(localNode) &&
-      isLeafNode(remoteNode) &&
-      isLeafNode(baseNode)
-    ) {
-      const mergedPairs: [Uint8Array, Uint8Array][] = [];
+  private async _diff(
+    thisNode: LeafNode | InternalNode,
+    otherNode: LeafNode | InternalNode
+  ): Promise<Diff[]> {
+    if (thisNode.isLeaf !== otherNode.isLeaf) {
+      // One is a leaf and the other is an internal node.
+      // This is a major structural change. For simplicity, we'll treat it as
+      // all of `thisNode`'s pairs being deleted and all of `otherNode`'s pairs being added.
+      // A more sophisticated diff could be done, but this is a reasonable start.
+      const diffs: Diff[] = [];
+      const thisPairs = isLeafNode(thisNode)
+        ? thisNode.pairs
+        : await this.getAllPairs(thisNode);
+      const otherPairs = isLeafNode(otherNode)
+        ? otherNode.pairs
+        : await this.getAllPairs(otherNode);
+
+      thisPairs.forEach(([key, value]) =>
+        diffs.push({ key, localValue: value, remoteValue: undefined })
+      );
+      otherPairs.forEach(([key, value]) =>
+        diffs.push({ key, localValue: undefined, remoteValue: value })
+      );
+      return diffs;
+    }
+
+    if (isLeafNode(thisNode) && isLeafNode(otherNode)) {
+      const diffs: Diff[] = [];
       let i = 0,
-        j = 0,
-        k = 0;
-      const localPairs = localNode.pairs;
-      const remotePairs = remoteNode.pairs;
-      const basePairs = baseNode.pairs;
+        j = 0;
+      const pairs1 = thisNode.pairs;
+      const pairs2 = otherNode.pairs;
 
-      while (
-        i < localPairs.length ||
-        j < remotePairs.length ||
-        k < basePairs.length
-      ) {
-        const keyL = i < localPairs.length ? localPairs[i][0] : null;
-        const keyR = j < remotePairs.length ? remotePairs[j][0] : null;
-        const keyB = k < basePairs.length ? basePairs[k][0] : null;
+      while (i < pairs1.length || j < pairs2.length) {
+        const p1 = i < pairs1.length ? pairs1[i] : null;
+        const p2 = j < pairs2.length ? pairs2[j] : null;
 
-        const advance = (l: boolean, r: boolean, b: boolean) => {
-          if (l) i++;
-          if (r) j++;
-          if (b) k++;
-        };
-
-        const minKey = [keyL, keyR, keyB]
-          .filter((key): key is Uint8Array => key !== null)
-          .reduce((min, key) => (compare(key, min) < 0 ? key : min));
-
-        const valL =
-          keyL && compare(keyL, minKey) === 0 ? localPairs[i][1] : null;
-        const valR =
-          keyR && compare(keyR, minKey) === 0 ? remotePairs[j][1] : null;
-        const valB =
-          keyB && compare(keyB, minKey) === 0 ? basePairs[k][1] : null;
-
-        // Now, the core merge logic based on valL, valR, valB
-        if (valL && valR && valB) {
-          // Present in all three
-          const l_eq_b = compare(valL, valB) === 0;
-          const r_eq_b = compare(valR, valB) === 0;
-          if (l_eq_b && r_eq_b) {
-            // No change
-            mergedPairs.push([minKey, valB]);
-          } else if (l_eq_b) {
-            // Only remote changed
-            mergedPairs.push([minKey, valR]);
-          } else if (r_eq_b) {
-            // Only local changed
-            mergedPairs.push([minKey, valL]);
+        if (p1 && p2) {
+          const keyComp = compare(p1[0], p2[0]);
+          if (keyComp === 0) {
+            const valComp = compare(p1[1], p2[1]);
+            if (valComp !== 0) {
+              diffs.push({
+                key: p1[0],
+                localValue: p1[1],
+                remoteValue: p2[1],
+              });
+            }
+            i++;
+            j++;
+          } else if (keyComp < 0) {
+            diffs.push({
+              key: p1[0],
+              localValue: p1[1],
+              remoteValue: undefined,
+            });
+            i++;
           } else {
-            // Conflict
-            const resolved = await resolver(minKey, valB, valL, valR);
-            if (resolved) mergedPairs.push([minKey, resolved]);
+            diffs.push({
+              key: p2[0],
+              localValue: undefined,
+              remoteValue: p2[1],
+            });
+            j++;
           }
-          advance(true, true, true);
-        } else if (valL && valR) {
-          // Added in both branches
-          const resolved = await resolver(minKey, undefined, valL, valR);
-          if (resolved) mergedPairs.push([minKey, resolved]);
-          advance(true, true, false);
-        } else if (valL && valB) {
-          // In local and base, but not remote (deleted in remote)
-          if (compare(valL, valB) === 0) {
-            // Deleted in remote, unchanged in local. Net result: deleted.
-          } else {
-            // Modified in local, deleted in remote: conflict
-            const resolved = await resolver(minKey, valB, valL, undefined);
-            if (resolved) mergedPairs.push([minKey, resolved]);
-          }
-          advance(true, false, true);
-        } else if (valR && valB) {
-          // In remote and base, but not local (deleted in local)
-          if (compare(valR, valB) === 0) {
-            // Deleted in local, unchanged in remote. Net result: deleted.
-          } else {
-            // Modified in remote, deleted in local: conflict
-            const resolved = await resolver(minKey, valB, undefined, valR);
-            if (resolved) mergedPairs.push([minKey, resolved]);
-          }
-          advance(false, true, true);
-        } else if (valL) {
-          // Added only in local
-          mergedPairs.push([minKey, valL]);
-          advance(true, false, false);
-        } else if (valR) {
-          // Added only in remote
-          mergedPairs.push([minKey, valR]);
-          advance(false, true, false);
-        } else if (valB) {
-          // In base only, so deleted in both local and remote.
-          advance(false, false, true);
+        } else if (p1) {
+          diffs.push({
+            key: p1[0],
+            localValue: p1[1],
+            remoteValue: undefined,
+          });
+          i++;
+        } else if (p2) {
+          diffs.push({
+            key: p2[0],
+            localValue: undefined,
+            remoteValue: p2[1],
+          });
+          j++;
         }
       }
-
-      const mergedLeaf: LeafNode = { isLeaf: true, pairs: mergedPairs };
-      // TODO: Handle node splitting
-      const newAddress = await store.putNode(mergedLeaf);
-      return { newAddress };
-    } else if (
-      !isLeafNode(localNode) &&
-      !isLeafNode(remoteNode) &&
-      !isLeafNode(baseNode)
-    ) {
-      // Logic for merging internal nodes will go here
-      console.log("Merging internal nodes...");
-      const newAddress = await store.putNode(localNode);
-      return { newAddress };
-    } else {
-      throw new Error("Tree structures are not consistent for merge");
+      return diffs;
     }
+
+    const node1 = thisNode as InternalNode;
+    const node2 = otherNode as InternalNode;
+    const diffs: Diff[] = [];
+    let i = 0; // Pointer for node1 children
+    let j = 0; // Pointer for node2 children
+
+    while (i < node1.children.length || j < node2.children.length) {
+      const key1 = i < node1.keys.length ? node1.keys[i] : null;
+      const key2 = j < node2.keys.length ? node2.keys[j] : null;
+
+      if (key1 && key2 && compare(key1, key2) === 0) {
+        // Common key, diff children before it
+        const child1 = await this.store.getNode(node1.children[i]);
+        const child2 = await this.store.getNode(node2.children[j]);
+        if (!child1 || !child2) throw new Error("Missing child");
+        diffs.push(...(await this._diff(child1, child2)));
+        i++;
+        j++;
+      } else if (key1 && (!key2 || compare(key1, key2) < 0)) {
+        // node1 has a segment node2 doesn't. This child is a deletion.
+        const child1 = await this.store.getNode(node1.children[i]);
+        if (!child1) throw new Error("Missing child");
+        diffs.push(
+          ...(await this.getAllPairs(child1)).map(([k, v]) => ({
+            key: k,
+            localValue: v,
+            remoteValue: undefined,
+          }))
+        );
+        i++;
+      } else if (key2 && (!key1 || compare(key2, key1) < 0)) {
+        // node2 has a segment node1 doesn't. This child is an addition.
+        const child2 = await this.store.getNode(node2.children[j]);
+        if (!child2) throw new Error("Missing child");
+        diffs.push(
+          ...(await this.getAllPairs(child2)).map(([k, v]) => ({
+            key: k,
+            localValue: undefined,
+            remoteValue: v,
+          }))
+        );
+        j++;
+      } else {
+        // This is the last segment, after all keys.
+        const child1 = await this.store.getNode(node1.children[i]);
+        const child2 = await this.store.getNode(node2.children[j]);
+        if (!child1 || !child2) throw new Error("Missing child");
+        diffs.push(...(await this._diff(child1, child2)));
+        i++;
+        j++;
+      }
+    }
+
+    return diffs;
+  }
+
+  // Helper to get all pairs from a subtree, needed for leaf/internal diff
+  private async getAllPairs(
+    node: LeafNode | InternalNode
+  ): Promise<[Uint8Array, Uint8Array][]> {
+    if (isLeafNode(node)) {
+      return node.pairs;
+    }
+    let allPairs: [Uint8Array, Uint8Array][] = [];
+    for (const childAddress of node.children) {
+      const childNode = await this.store.getNode(childAddress);
+      if (!childNode) throw new Error("Missing node in getAllPairs");
+      const childPairs = await this.getAllPairs(childNode);
+      allPairs = allPairs.concat(childPairs);
+    }
+    return allPairs;
+  }
+
+  private static async _mergeDiffs(
+    localDiffs: Diff[],
+    remoteDiffs: Diff[],
+    resolver: ConflictResolver
+  ): Promise<Diff[]> {
+    const merged: Diff[] = [];
+    let i = 0,
+      j = 0;
+
+    while (i < localDiffs.length || j < remoteDiffs.length) {
+      const d1 = i < localDiffs.length ? localDiffs[i] : null;
+      const d2 = j < remoteDiffs.length ? remoteDiffs[j] : null;
+
+      if (d1 && d2) {
+        const keyComp = compare(d1.key, d2.key);
+        if (keyComp === 0) {
+          // Conflict: same key was changed in both branches
+          const resolvedValue = await resolver(
+            d1.key,
+            d1.localValue, // base value
+            d1.remoteValue, // local's new value
+            d2.remoteValue // remote's new value
+          );
+          merged.push({
+            key: d1.key,
+            localValue: d1.localValue,
+            remoteValue: resolvedValue,
+          });
+          i++;
+          j++;
+        } else if (keyComp < 0) {
+          merged.push(d1);
+          i++;
+        } else {
+          merged.push(d2);
+          j++;
+        }
+      } else if (d1) {
+        merged.push(d1);
+        i++;
+      } else if (d2) {
+        merged.push(d2);
+        j++;
+      }
+    }
+    return merged;
   }
 }
