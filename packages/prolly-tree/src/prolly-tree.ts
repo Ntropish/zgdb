@@ -46,14 +46,61 @@ export class ProllyTree {
   }
 
   async put(key: Uint8Array, value: Uint8Array): Promise<ProllyTree> {
-    // TODO: This is a temporary, naive implementation.
-    // It does not handle splitting nodes or updating existing values correctly.
-    // It just creates a new root with the new key-value pair.
-    const newLeaf: LeafNode = {
-      isLeaf: true,
-      pairs: [[key, value]],
-    };
-    const newRootHash = await this.store.putNode(newLeaf);
-    return new ProllyTree(this.store, newRootHash, this.config);
+    const rootNode = await this.store.getNode(this.rootHash);
+    if (!rootNode) {
+      // This should not happen if the tree is initialized correctly
+      throw new Error("Tree has no root node");
+    }
+
+    const newRootHash = await this._put(rootNode, key, value);
+
+    if (newRootHash) {
+      return new ProllyTree(this.store, newRootHash, this.config);
+    } else {
+      // If _put returns null, it means the key already existed and the value was identical.
+      // No change was made, so we can return the same tree instance.
+      return this;
+    }
+  }
+
+  // Recursive helper for put
+  private async _put(
+    node: any, // Using any to avoid complex type casting for now
+    key: Uint8Array,
+    value: Uint8Array
+  ): Promise<Uint8Array | null> {
+    if (isLeafNode(node)) {
+      const existingPairIndex = node.pairs.findIndex(
+        ([k, v]) => compare(key, k) === 0
+      );
+
+      let newPairs = [...node.pairs];
+      if (existingPairIndex !== -1) {
+        // Key exists, check if value is the same
+        if (compare(newPairs[existingPairIndex][1], value) === 0) {
+          // Value is identical, no change needed
+          return null;
+        }
+        // Update existing value
+        newPairs[existingPairIndex] = [key, value];
+      } else {
+        // Insert new key-value pair and maintain sort order
+        newPairs.push([key, value]);
+        newPairs.sort(([a], [b]) => compare(a, b));
+      }
+
+      const updatedLeaf: LeafNode = { ...node, pairs: newPairs };
+
+      // TODO: Check if node needs to be split
+      // const nodeIsTooLarge = serializeNode(updatedLeaf).length > this.config.valueChunking.maxChunkSize;
+      // if (nodeIsTooLarge) {
+      //   ... split logic ...
+      // }
+
+      return this.store.putNode(updatedLeaf);
+    } else {
+      // TODO: Internal node logic
+      throw new Error("Internal node put logic not implemented yet.");
+    }
   }
 }

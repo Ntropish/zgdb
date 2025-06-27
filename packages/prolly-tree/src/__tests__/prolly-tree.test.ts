@@ -46,16 +46,35 @@ describe("ProllyTree with Store", () => {
       expect(tree.rootHash).not.toEqual(baseTree.rootHash);
     });
 
-    it.skip("should update and delete a value", async () => {
+    it("should update a value for an existing key", async () => {
       const key = enc.encode("key");
 
       let tree = await baseTree.put(key, enc.encode("value1"));
+      const firstRootHash = tree.rootHash;
       tree = await tree.put(key, enc.encode("value2"));
-      let result = await tree.get(key);
-      expect(result).toEqual(enc.encode("value2"));
+      const secondRootHash = tree.rootHash;
 
+      const result = await tree.get(key);
+      expect(result).toEqual(enc.encode("value2"));
+      expect(firstRootHash).not.toEqual(secondRootHash);
+    });
+
+    it("should return the same tree if value is identical", async () => {
+      const key = enc.encode("key");
+      const value = enc.encode("value");
+
+      const tree1 = await baseTree.put(key, value);
+      const tree2 = await tree1.put(key, value);
+
+      expect(tree1).toBe(tree2);
+      expect(tree1.rootHash).toEqual(tree2.rootHash);
+    });
+
+    it.skip("should delete a value", async () => {
+      const key = enc.encode("key");
+      let tree = await baseTree.put(key, enc.encode("value1"));
       // tree = await tree.delete(key);
-      result = await tree.get(key);
+      const result = await tree.get(key);
       expect(result).toBeUndefined();
     });
 
