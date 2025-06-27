@@ -9,6 +9,7 @@
  */
 
 export { ProllyTree } from "./prolly-tree.js";
+export { BlockManager } from "./block-store.js";
 export { Store } from "./store.js";
 export type {
   Configuration,
