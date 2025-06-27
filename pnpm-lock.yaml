@@ -193,6 +193,9 @@ importers:
       '@noble/hashes':
         specifier: ^1.8.0
         version: 1.8.0
+      '@tsmk/builder':
+        specifier: workspace:*
+        version: link:../builder
       fastcdc:
         specifier: ^1.0.1
         version: 1.0.1

@@ -1,7 +1,7 @@
 import { blake3 } from "@noble/hashes/blake3";
 import { sha256 } from "@noble/hashes/sha256";
 import { sha512 } from "@noble/hashes/sha512";
-import { HashingAlgorithm } from "./configuration";
+import { HashingAlgorithm } from "./configuration.js";
 
 export type HashFn = (data: Uint8Array) => Uint8Array;
 

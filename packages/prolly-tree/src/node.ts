@@ -8,6 +8,7 @@ export type KeyValuePair = [Uint8Array, Uint8Array];
 export interface LeafNode {
   isLeaf: true;
   pairs: KeyValuePair[];
+  address?: Address;
 }
 
 // Internal nodes store keys that guide traversal and addresses to child nodes
@@ -15,6 +16,7 @@ export interface InternalNode {
   isLeaf: false;
   keys: Uint8Array[];
   children: Address[];
+  address?: Address;
 }
 
 export type Node = LeafNode | InternalNode;

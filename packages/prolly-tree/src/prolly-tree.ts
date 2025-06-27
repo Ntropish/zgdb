@@ -1,16 +1,17 @@
 import { BlockManager } from "./block-store.js";
 import { Configuration, defaultConfiguration } from "./configuration.js";
 import { NodeManager } from "./node-manager.js";
-import {
-  isLeafNode,
-  LeafNode,
-  InternalNode,
-  Address,
-  Node as ProllyNode,
-  serializeNode,
-} from "./node.js";
+import { isLeafNode, Node as ProllyNode, Address } from "./node.js";
 import { Diff, ConflictResolver } from "./types.js";
 import { compare } from "uint8arrays/compare";
+
+type Change = {
+  newAddress: Address;
+  split?: {
+    key: Uint8Array;
+    address: Address;
+  };
+};
 
 export class ProllyTree {
   public readonly config: Configuration;
@@ -25,230 +26,159 @@ export class ProllyTree {
     this.nodeManager = new NodeManager(blockManager, this.config);
   }
 
-  static async merge(
-    local: ProllyTree,
-    remote: ProllyTree,
-    base: ProllyTree,
-    resolver: ConflictResolver
+  static async create(
+    blockManager: BlockManager,
+    config?: Configuration
   ): Promise<ProllyTree> {
-    // This will be re-implemented
-    throw new Error("Merge not implemented yet");
+    const conf = config ?? defaultConfiguration;
+    const nodeManager = new NodeManager(blockManager, conf);
+    const emptyRoot = await nodeManager.createLeafNode([]);
+    if (!emptyRoot.address) {
+      throw new Error("Initial root must have an address");
+    }
+    return new ProllyTree(emptyRoot.address, blockManager, conf);
   }
 
   async get(key: Uint8Array): Promise<Uint8Array | undefined> {
-    let node: ProllyNode = await this.nodeManager.getNode(this.rootHash);
+    let node: ProllyNode | undefined = await this.nodeManager.getNode(
+      this.rootHash
+    );
     if (!node) {
       return undefined;
     }
 
     while (!isLeafNode(node)) {
-      // Find the correct child to descend into
-      const childIndex = node.keys.findIndex((k) => compare(key, k) < 0);
-
+      let childIndex = node.keys.findIndex((k) => compare(key, k) < 0);
       if (childIndex === -1) {
-        // key is greater than all keys, so descend into the rightmost child
-        const childAddress = node.children[node.children.length - 1];
-        node = await this.nodeManager.getNode(childAddress);
-      } else {
-        const childAddress = node.children[childIndex];
-        node = await this.nodeManager.getNode(childAddress);
+        childIndex = node.keys.length;
       }
+      const address = node.children[childIndex];
 
+      node = await this.nodeManager.getNode(address);
       if (!node) {
-        // This indicates a broken link in the tree
         throw new Error("Failed to traverse tree: node not found");
       }
     }
 
-    // We've found the leaf node, now find the key
-    const pair = node.pairs.find(([k, v]) => compare(key, k) === 0);
+    const pair = node.pairs.find(([k]) => compare(key, k) === 0);
     return pair ? pair[1] : undefined;
   }
 
   async put(key: Uint8Array, value: Uint8Array): Promise<ProllyTree> {
     const path = await this._findPath(key);
-    const leafContainer = path.pop()!;
-    const leafNode = leafContainer.node as LeafNode;
+    const leafNode = path[path.length - 1];
 
-    const existingPairIndex = leafNode.pairs.findIndex(
-      ([k]) => compare(key, k) === 0
+    if (!isLeafNode(leafNode)) {
+      throw new Error("Path finding did not end in a leaf node");
+    }
+
+    console.log(`--- PUT key: ${new TextDecoder().decode(key)} ---`);
+
+    const initialChange = await this.nodeManager._put(leafNode, key, value);
+
+    console.log(`Initial change (from leaf):`, {
+      newAddress: initialChange.newAddress.toString(),
+      split: initialChange.split
+        ? {
+            key: new TextDecoder().decode(initialChange.split.key),
+            address: initialChange.split.address.toString(),
+          }
+        : undefined,
+    });
+
+    if (
+      this.nodeManager.compare(leafNode.address!, initialChange.newAddress) ===
+      0
+    ) {
+      return this;
+    }
+
+    let changeForNextLevel: Change | undefined = initialChange;
+    for (let i = path.length - 2; i >= 0; i--) {
+      const parentNode = path[i];
+      const childNode = path[i + 1];
+
+      console.log(
+        `Level Up. Parent node isLeaf: ${parentNode.isLeaf}, has ${
+          isLeafNode(parentNode)
+            ? parentNode.pairs.length
+            : parentNode.children.length
+        } children.`
+      );
+
+      if (!childNode.address) {
+        throw new Error("Child node in path must have an address");
+      }
+
+      const { newAddress, split } = await this.nodeManager.updateChild(
+        parentNode,
+        childNode.address,
+        changeForNextLevel.newAddress,
+        changeForNextLevel.split
+      );
+
+      const updatedParent = (await this.nodeManager.getNode(newAddress))!;
+      console.log(
+        `Updated parent isLeaf: ${updatedParent.isLeaf}, has ${
+          isLeafNode(updatedParent)
+            ? updatedParent.pairs.length
+            : updatedParent.children.length
+        } children.`
+      );
+
+      if (this.nodeManager.isNodeFull(updatedParent)) {
+        console.log(`--> Parent requires splitting.`);
+        const splitResult = await this.nodeManager.splitNode(updatedParent);
+        changeForNextLevel = {
+          newAddress: splitResult.newAddress,
+          split: splitResult.split,
+        };
+      } else {
+        changeForNextLevel = { newAddress, split: undefined };
+      }
+    }
+
+    let newRootAddress: Address;
+    if (changeForNextLevel.split) {
+      console.log("--- Root Split ---");
+      const newRoot = await this.nodeManager.createNode(
+        [],
+        [changeForNextLevel.split.key],
+        [changeForNextLevel.newAddress, changeForNextLevel.split.address],
+        false
+      );
+      newRootAddress = newRoot.address!;
+    } else {
+      newRootAddress = changeForNextLevel.newAddress;
+    }
+
+    return new ProllyTree(
+      newRootAddress,
+      this.nodeManager.blockManager,
+      this.config
     );
-
-    let newPairs = [...leafNode.pairs];
-    if (existingPairIndex !== -1) {
-      if (compare(newPairs[existingPairIndex][1], value) === 0) {
-        return this;
-      }
-      newPairs[existingPairIndex] = [key, value];
-    } else {
-      newPairs.push([key, value]);
-      newPairs.sort(([a], [b]) => compare(a, b));
-    }
-
-    let changeToPropagate: {
-      newAddress: Address;
-      split?: { key: Uint8Array; address: Address };
-    };
-    let previousChangeOriginalAddress = leafContainer.address;
-
-    const updatedLeaf: LeafNode = { ...leafNode, pairs: newPairs };
-
-    let needsSplit = false;
-    if (this.config.valueChunking.chunkingStrategy === "fastcdc-v2020") {
-      needsSplit =
-        serializeNode(updatedLeaf).length >
-        this.config.valueChunking.maxChunkSize;
-    }
-
-    if (needsSplit) {
-      const midpoint = Math.ceil(updatedLeaf.pairs.length / 2);
-      const leftPairs = updatedLeaf.pairs.slice(0, midpoint);
-      const rightPairs = updatedLeaf.pairs.slice(midpoint);
-      const splitKey = rightPairs[0][0];
-
-      const leftNode = this.nodeManager.createLeafNode(leftPairs);
-      const rightNode = this.nodeManager.createLeafNode(rightPairs);
-
-      const [leftAddress, rightAddress] = await Promise.all([
-        this.nodeManager.putNode(leftNode),
-        this.nodeManager.putNode(rightNode),
-      ]);
-
-      changeToPropagate = {
-        newAddress: leftAddress,
-        split: { key: splitKey, address: rightAddress },
-      };
-    } else {
-      changeToPropagate = {
-        newAddress: await this.nodeManager.putNode(updatedLeaf),
-      };
-    }
-
-    while (path.length > 0) {
-      const parentContainer = path.pop()!;
-      const parentNode = parentContainer.node as InternalNode;
-
-      const childIndex = parentNode.children.findIndex(
-        (addr) => compare(addr, previousChangeOriginalAddress) === 0
-      );
-
-      if (childIndex === -1) {
-        throw new Error(
-          "Failed to find child address in parent during update propagation"
-        );
-      }
-
-      previousChangeOriginalAddress = parentContainer.address;
-
-      let newKeys = [...parentNode.keys];
-      let newChildren = [...parentNode.children];
-
-      if (changeToPropagate.split) {
-        newChildren[childIndex] = changeToPropagate.newAddress;
-        newKeys.splice(childIndex, 0, changeToPropagate.split.key);
-        newChildren.splice(childIndex + 1, 0, changeToPropagate.split.address);
-      } else {
-        newChildren[childIndex] = changeToPropagate.newAddress;
-      }
-
-      const updatedParent: InternalNode = {
-        ...parentNode,
-        keys: newKeys,
-        children: newChildren,
-      };
-
-      let parentNeedsSplit = false;
-      if (this.config.valueChunking.chunkingStrategy === "fastcdc-v2020") {
-        parentNeedsSplit =
-          serializeNode(updatedParent).length >
-          this.config.valueChunking.maxChunkSize;
-      }
-
-      if (parentNeedsSplit) {
-        const midpoint = Math.ceil(updatedParent.children.length / 2);
-        const parentSplitKey = updatedParent.keys[midpoint - 1];
-
-        const leftKeys = updatedParent.keys.slice(0, midpoint - 1);
-        const leftChildren = updatedParent.children.slice(0, midpoint);
-        const leftNode = this.nodeManager.createInternalNode(
-          leftKeys,
-          leftChildren
-        );
-
-        const rightKeys = updatedParent.keys.slice(midpoint);
-        const rightChildren = updatedParent.children.slice(midpoint);
-        const rightNode = this.nodeManager.createInternalNode(
-          rightKeys,
-          rightChildren
-        );
-
-        const [leftAddress, rightAddress] = await Promise.all([
-          this.nodeManager.putNode(leftNode),
-          this.nodeManager.putNode(rightNode),
-        ]);
-
-        changeToPropagate = {
-          newAddress: leftAddress,
-          split: { key: parentSplitKey, address: rightAddress },
-        };
-      } else {
-        changeToPropagate = {
-          newAddress: await this.nodeManager.putNode(updatedParent),
-        };
-      }
-    }
-
-    if (changeToPropagate.split) {
-      const newRoot = this.nodeManager.createInternalNode(
-        [changeToPropagate.split.key],
-        [changeToPropagate.newAddress, changeToPropagate.split.address]
-      );
-      const newRootAddress = await this.nodeManager.putNode(newRoot);
-      return new ProllyTree(
-        newRootAddress,
-        this.nodeManager.blockManager,
-        this.config
-      );
-    } else {
-      return new ProllyTree(
-        changeToPropagate.newAddress,
-        this.nodeManager.blockManager,
-        this.config
-      );
-    }
   }
 
-  async delete(key: Uint8Array): Promise<ProllyTree> {
-    // This will be re-implemented
-    throw new Error("Delete not implemented yet");
-  }
-
-  async diff(other: ProllyTree): Promise<Diff[]> {
-    // This will be re-implemented
-    throw new Error("Diff not implemented yet");
-  }
-
-  private async _findPath(
-    key: Uint8Array
-  ): Promise<{ address: Address; node: ProllyNode }[]> {
-    const path: { address: Address; node: ProllyNode }[] = [];
+  private async _findPath(key: Uint8Array): Promise<ProllyNode[]> {
+    const path: ProllyNode[] = [];
     let currentAddress = this.rootHash;
 
     while (true) {
       const node = await this.nodeManager.getNode(currentAddress);
-      path.push({ address: currentAddress, node: node });
+      if (!node) {
+        throw new Error(`Could not find node at address ${currentAddress}`);
+      }
+      path.push(node);
 
       if (isLeafNode(node)) {
         return path;
       }
 
-      const childIndex = node.keys.findIndex((k) => compare(key, k) < 0);
-
+      let childIndex = node.keys.findIndex((k) => compare(key, k) < 0);
       if (childIndex === -1) {
-        currentAddress = node.children[node.children.length - 1];
-      } else {
-        currentAddress = node.children[childIndex];
+        childIndex = node.keys.length;
       }
+      currentAddress = node.children[childIndex];
     }
   }
 }

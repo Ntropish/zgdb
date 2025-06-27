@@ -20,6 +20,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@tsmk/builder": "workspace:*",
     "@noble/hashes": "^1.8.0",
     "fastcdc": "^1.0.1",
     "uint8arrays": "^5.1.0"
