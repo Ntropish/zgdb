@@ -7,6 +7,6 @@ export type Diff = {
 export type ConflictResolver = (
   key: Uint8Array,
   base: Uint8Array | undefined,
-  local: Uint8Array,
-  remote: Uint8Array
-) => Promise<Uint8Array>;
+  local: Uint8Array | undefined,
+  remote: Uint8Array | undefined
+) => Promise<Uint8Array | undefined>;

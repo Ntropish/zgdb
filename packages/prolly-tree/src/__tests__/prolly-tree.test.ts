@@ -9,9 +9,9 @@ const enc = new TextEncoder();
 type ConflictResolver = (
   key: Uint8Array,
   base: Uint8Array | undefined,
-  local: Uint8Array,
-  remote: Uint8Array
-) => Promise<Uint8Array>;
+  local: Uint8Array | undefined,
+  remote: Uint8Array | undefined
+) => Promise<Uint8Array | undefined>;
 
 // A simple resolver for testing that always chooses the "remote" value.
 const remoteWinsResolver: ConflictResolver = async (
@@ -70,10 +70,10 @@ describe("ProllyTree with Store", () => {
       expect(tree1.rootHash).toEqual(tree2.rootHash);
     });
 
-    it.skip("should delete a value", async () => {
+    it("should delete a value", async () => {
       const key = enc.encode("key");
       let tree = await baseTree.put(key, enc.encode("value1"));
-      // tree = await tree.delete(key);
+      tree = await tree.delete(key);
       const result = await tree.get(key);
       expect(result).toBeUndefined();
     });
@@ -86,21 +86,20 @@ describe("ProllyTree with Store", () => {
     });
   });
 
-  describe.skip("Merging", () => {
+  describe("Merging", () => {
     it("should merge disjoint changes without a conflict", async () => {
       const branch1 = await baseTree.put(enc.encode("a"), enc.encode("1"));
       const branch2 = await baseTree.put(enc.encode("b"), enc.encode("2"));
 
-      // The merge function should be static, accepting the three trees
-      // const mergedTree = await ProllyTree.merge(
-      //   branch1,
-      //   branch2,
-      //   baseTree,
-      //   remoteWinsResolver
-      // );
+      const mergedTree = await ProllyTree.merge(
+        branch1,
+        branch2,
+        baseTree,
+        remoteWinsResolver
+      );
 
-      // expect(await mergedTree.get(enc.encode("a"))).toEqual(enc.encode("1"));
-      // expect(await mergedTree.get(enc.encode("b"))).toEqual(enc.encode("2"));
+      expect(await mergedTree.get(enc.encode("a"))).toEqual(enc.encode("1"));
+      expect(await mergedTree.get(enc.encode("b"))).toEqual(enc.encode("2"));
     });
 
     it("should use the resolver for a direct conflict", async () => {
@@ -109,33 +108,31 @@ describe("ProllyTree with Store", () => {
       const branch1 = await base.put(key, enc.encode("local-val"));
       const branch2 = await base.put(key, enc.encode("remote-val"));
 
-      // const mergedTree = await ProllyTree.merge(
-      //   branch1,
-      //   branch2,
-      //   base,
-      //   remoteWinsResolver
-      // );
+      const mergedTree = await ProllyTree.merge(
+        branch1,
+        branch2,
+        base,
+        remoteWinsResolver
+      );
 
-      // The remoteWinsResolver should have picked branch2's value
-      // expect(await mergedTree.get(key)).toEqual(enc.encode("remote-val"));
+      expect(await mergedTree.get(key)).toEqual(enc.encode("remote-val"));
     });
 
     it("should handle a conflict with one side deleting", async () => {
       const key = enc.encode("delete-conflict");
       const base = await baseTree.put(key, enc.encode("delete-base"));
 
-      // const branch1 = await base.delete(key);
+      const branch1 = await base.delete(key);
       const branch2 = await base.put(key, enc.encode("delete-remote"));
 
-      // const mergedTree = await ProllyTree.merge(
-      //   branch1,
-      //   branch2,
-      //   base,
-      //   remoteWinsResolver
-      // );
+      const mergedTree = await ProllyTree.merge(
+        branch1,
+        branch2,
+        base,
+        remoteWinsResolver
+      );
 
-      // The remote value should be present
-      // expect(await mergedTree.get(key)).toEqual(enc.encode("delete-remote"));
+      expect(await mergedTree.get(key)).toEqual(enc.encode("delete-remote"));
     });
   });
 
