@@ -20,10 +20,14 @@ const asArray = <T>(value: T | T[]): T[] => {
 /**
  * Parses and normalizes the `auth` block from a raw schema definition.
  * @param auth - The raw `auth` block from the user's schema file.
+ * @param fieldNames - The set of field names in the schema.
+ * @param relationshipNames - The set of relationship names in the schema.
  * @returns A normalized AuthBlock object.
  */
 function parseAuthBlock<T extends string>(
-  auth: AuthBlock<T> | undefined
+  auth: AuthBlock<T> | undefined,
+  fieldNames: Set<string>,
+  relationshipNames: Set<string>
 ): AuthBlock<string> {
   const defaultBlock: AuthBlock<string> = {
     fields: {},
@@ -39,7 +43,7 @@ function parseAuthBlock<T extends string>(
   // Normalize top-level actions
   const topLevelActions: AuthAction[] = ["create", "read", "update", "delete"];
   for (const action of topLevelActions) {
-    if (auth[action]) {
+    if (auth[action] && (auth[action] as any[]).length > 0) {
       parsedBlock[action] = asArray(auth[action] as AuthRule<string>);
     }
   }
@@ -47,12 +51,20 @@ function parseAuthBlock<T extends string>(
   // Normalize field-level actions
   if (auth.fields) {
     for (const fieldName in auth.fields) {
+      if (!fieldNames.has(fieldName)) {
+        throw new Error(
+          `Auth rule defined for non-existent field: '${fieldName}'`
+        );
+      }
       const fieldRules = auth.fields[fieldName];
       parsedBlock.fields![fieldName] = {};
       for (const action in fieldRules) {
-        parsedBlock.fields![fieldName][action as AuthAction] = asArray(
-          fieldRules[action as AuthAction] as AuthRule<string>
-        );
+        const rule = fieldRules[action as AuthAction];
+        if (rule && rule.length > 0) {
+          parsedBlock.fields![fieldName][action as AuthAction] = asArray(
+            rule as AuthRule<string>
+          );
+        }
       }
     }
   }
@@ -60,16 +72,46 @@ function parseAuthBlock<T extends string>(
   // Normalize relationship-level actions
   if (auth.relationships) {
     for (const relName in auth.relationships) {
+      if (!relationshipNames.has(relName)) {
+        throw new Error(
+          `Auth rule defined for non-existent relationship: '${relName}'`
+        );
+      }
       const relRules = auth.relationships[relName];
       parsedBlock.relationships![relName] = {};
       for (const action in relRules) {
-        parsedBlock.relationships![relName][action as RelationshipAction] =
-          asArray(relRules[action as RelationshipAction] as AuthRule<string>);
+        const rule = relRules[action as RelationshipAction];
+        if (rule && rule.length > 0) {
+          parsedBlock.relationships![relName][action as RelationshipAction] =
+            asArray(rule as AuthRule<string>);
+        }
       }
     }
   }
 
   return parsedBlock;
+}
+
+/**
+ * Parses the `manyToMany` block of a raw schema into a normalized array of relationship names.
+ * @param manyToMany - The raw manyToMany object.
+ * @returns A set of relationship names defined in the block.
+ */
+function parseManyToManyRelationships(
+  manyToMany: ZGEntityDef<any>["manyToMany"]
+): Set<string> {
+  const names = new Set<string>();
+  if (!manyToMany) {
+    return names;
+  }
+
+  for (const groupKey in manyToMany) {
+    const group = manyToMany[groupKey];
+    for (const relName in group) {
+      names.add(relName);
+    }
+  }
+  return names;
 }
 
 /**
@@ -202,10 +244,20 @@ export function parseSchemas(
       rawSchema.relationships
     );
 
+    const manyToManyNames = parseManyToManyRelationships(rawSchema.manyToMany);
+
+    // Nested schemas discovered during field parsing are added to allSchemas.
+    const fields = parseZodSchema(rawSchema.schema, rawSchema.name, allSchemas);
+    const fieldNames = new Set(fields.map((f) => f.name));
+    const relationshipNames = new Set([
+      ...standard.map((rel) => rel.name),
+      ...manyToManyNames,
+    ]);
+
     const topLevelSchema: NormalizedSchema = {
       name: rawSchema.name,
       description: rawSchema.description,
-      fields: [], // This will be populated below
+      fields,
       relationships: standard,
       manyToMany: manyToMany,
       indexes: (rawSchema.indexes || []).map((index) => ({
@@ -213,14 +265,8 @@ export function parseSchemas(
         on: Array.isArray(index.on) ? index.on : [index.on],
         type: index.type || "btree",
       })),
-      auth: parseAuthBlock(rawSchema.auth),
+      auth: parseAuthBlock(rawSchema.auth, fieldNames, relationshipNames),
     };
-
-    topLevelSchema.fields = parseZodSchema(
-      rawSchema.schema,
-      rawSchema.name,
-      allSchemas
-    );
 
     // Add the fully-populated top-level schema to the list.
     // Any nested schemas will have already been added to allSchemas by the call above.

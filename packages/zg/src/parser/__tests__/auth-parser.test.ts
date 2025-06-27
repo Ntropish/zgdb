@@ -51,24 +51,25 @@ describe("Auth Block Parsing Edge Cases", () => {
     expect(parsed.auth.fields?.email.update).toEqual(["isSelf"]);
   });
 
-  it.todo(
-    "Case 2: Should throw an error for auth rules on non-existent fields or relationships"
-  );
-  // Implementation Note: This requires the parser to have context of the schema's fields and relationships.
-  // This test would fail with the current implementation and would drive the necessary refactoring.
-  /*
-    const rawSchema = createMockSchema({
+  it("Case 2: Should throw an error for auth rules on non-existent fields or relationships", () => {
+    const schemaWithBadField = createMockSchema({
       fields: {
-        nonExistentField: { read: "isPublic" }
+        nonExistentField: { read: "isPublic" },
       },
-      relationships: {
-        nonExistentRel: { read: "isPublic" }
-      }
     });
-    expect(() => parseSchemas([rawSchema])).toThrow(
+    expect(() => parseSchemas([schemaWithBadField])).toThrow(
       "Auth rule defined for non-existent field: 'nonExistentField'"
     );
-  */
+
+    const schemaWithBadRel = createMockSchema({
+      relationships: {
+        nonExistentRel: { read: "isPublic" },
+      },
+    });
+    expect(() => parseSchemas([schemaWithBadRel])).toThrow(
+      "Auth rule defined for non-existent relationship: 'nonExistentRel'"
+    );
+  });
 
   it("Case 3: Should handle empty, null, or undefined auth blocks gracefully", () => {
     const schemaWithEmptyAuth = createMockSchema({});
@@ -104,17 +105,20 @@ describe("Auth Block Parsing Edge Cases", () => {
     expect(parsed.auth.fields?.email.read).toEqual(["isPublic", "never"]);
   });
 
-  it.todo(
-    "Case 5: Should correctly parse auth rules for complex relationship types"
-  );
-  // Implementation Note: This test, like Case 2, highlights the need for the
-  // auth parser to be aware of other parts of the schema definition.
-  /*
+  it("Case 5: Should correctly parse auth rules for complex relationship types", () => {
     const complexSchema: ZGEntityDef<any, string> = {
       name: "Post",
       schema: z.object({ id: z.string() }),
+      relationships: {},
       manyToMany: {
-        left: { node: "Tag", field: "tags", foreignKey: "postId" },
+        Post: {
+          tags: {
+            node: "Tag",
+            through: "PostTag",
+            myKey: "postId",
+            theirKey: "tagId",
+          },
+        },
       },
       auth: {
         relationships: {
@@ -125,5 +129,17 @@ describe("Auth Block Parsing Edge Cases", () => {
 
     const [parsed] = parseSchemas([complexSchema]);
     expect(parsed.auth.relationships?.tags.add).toEqual(["isAuthor"]);
-    */
+    // Also test that it throws on a bad many-to-many relationship name
+    const badSchema = {
+      ...complexSchema,
+      auth: {
+        relationships: {
+          badName: { add: "isAuthor" },
+        },
+      },
+    };
+    expect(() => parseSchemas([badSchema])).toThrow(
+      "Auth rule defined for non-existent relationship: 'badName'"
+    );
+  });
 });
