@@ -42,3 +42,5 @@ export const AppSchema = createSchema({
     Tag: TagDef,
   },
 });
+
+export default AppSchema;

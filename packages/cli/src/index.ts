@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
-import { run, ZgRunOptions, RawSchema } from "@tsmk/zg";
+import { run } from "@tsmk/zg";
 import path from "path";
-import { glob } from "glob";
 import { pathToFileURL } from "node:url";
+import { promises as fs } from "fs";
 
 export function parseArgs(argv: string[]) {
   return yargs(argv)
-    .option("schemas", {
+    .option("schema", {
       alias: "s",
       type: "string",
-      description: "Path to the schema definition file (or a glob pattern).",
+      description: "Path to the schema configuration file.",
       demandOption: true,
     })
     .option("output", {
@@ -34,40 +34,31 @@ export async function main() {
 
   try {
     const outputDir = path.resolve(process.cwd(), argv.output);
-    const schemaFiles = await glob(argv.schemas, {
-      absolute: true,
-      cwd: process.cwd(),
-    });
+    const schemaConfigFile = path.resolve(process.cwd(), argv.schema);
 
-    if (schemaFiles.length === 0) {
-      console.error(`❌ No schema files found matching glob: ${argv.schemas}`);
+    try {
+      await fs.access(schemaConfigFile);
+    } catch {
+      console.error(`❌ Schema config file not found at: ${schemaConfigFile}`);
       process.exit(1);
     }
 
-    console.log(`🔎 Found ${schemaFiles.length} schema files...`);
+    console.log(`🔎 Loading schema config from ${schemaConfigFile}...`);
 
-    const allSchemas: RawSchema[] = [];
-    for (const file of schemaFiles) {
-      // On Windows, dynamic import needs a file:// URL.
-      const fileUrl = pathToFileURL(file).href;
-      const module = await import(fileUrl);
-      // We expect a named export 'schemas' which is an array of RawSchema
-      if (Array.isArray(module.schemas)) {
-        // TODO: Add validation to ensure the objects in the array match RawSchema structure
-        allSchemas.push(...module.schemas);
-      } else {
-        console.warn(
-          `⚠️ No 'schemas' array export found in ${file}. Skipping.`
-        );
-      }
-    }
+    // On Windows, dynamic import needs a file:// URL.
+    const fileUrl = pathToFileURL(schemaConfigFile).href;
+    const module = await import(fileUrl);
 
-    if (allSchemas.length === 0) {
-      console.error(`❌ No schemas discovered in the found files.`);
+    if (!module.default) {
+      console.error(
+        `❌ No default export found in ${schemaConfigFile}. Please export your schema configuration as the default export.`
+      );
       process.exit(1);
     }
 
-    console.log(`Found ${allSchemas.length} schemas to process...`);
+    const schemaConfig = module.default;
+
+    console.log(`Schema config loaded successfully.`);
 
     const logger = {
       log: console.log,
@@ -75,7 +66,7 @@ export async function main() {
     };
 
     await run({
-      schemas: allSchemas,
+      config: schemaConfig,
       outputDir,
       logger,
       flatcPath: argv.flatc,
