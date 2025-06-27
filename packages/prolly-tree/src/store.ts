@@ -17,6 +17,6 @@ export class Store {
     const initialLeaf: LeafNode = { isLeaf: true, pairs: [] };
     const initialRoot =
       rootHash ?? (await this.blockManager.putNode(initialLeaf));
-    return new ProllyTree(this.blockManager, initialRoot, this.config);
+    return new ProllyTree(initialRoot, this.blockManager, this.config);
   }
 }

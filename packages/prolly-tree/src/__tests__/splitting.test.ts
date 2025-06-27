@@ -1,60 +1,65 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  Store,
-  ProllyTree,
-  Configuration,
-  defaultConfiguration,
-  FastCDCChunking,
-} from "../index.js";
+import { Store } from "../store.js";
+import { ProllyTree } from "../prolly-tree.js";
+import { BlockManager } from "../block-store.js";
+import { InternalNode } from "../node.js";
 
 const enc = new TextEncoder();
 
+// A configuration with a very small max node size to force splits easily
+const splittingConfig = {
+  treeDefinition: {
+    targetFanout: 4,
+    minFanout: 2,
+  },
+  valueChunking: {
+    chunkingStrategy: "fastcdc-v2020" as const,
+    maxInlineValueSize: 128,
+    minChunkSize: 64,
+    avgChunkSize: 128,
+    maxChunkSize: 256, // small size to trigger splits
+  },
+  hashingAlgorithm: "blake3" as const,
+};
+
 describe("ProllyTree Splitting", () => {
   let store: Store;
-  let config: Configuration;
+  let tree: ProllyTree;
+  let blockManager: BlockManager;
 
   beforeEach(async () => {
-    // Use FastCDC config to access maxChunkSize, and set it low to force a split
-    const fastCdcConfig: FastCDCChunking = {
-      chunkingStrategy: "fastcdc-v2020",
-      maxInlineValueSize: 1024,
-      minChunkSize: 64,
-      avgChunkSize: 128,
-      maxChunkSize: 150, // Very low threshold to guarantee a split
-    };
-    config = {
-      ...defaultConfiguration,
-      valueChunking: fastCdcConfig,
-      hashingAlgorithm: "sha2-256",
-    };
-    store = new Store(config);
+    store = new Store(splittingConfig);
+    tree = await store.getTree();
+    blockManager = store.blockManager;
   });
 
   it("should split a leaf node when it becomes too large", async () => {
-    let tree = await store.getTree();
+    const initialRootHash = tree.rootHash;
 
-    // Insert enough data to trigger a split.
-    // Each pair is roughly 10 bytes for key, 10 for value, plus overhead.
-    // 10 pairs should be enough to exceed the 150 byte limit.
+    // Insert enough entries to cause a split
     for (let i = 0; i < 10; i++) {
-      const key = enc.encode(`key${i.toString().padStart(2, "0")}`);
-      const value = enc.encode(`value${i}`);
-      tree = await tree.put(key, value);
+      const key = `key${i}`;
+      const value = `value${i}`;
+      tree = await tree.put(enc.encode(key), enc.encode(value));
     }
 
-    // After splitting, the root should no longer be a leaf node.
-    const rootNode = await store.blockStore.getNode(tree.rootHash);
+    // After splitting, the root hash should have changed
+    expect(tree.rootHash).not.toEqual(initialRootHash);
+
+    // The new root should be an internal node
+    const rootNode = await blockManager.getNode(tree.rootHash);
     expect(rootNode).toBeDefined();
-    if (!rootNode) return; // type guard
+    expect(rootNode!.isLeaf).toBe(false);
 
-    expect(rootNode.isLeaf).toBe(false);
+    // It should have at least two children
+    const internalRoot = rootNode as InternalNode;
+    expect(internalRoot.children.length).toBeGreaterThanOrEqual(2);
 
-    // Verify that we can still retrieve all the keys
+    // Verify all keys are still retrievable
     for (let i = 0; i < 10; i++) {
-      const key = enc.encode(`key${i.toString().padStart(2, "0")}`);
-      const value = enc.encode(`value${i}`);
-      const result = await tree.get(key);
-      expect(result).toEqual(value);
+      const key = `key${i}`;
+      const value = await tree.get(enc.encode(key));
+      expect(new TextDecoder().decode(value!)).toBe(`value${i}`);
     }
   });
 });
