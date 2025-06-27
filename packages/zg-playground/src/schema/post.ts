@@ -20,80 +20,79 @@ export interface IPostResolvers {
   ) => boolean;
 }
 
-export const PostDef: EntityDef<MyAppActor, IPostResolvers, AppGlobalPolicies> =
-  {
-    name: "Post",
-    description: "A post made by a user, which can have comments.",
-    schema: PostSchema,
-    relationships: {
-      User: {
-        author: {
-          cardinality: "one",
-          description: "The user who wrote the post.",
-          required: true,
-        },
-      },
-      Comment: {
-        comments: {
-          cardinality: "many",
-          description: "Comments on this post.",
-          /**
-           * This relationship is the reverse of the 'regards' relationship on the Comment node.
-           * The 'mappedBy' property indicates that the foreign key is stored on the other node.
-           */
-          mappedBy: "author",
-        },
-      },
-      Image: {
-        images: {
-          cardinality: "many",
-          description: "Images included in this post.",
-          mappedBy: "postId",
-        },
-      },
-      Reaction: {
-        reactions: {
-          cardinality: "many",
-          description: "Reactions on this post.",
-          mappedBy: "target",
-        },
+export const PostDef: EntityDef<IPostResolvers, AppGlobalPolicies> = {
+  name: "Post",
+  description: "A post made by a user, which can have comments.",
+  schema: PostSchema,
+  relationships: {
+    User: {
+      author: {
+        cardinality: "one",
+        description: "The user who wrote the post.",
+        required: true,
       },
     },
-    indexes: [
-      {
-        on: ["author", "createdAt"],
-        description:
-          "Index to efficiently query a user's posts, sorted by creation date.",
+    Comment: {
+      comments: {
+        cardinality: "many",
+        description: "Comments on this post.",
+        /**
+         * This relationship is the reverse of the 'regards' relationship on the Comment node.
+         * The 'mappedBy' property indicates that the foreign key is stored on the other node.
+         */
+        mappedBy: "author",
       },
-      {
-        on: "content",
-        type: "fulltext",
-        description: "Enable full-text search on post content.",
+    },
+    Image: {
+      images: {
+        cardinality: "many",
+        description: "Images included in this post.",
+        mappedBy: "postId",
       },
-    ],
-    auth: {
-      // Anyone can create a post, as long as they are the author.
-      create: "isAuthor",
-      // All posts are public.
-      read: "isPublic",
-      // Only the author can update their own post.
-      update: "isAuthor",
-      // Only the author can delete their own post.
-      delete: "isAuthor",
+    },
+    Reaction: {
+      reactions: {
+        cardinality: "many",
+        description: "Reactions on this post.",
+        mappedBy: "target",
+      },
+    },
+  },
+  indexes: [
+    {
+      on: ["author", "createdAt"],
+      description:
+        "Index to efficiently query a user's posts, sorted by creation date.",
+    },
+    {
+      on: "content",
+      type: "fulltext",
+      description: "Enable full-text search on post content.",
+    },
+  ],
+  auth: {
+    // Anyone can create a post, as long as they are the author.
+    create: "isAuthor",
+    // All posts are public.
+    read: "isPublic",
+    // Only the author can update their own post.
+    update: "isAuthor",
+    // Only the author can delete their own post.
+    delete: "isAuthor",
 
-      relationships: {
-        comments: {
-          // Anyone can read comments on a post.
-          read: "isPublic",
-          // Adding/removing comments is handled by the Comment's auth rules.
-          add: "never",
-          remove: "never",
-        },
-        images: {
-          // Only the author can add or remove images from their post.
-          add: "isAuthor",
-          remove: "isAuthor",
-        },
+    relationships: {
+      comments: {
+        // Anyone can read comments on a post.
+        read: "isPublic",
+        // Adding/removing comments is handled by the Comment's auth rules.
+        add: "never",
+        remove: "never",
+      },
+      images: {
+        // Only the author can add or remove images from their post.
+        add: "isAuthor",
+        remove: "isAuthor",
       },
     },
-  };
+  },
+};

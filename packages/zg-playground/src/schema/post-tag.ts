@@ -20,11 +20,7 @@ export interface IPostTagResolvers {
   ) => Promise<boolean>;
 }
 
-export const PostTagDef: EntityDef<
-  MyAppActor,
-  IPostTagResolvers,
-  AppGlobalPolicies
-> = {
+export const PostTagDef: EntityDef<IPostTagResolvers, AppGlobalPolicies> = {
   name: "PostTag",
   description: "The join entity connecting a Post and a Tag.",
   schema: PostTagSchema,

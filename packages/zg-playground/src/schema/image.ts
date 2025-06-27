@@ -30,11 +30,7 @@ export interface IImageResolvers {
   ) => Promise<boolean>;
 }
 
-export const ImageDef: EntityDef<
-  MyAppActor,
-  IImageResolvers,
-  AppGlobalPolicies
-> = {
+export const ImageDef: EntityDef<IImageResolvers, AppGlobalPolicies> = {
   name: "Image",
   description:
     "An image, which can be a user's profile picture or part of a post.",

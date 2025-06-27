@@ -25,11 +25,7 @@ export interface ICommentResolvers {
 }
 
 // Step 3: Define the entity, parameterized by its local and global resolvers.
-export const CommentDef: EntityDef<
-  MyAppActor,
-  ICommentResolvers,
-  AppGlobalPolicies
-> = {
+export const CommentDef: EntityDef<ICommentResolvers, AppGlobalPolicies> = {
   name: "Comment",
   description: "A comment on a post",
   schema: CommentSchema,

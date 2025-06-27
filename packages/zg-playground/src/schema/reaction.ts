@@ -18,11 +18,7 @@ export interface IReactionResolvers {
   ) => boolean;
 }
 
-export const ReactionDef: EntityDef<
-  MyAppActor,
-  IReactionResolvers,
-  AppGlobalPolicies
-> = {
+export const ReactionDef: EntityDef<IReactionResolvers, AppGlobalPolicies> = {
   name: "Reaction",
   description:
     "A reaction from a user to a specific piece of content, like a post or a comment.",

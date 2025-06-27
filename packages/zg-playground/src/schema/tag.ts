@@ -6,9 +6,8 @@ const TagSchema = z.object({
   id: z.string(),
   name: z.string().max(50),
 });
-// type Tag = z.infer<typeof TagSchema>; // Not needed as no resolvers
 
-export const TagDef: EntityDef<MyAppActor, {}, AppGlobalPolicies> = {
+export const TagDef: EntityDef<{}, AppGlobalPolicies> = {
   name: "Tag",
   description: "A tag that can be applied to posts to categorize them.",
   schema: TagSchema,

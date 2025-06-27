@@ -17,11 +17,7 @@ export interface IFollowResolvers {
   ) => boolean;
 }
 
-export const FollowDef: EntityDef<
-  MyAppActor,
-  IFollowResolvers,
-  AppGlobalPolicies
-> = {
+export const FollowDef: EntityDef<IFollowResolvers, AppGlobalPolicies> = {
   name: "Follow",
   description:
     "A directional relationship indicating one user follows another.",
