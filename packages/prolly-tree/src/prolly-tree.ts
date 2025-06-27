@@ -1,20 +1,11 @@
 import { BlockStore } from "./block.js";
 import { Configuration, defaultConfiguration } from "./configuration.js";
-import { merge } from "./merge.js";
-import { Diff, ConflictResolver } from "./types.js";
+import { isLeafNode, LeafNode } from "./node.js";
+import { Diff } from "./types.js";
+import { compare } from "uint8arrays/compare";
 
 export class ProllyTree {
-  _data: Map<string, Uint8Array> | null = null;
   public readonly config: Configuration;
-
-  static merge(
-    treeA: ProllyTree,
-    treeB: ProllyTree,
-    ancestor: ProllyTree,
-    resolver: ConflictResolver
-  ): Promise<ProllyTree> {
-    return merge(treeA, treeB, ancestor, resolver);
-  }
 
   constructor(
     public readonly store: BlockStore,
@@ -24,40 +15,45 @@ export class ProllyTree {
     this.config = config ?? defaultConfiguration;
   }
 
-  async _getData(): Promise<Map<string, Uint8Array>> {
-    if (this._data) return this._data;
-    const data = (await this.store.getData(this.rootHash)) ?? new Map();
-    this._data = data;
-    return data;
-  }
-
   async get(key: Uint8Array): Promise<Uint8Array | undefined> {
-    const data = await this._getData();
-    return data.get(key.toString());
+    let node = await this.store.getNode(this.rootHash);
+    if (!node) {
+      return undefined;
+    }
+
+    while (!isLeafNode(node)) {
+      // Find the correct child to descend into
+      const childIndex = node.keys.findIndex((k) => compare(key, k) < 0);
+
+      if (childIndex === -1) {
+        // key is greater than all keys, so descend into the rightmost child
+        const childAddress = node.children[node.children.length - 1];
+        node = await this.store.getNode(childAddress);
+      } else {
+        const childAddress = node.children[childIndex];
+        node = await this.store.getNode(childAddress);
+      }
+
+      if (!node) {
+        // This indicates a broken link in the tree
+        throw new Error("Failed to traverse tree: node not found");
+      }
+    }
+
+    // We've found the leaf node, now find the key
+    const pair = node.pairs.find(([k, v]) => compare(key, k) === 0);
+    return pair ? pair[1] : undefined;
   }
 
   async put(key: Uint8Array, value: Uint8Array): Promise<ProllyTree> {
-    const data = await this._getData();
-    const newData = new Map(data);
-    newData.set(key.toString(), value);
-    const newRootHash = await this.store.putData(newData);
-    const newTree = new ProllyTree(this.store, newRootHash, this.config);
-    newTree._data = newData;
-    return newTree;
-  }
-
-  async delete(key: Uint8Array): Promise<ProllyTree> {
-    const data = await this._getData();
-    const newData = new Map(data);
-    newData.delete(key.toString());
-    const newRootHash = await this.store.putData(newData);
-    const newTree = new ProllyTree(this.store, newRootHash, this.config);
-    newTree._data = newData;
-    return newTree;
-  }
-
-  async diff(other: ProllyTree): Promise<Diff[]> {
-    // TODO: Implement actual diff logic
-    return [];
+    // TODO: This is a temporary, naive implementation.
+    // It does not handle splitting nodes or updating existing values correctly.
+    // It just creates a new root with the new key-value pair.
+    const newLeaf: LeafNode = {
+      isLeaf: true,
+      pairs: [[key, value]],
+    };
+    const newRootHash = await this.store.putNode(newLeaf);
+    return new ProllyTree(this.store, newRootHash, this.config);
   }
 }
