@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Store, Tree } from "../index";
+import { Store, ProllyTree } from "../index";
+import { Configuration, defaultConfiguration } from "../configuration";
 
 const enc = new TextEncoder();
 
@@ -24,10 +25,12 @@ const remoteWinsResolver: ConflictResolver = async (
 
 describe("ProllyTree with Store", () => {
   let store: Store;
-  let baseTree: Tree;
+  let baseTree: ProllyTree;
+  let config: Configuration;
 
   beforeEach(async () => {
-    store = new Store();
+    config = { ...defaultConfiguration, hashingAlgorithm: "sha2-256" };
+    store = new Store(config);
     baseTree = await store.getTree();
   });
 
@@ -70,7 +73,7 @@ describe("ProllyTree with Store", () => {
       const branch2 = await baseTree.put(enc.encode("b"), enc.encode("2"));
 
       // The merge function should be static, accepting the three trees
-      const mergedTree = await Tree.merge(
+      const mergedTree = await ProllyTree.merge(
         branch1,
         branch2,
         baseTree,
@@ -87,7 +90,7 @@ describe("ProllyTree with Store", () => {
       const branch1 = await base.put(key, enc.encode("local-val"));
       const branch2 = await base.put(key, enc.encode("remote-val"));
 
-      const mergedTree = await Tree.merge(
+      const mergedTree = await ProllyTree.merge(
         branch1,
         branch2,
         base,
@@ -105,7 +108,7 @@ describe("ProllyTree with Store", () => {
       const branch1 = await base.delete(key);
       const branch2 = await base.put(key, enc.encode("delete-remote"));
 
-      const mergedTree = await Tree.merge(
+      const mergedTree = await ProllyTree.merge(
         branch1,
         branch2,
         base,

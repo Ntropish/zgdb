@@ -189,6 +189,10 @@ importers:
         version: 3.2.4(@types/node@20.19.1)(@vitest/ui@3.2.4)
 
   packages/prolly-tree:
+    dependencies:
+      '@noble/hashes':
+        specifier: ^1.8.0
+        version: 1.8.0
     devDependencies:
       '@vitest/ui':
         specifier: ^3.2.4

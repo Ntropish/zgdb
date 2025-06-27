@@ -16,5 +16,8 @@
     "vite": "^4.0.0",
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0"
   }
 }
