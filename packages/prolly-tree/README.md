@@ -39,10 +39,10 @@ Creates a new, empty Prolly Tree.
 
 ```typescript
 import { ProllyTree } from "@tk/prolly-tree";
-import { BlockManager, defaultConfiguration } from "@tk/prolly-tree";
+import { BlockManager } from "@tk/prolly-tree";
 
+// The BlockManager will merge this partial config with the default configuration.
 const config = {
-  ...defaultConfiguration,
   hashingAlgorithm: "sha2-256",
 };
 

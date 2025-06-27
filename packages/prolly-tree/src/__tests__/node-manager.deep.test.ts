@@ -51,16 +51,15 @@ describe("NodeManager Deep Tests", () => {
   const MANUSCRIPT_COUNT = 500;
 
   beforeEach(() => {
-    config = {
-      ...defaultConfiguration,
+    // The config object is now implicitly created by the BlockManager
+    blockManager = new BlockManager({
       treeDefinition: {
         targetFanout: 8, // Use a smaller fanout to trigger more splits
         minFanout: 4,
       },
       hashingAlgorithm: "sha2-256",
-    };
-    blockManager = new BlockManager(config);
-    nodeManager = new NodeManager(blockManager, config);
+    });
+    nodeManager = new NodeManager(blockManager, blockManager.config);
   });
 
   it("The Librarian of Babels Index: should handle mass insertions and updates", async () => {

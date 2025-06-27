@@ -26,8 +26,11 @@ describe("NodeManager", () => {
       },
       hashingAlgorithm: "sha2-256",
     };
-    blockManager = new BlockManager(config);
-    nodeManager = new NodeManager(blockManager, config);
+    blockManager = new BlockManager({
+      treeDefinition: { targetFanout: 4, minFanout: 2 },
+      hashingAlgorithm: "sha2-256",
+    });
+    nodeManager = new NodeManager(blockManager, blockManager.config);
   });
 
   it("should get an existing node", async () => {

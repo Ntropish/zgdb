@@ -1,4 +1,4 @@
-import { Configuration } from "./configuration.js";
+import { Configuration, defaultConfiguration } from "./configuration.js";
 import { HashFn, getHashFn } from "./hashing.js";
 import { Node, serializeNode, deserializeNode, Address } from "./node.js";
 
@@ -6,10 +6,23 @@ import { Node, serializeNode, deserializeNode, Address } from "./node.js";
 // In a real implementation, this would be a more sophisticated storage layer.
 export class BlockManager {
   private blocks = new Map<string, Uint8Array>();
-  private hashFn: HashFn;
+  public readonly config: Configuration;
+  private readonly hashFn: HashFn;
 
-  constructor(config: Configuration) {
-    this.hashFn = getHashFn(config.hashingAlgorithm);
+  constructor(config?: Partial<Configuration>) {
+    this.config = {
+      ...defaultConfiguration,
+      ...config,
+      treeDefinition: {
+        ...defaultConfiguration.treeDefinition,
+        ...config?.treeDefinition,
+      },
+      valueChunking: {
+        ...defaultConfiguration.valueChunking,
+        ...config?.valueChunking,
+      },
+    };
+    this.hashFn = getHashFn(this.config.hashingAlgorithm);
   }
 
   async get(hash: Uint8Array): Promise<Uint8Array | undefined> {
