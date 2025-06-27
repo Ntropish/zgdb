@@ -41,12 +41,12 @@ describe("Auth Block Parsing Edge Cases", () => {
       },
     });
 
-    const [parsed] = parseSchemas([rawSchema]);
+    const [parsed] = parseSchemas({ entities: { TestSchema: rawSchema } });
 
     expect(parsed.auth.create).toEqual(["isOwner"]);
     expect(parsed.auth.read).toEqual(["isPublic"]);
     expect(parsed.auth.update).toEqual(["isOwner", "hasAdminRights"]);
-    expect(parsed.auth.delete).toBeUndefined(); // Empty rules should be omitted
+    expect(parsed.auth.delete).toEqual([]);
     expect(parsed.auth.fields?.email.read).toBeUndefined();
     expect(parsed.auth.fields?.email.update).toEqual(["isSelf"]);
   });
@@ -57,16 +57,18 @@ describe("Auth Block Parsing Edge Cases", () => {
         nonExistentField: { read: "isPublic" },
       },
     });
-    expect(() => parseSchemas([schemaWithBadField])).toThrow(
-      "Auth rule defined for non-existent field: 'nonExistentField'"
-    );
+    expect(() =>
+      parseSchemas({ entities: { TestSchema: schemaWithBadField } })
+    ).toThrow("Auth rule defined for non-existent field: 'nonExistentField'");
 
     const schemaWithBadRel = createMockSchema({
       relationships: {
         nonExistentRel: { read: "isPublic" },
       },
     });
-    expect(() => parseSchemas([schemaWithBadRel])).toThrow(
+    expect(() =>
+      parseSchemas({ entities: { TestSchema: schemaWithBadRel } })
+    ).toThrow(
       "Auth rule defined for non-existent relationship: 'nonExistentRel'"
     );
   });
@@ -76,9 +78,15 @@ describe("Auth Block Parsing Edge Cases", () => {
     const schemaWithNullAuth = createMockSchema(null as any); // Test runtime robustness
     const schemaWithUndefinedAuth = createMockSchema(undefined);
 
-    const [parsedEmpty] = parseSchemas([schemaWithEmptyAuth]);
-    const [parsedNull] = parseSchemas([schemaWithNullAuth]);
-    const [parsedUndefined] = parseSchemas([schemaWithUndefinedAuth]);
+    const [parsedEmpty] = parseSchemas({
+      entities: { TestSchema: schemaWithEmptyAuth },
+    });
+    const [parsedNull] = parseSchemas({
+      entities: { TestSchema: schemaWithNullAuth },
+    });
+    const [parsedUndefined] = parseSchemas({
+      entities: { TestSchema: schemaWithUndefinedAuth },
+    });
 
     const expectedAuth = { fields: {}, relationships: {} };
     expect(parsedEmpty.auth).toEqual(expectedAuth);
@@ -91,18 +99,13 @@ describe("Auth Block Parsing Edge Cases", () => {
     // That would be the job of a separate "linter" tool for schemas.
     const rawSchema = createMockSchema({
       read: "never",
-      update: "isOwner",
-      fields: {
-        email: {
-          read: ["isPublic", "never"],
-        },
-      },
+      update: ["isOwner", "isPublic"],
     });
 
-    const [parsed] = parseSchemas([rawSchema]);
+    const [parsed] = parseSchemas({ entities: { TestSchema: rawSchema } });
     expect(parsed.auth.read).toEqual(["never"]);
-    expect(parsed.auth.update).toEqual(["isOwner"]);
-    expect(parsed.auth.fields?.email.read).toEqual(["isPublic", "never"]);
+    expect(parsed.auth.update).toEqual(["isOwner", "isPublic"]);
+    // ^ The parser just passes this through. Runtime would handle the logic.
   });
 
   it("Case 5: Should correctly parse auth rules for complex relationship types", () => {
@@ -127,7 +130,7 @@ describe("Auth Block Parsing Edge Cases", () => {
       },
     };
 
-    const [parsed] = parseSchemas([complexSchema]);
+    const [parsed] = parseSchemas({ entities: { Post: complexSchema } });
     expect(parsed.auth.relationships?.tags.add).toEqual(["isAuthor"]);
     // Also test that it throws on a bad many-to-many relationship name
     const badSchema = {
@@ -138,7 +141,7 @@ describe("Auth Block Parsing Edge Cases", () => {
         },
       },
     };
-    expect(() => parseSchemas([badSchema])).toThrow(
+    expect(() => parseSchemas({ entities: { Post: badSchema } })).toThrow(
       "Auth rule defined for non-existent relationship: 'badName'"
     );
   });

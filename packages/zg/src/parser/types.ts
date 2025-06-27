@@ -51,7 +51,8 @@ export interface Field {
 }
 
 /** An authorization rule can be a single policy string or a list of policy strings (checked with OR logic). */
-export type AuthRule<TAuthPolicy extends string> = TAuthPolicy | TAuthPolicy[];
+export type AuthRule = number | number[];
+export type NormalizedAuthBlock = AuthBlock<number | number[]>;
 
 /** The set of actions that can be controlled on an entity or field. */
 export type AuthAction = "create" | "read" | "update" | "delete";
@@ -60,24 +61,24 @@ export type AuthAction = "create" | "read" | "update" | "delete";
 export type RelationshipAction = "read" | "add" | "remove";
 
 /** Defines the authorization rules for a ZG entity. */
-export interface AuthBlock<TAuthPolicy extends string> {
+export interface AuthBlock<TRule> {
   // --- Root-level rules ---
-  create?: AuthRule<TAuthPolicy>;
-  read?: AuthRule<TAuthPolicy>;
-  update?: AuthRule<TAuthPolicy>;
-  delete?: AuthRule<TAuthPolicy>;
+  create?: TRule;
+  read?: TRule;
+  update?: TRule;
+  delete?: TRule;
 
   /** Field-level authorization overrides. */
   fields?: {
     [fieldName: string]: {
-      [key in AuthAction]?: AuthRule<TAuthPolicy>;
+      [key in AuthAction]?: TRule;
     };
   };
 
   /** Relationship-level authorization. */
   relationships?: {
     [relationshipName: string]: {
-      [key in RelationshipAction]?: AuthRule<TAuthPolicy>;
+      [key in RelationshipAction]?: TRule;
     };
   };
 }
@@ -86,14 +87,15 @@ export interface AuthBlock<TAuthPolicy extends string> {
  * The normalized, generator-friendly representation of a single schema entity.
  * This is the core object of our Intermediate Representation.
  */
-export interface NormalizedSchema<TAuthPolicy extends string = string> {
+export interface NormalizedSchema {
   name: string;
   description?: string;
   fields: Field[];
   relationships: (Relationship | PolymorphicRelationship)[];
   manyToMany: ManyToManyRelationship[];
   indexes?: Index[];
-  auth: AuthBlock<TAuthPolicy>;
+  auth: NormalizedAuthBlock;
+  policies?: string[]; // The canonical list of ALL policies
 }
 
 /**
@@ -113,7 +115,7 @@ export interface ZGEntityDef<
     };
   };
   indexes?: Index[];
-  auth?: AuthBlock<TAuthPolicy>;
+  auth?: AuthBlock<TAuthPolicy | TAuthPolicy[]>;
   manyToMany?: any;
 }
 
@@ -123,3 +125,46 @@ export interface ZGEntityDef<
  * This is the input to our `parser` stage.
  */
 export type RawSchema = ZGEntityDef<any, any>;
+
+export type { AuthBlock as ZGAuthBlock } from "./types.js";
+
+/**
+ * The definition for a single entity, including its local policies and default resolvers.
+ */
+export interface EntityDef<TActor> {
+  name: string;
+  description?: string;
+  policies?: readonly string[];
+  defaultResolvers?: Record<
+    string,
+    (context: AuthContext<TActor, any>) => boolean | Promise<boolean>
+  >;
+  schema: z.ZodObject<any>;
+  relationships?: any;
+  indexes?: any;
+  auth?: AuthBlock<string | string[]>;
+  manyToMany?: any;
+}
+
+/**
+ * The configuration object for the main `createSchema` factory.
+ */
+export interface SchemaConfig<
+  TActor,
+  TEntities extends Record<string, EntityDef<TActor>>
+> {
+  policies?: Record<
+    string,
+    (context: AuthContext<TActor, any>) => boolean | Promise<boolean>
+  >;
+  entities: TEntities;
+}
+
+/**
+ * The flexible context object passed to every resolver.
+ */
+export interface AuthContext<TActor, TRecord> {
+  actor: TActor;
+  record?: TRecord;
+  input?: Partial<TRecord>;
+}

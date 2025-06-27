@@ -49,7 +49,10 @@ describe("ZG End-to-End Test", () => {
       }),
     };
 
-    await run({ schemas: [TestSchema], outputDir: TEST_OUTPUT_DIR });
+    await run({
+      config: { entities: { TestEntity: TestSchema } },
+      outputDir: TEST_OUTPUT_DIR,
+    });
 
     // 1. Check that all files were created
     const fbsPath = path.join(TEST_OUTPUT_DIR, "schema.fbs");

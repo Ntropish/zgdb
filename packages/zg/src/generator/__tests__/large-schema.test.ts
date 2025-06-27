@@ -231,18 +231,18 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
 
   // --- Execution ---
   it("should generate a correct FBS schema for a large, complex social network model", async () => {
-    const allRawSchemas = [
-      UserSchema,
-      PostSchema,
-      CommentSchema,
-      MediaSchema,
-      TagSchema,
-      PostTagSchema,
-      FollowSchema,
-      ReactionSchema,
-    ];
+    const allRawSchemas = {
+      User: UserSchema,
+      Post: PostSchema,
+      Comment: CommentSchema,
+      Media: MediaSchema,
+      Tag: TagSchema,
+      PostTag: PostTagSchema,
+      Follow: FollowSchema,
+      Reaction: ReactionSchema,
+    };
 
-    const normalized = parseSchemas(allRawSchemas);
+    const normalized = parseSchemas({ entities: allRawSchemas });
     const fbsContent = await generateFbs(normalized);
 
     // --- Verification ---

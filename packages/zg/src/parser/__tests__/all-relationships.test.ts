@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { parseSchemas } from "../index.js";
 import { RawSchema } from "../types.js";
 import { z } from "zod";
@@ -73,13 +74,15 @@ describe("Schema Parser Deep Edge Cases: All Relationship Types", () => {
       schema: z.object({ id: z.string() }),
     };
 
-    const normalized = parseSchemas([
-      rawProjectSchema,
-      rawTaskSchema,
-      rawUserSchema,
-      rawImageSchema,
-      rawFileSchema,
-    ]);
+    const normalized = parseSchemas({
+      entities: {
+        Project: rawProjectSchema,
+        task: rawTaskSchema,
+        user: rawUserSchema,
+        image: rawImageSchema,
+        file: rawFileSchema,
+      },
+    });
 
     expect(normalized).toHaveLength(5);
     const projectSchema = normalized.find((s) => s.name === "Project")!;

@@ -9,6 +9,10 @@ import {
   AuthRule,
   AuthAction,
   RelationshipAction,
+  ZGAuthBlock,
+  SchemaConfig,
+  EntityDef,
+  NormalizedAuthBlock,
 } from "./types.js";
 import { ZodTypeAny, ZodObject } from "zod";
 import { mapZodToFlatBufferType } from "./type-map.js";
@@ -22,14 +26,18 @@ const asArray = <T>(value: T | T[]): T[] => {
  * @param auth - The raw `auth` block from the user's schema file.
  * @param fieldNames - The set of field names in the schema.
  * @param relationshipNames - The set of relationship names in the schema.
+ * @param localPolicyMap - The map of policies for the schema.
+ * @param globalPolicyMap - The map of policies for the schema.
  * @returns A normalized AuthBlock object.
  */
-function parseAuthBlock<T extends string>(
-  auth: AuthBlock<T> | undefined,
+function parseAuthBlock(
+  auth: AuthBlock<string | string[]> | undefined,
   fieldNames: Set<string>,
-  relationshipNames: Set<string>
-): AuthBlock<string> {
-  const defaultBlock: AuthBlock<string> = {
+  relationshipNames: Set<string>,
+  localPolicyMap: Map<string, number>,
+  globalPolicyMap: Map<string, number>
+): NormalizedAuthBlock {
+  const defaultBlock: NormalizedAuthBlock = {
     fields: {},
     relationships: {},
   };
@@ -38,13 +46,29 @@ function parseAuthBlock<T extends string>(
     return defaultBlock;
   }
 
-  const parsedBlock: AuthBlock<string> = { ...defaultBlock };
+  const parsedBlock: NormalizedAuthBlock = { ...defaultBlock };
+
+  const resolvePolicy = (policy: string): number => {
+    // Local policies take precedence
+    if (localPolicyMap.has(policy)) {
+      return localPolicyMap.get(policy)!;
+    }
+    if (globalPolicyMap.has(policy)) {
+      // Use negative indices to signify global policies
+      return (globalPolicyMap.get(policy)! + 1) * -1;
+    }
+    throw new Error(`Unknown auth policy: '${policy}'`);
+  };
 
   // Normalize top-level actions
   const topLevelActions: AuthAction[] = ["create", "read", "update", "delete"];
   for (const action of topLevelActions) {
-    if (auth[action] && (auth[action] as any[]).length > 0) {
-      parsedBlock[action] = asArray(auth[action] as AuthRule<string>);
+    const rule = auth[action];
+    if (rule) {
+      const indices = asArray(rule).map(resolvePolicy);
+      if (indices.length > 0) {
+        (parsedBlock as any)[action] = indices;
+      }
     }
   }
 
@@ -57,13 +81,14 @@ function parseAuthBlock<T extends string>(
         );
       }
       const fieldRules = auth.fields[fieldName];
-      parsedBlock.fields![fieldName] = {};
+      (parsedBlock.fields as any)![fieldName] = {};
       for (const action in fieldRules) {
-        const rule = fieldRules[action as AuthAction];
-        if (rule && rule.length > 0) {
-          parsedBlock.fields![fieldName][action as AuthAction] = asArray(
-            rule as AuthRule<string>
-          );
+        const rule = (fieldRules as any)[action];
+        if (rule) {
+          const indices = asArray(rule).map(resolvePolicy);
+          if (indices.length > 0) {
+            (parsedBlock.fields as any)![fieldName][action] = indices;
+          }
         }
       }
     }
@@ -78,12 +103,14 @@ function parseAuthBlock<T extends string>(
         );
       }
       const relRules = auth.relationships[relName];
-      parsedBlock.relationships![relName] = {};
+      (parsedBlock.relationships as any)![relName] = {};
       for (const action in relRules) {
-        const rule = relRules[action as RelationshipAction];
-        if (rule && rule.length > 0) {
-          parsedBlock.relationships![relName][action as RelationshipAction] =
-            asArray(rule as AuthRule<string>);
+        const rule = (relRules as any)[action];
+        if (rule) {
+          const indices = asArray(rule).map(resolvePolicy);
+          if (indices.length > 0) {
+            (parsedBlock.relationships as any)![relName][action] = indices;
+          }
         }
       }
     }
@@ -231,13 +258,18 @@ function parseAllRelationships(
  * The main parser function that transforms raw schemas into the Intermediate Representation (IR).
  * It now discovers and returns nested schemas as well.
  *
- * @param rawSchemas - An array of raw schema objects from the loader.
+ * @param config - The schema configuration object.
  * @returns An array of all normalized schema objects, including nested ones.
  */
-export function parseSchemas(
-  rawSchemas: ZGEntityDef<any>[]
+export function parseSchemas<TActor>(
+  config: SchemaConfig<TActor, Record<string, EntityDef<TActor>>>
 ): NormalizedSchema[] {
   const allSchemas: NormalizedSchema[] = [];
+
+  const globalPolicies = Object.keys(config.policies || {});
+  const globalPolicyMap = new Map(globalPolicies.map((p, i) => [p, i]));
+
+  const rawSchemas = Object.values(config.entities);
 
   for (const rawSchema of rawSchemas) {
     const { standard, manyToMany } = parseAllRelationships(
@@ -254,18 +286,29 @@ export function parseSchemas(
       ...manyToManyNames,
     ]);
 
+    const localPolicyMap = new Map(
+      (rawSchema.policies || []).map((p, i) => [p, i])
+    );
+
     const topLevelSchema: NormalizedSchema = {
       name: rawSchema.name,
       description: rawSchema.description,
       fields,
       relationships: standard,
       manyToMany: manyToMany,
-      indexes: (rawSchema.indexes || []).map((index) => ({
+      indexes: (rawSchema.indexes || []).map((index: any) => ({
         ...index,
         on: Array.isArray(index.on) ? index.on : [index.on],
         type: index.type || "btree",
       })),
-      auth: parseAuthBlock(rawSchema.auth, fieldNames, relationshipNames),
+      auth: parseAuthBlock(
+        rawSchema.auth,
+        fieldNames,
+        relationshipNames,
+        localPolicyMap,
+        globalPolicyMap
+      ),
+      policies: globalPolicies, // Storing global policies for the generator
     };
 
     // Add the fully-populated top-level schema to the list.

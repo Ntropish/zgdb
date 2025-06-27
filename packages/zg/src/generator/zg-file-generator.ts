@@ -1,6 +1,10 @@
 import { NormalizedSchema, Field } from "../parser/types.js";
 import { topologicalSort } from "./topological-sort.js";
 
+const asArray = <T>(value: T | T[]): T[] => {
+  return Array.isArray(value) ? value : [value];
+};
+
 function mapTsType(fbsType: string): string {
   const typeMap: Record<string, string> = {
     string: "string",
@@ -47,22 +51,20 @@ function generateDbAccessors(schema: NormalizedSchema): string {
   const generateAuthCheck = (
     action: "create" | "read" | "update" | "delete"
   ) => {
-    if (!auth || !auth[action] || auth[action].length === 0) {
+    if (!auth || !auth[action]) {
       return `        // No '${action}' auth rules defined for ${schema.name}`;
     }
 
-    const checks = auth[action]
-      .map((rule) => {
-        if ("policy" in rule && rule.policy === "owner") {
-          // This is a placeholder. Real implementation will need more context.
-          return `        // TODO: Implement policy check for 'owner' on ${action}`;
-        }
-        if ("capability" in rule && rule.capability) {
-          return `        if (this.authContext.hasCapability('${rule.capability}')) return;`;
-        }
-        return `        // Unsupported rule on ${action}: ${JSON.stringify(
-          rule
-        )}`;
+    const rules = asArray(auth[action] as number | number[]);
+
+    if (rules.length === 0) {
+      return `        // No '${action}' auth rules defined for ${schema.name}`;
+    }
+
+    const checks = rules
+      .map((ruleIndex: number) => {
+        // This is a placeholder. Real implementation will be more sophisticated.
+        return `        // TODO: Implement policy check for rule index ${ruleIndex} on ${action}`;
       })
       .join("\n");
 

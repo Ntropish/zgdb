@@ -9,7 +9,7 @@ describe("Schema Parser: Auth Block", () => {
       name: "Test",
       schema: z.object({ id: z.string() }),
     };
-    const normalized = parseSchemas([rawSchema]);
+    const normalized = parseSchemas({ entities: { Test: rawSchema } });
     expect(normalized[0].auth).toEqual({ fields: {}, relationships: {} });
   });
 
@@ -19,7 +19,7 @@ describe("Schema Parser: Auth Block", () => {
       schema: z.object({ id: z.string() }),
       auth: {},
     };
-    const normalized = parseSchemas([rawSchema]);
+    const normalized = parseSchemas({ entities: { Test: rawSchema } });
     expect(normalized[0].auth).toEqual({ fields: {}, relationships: {} });
   });
 
@@ -31,8 +31,9 @@ describe("Schema Parser: Auth Block", () => {
         create: [],
       },
     };
-    const normalized = parseSchemas([rawSchema]);
-    expect(normalized[0].auth).toEqual({ fields: {}, relationships: {} });
+    const normalized = parseSchemas({ entities: { Test: rawSchema } });
+    expect(normalized[0].auth!.create).toEqual([]);
+    expect(normalized[0].auth!.read).toBeUndefined();
   });
 
   it("should parse a complex auth block with multiple rules and fields", () => {
@@ -56,7 +57,7 @@ describe("Schema Parser: Auth Block", () => {
         },
       },
     };
-    const normalized = parseSchemas([rawSchema]);
+    const normalized = parseSchemas({ entities: { Post: rawSchema } });
     expect(normalized[0].auth).toEqual({
       create: ["isAuthor"],
       read: ["isPublic"],

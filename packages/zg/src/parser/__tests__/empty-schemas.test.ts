@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { parseSchemas } from "../index.js";
 import { RawSchema } from "../types.js";
 import { z } from "zod";
@@ -15,7 +16,9 @@ describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
     // Let's remove the id to make it truly empty
     delete (rawNoFieldsSchema.schema as any).shape.id;
 
-    const normalized = parseSchemas([rawNoFieldsSchema]);
+    const normalized = parseSchemas({
+      entities: { NoFields: rawNoFieldsSchema },
+    });
     expect(normalized).toHaveLength(1);
     expect(normalized[0].fields).toHaveLength(0);
   });
@@ -27,7 +30,7 @@ describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
       schema: z.object({ id: z.string(), name: z.string() }),
       relationships: {},
     };
-    const normalized = parseSchemas([rawNoRelsSchema]);
+    const normalized = parseSchemas({ entities: { NoRels: rawNoRelsSchema } });
     expect(normalized).toHaveLength(1);
     expect(normalized[0].relationships).toHaveLength(0);
   });
@@ -38,7 +41,9 @@ describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
       description: "A schema with no indexes defined.",
       schema: z.object({ id: z.string() }),
     };
-    const normalized = parseSchemas([rawNoIndexesSchema]);
+    const normalized = parseSchemas({
+      entities: { NoIndexes: rawNoIndexesSchema },
+    });
     expect(normalized).toHaveLength(1);
     expect(normalized[0].indexes).toEqual([]);
   });
@@ -48,7 +53,7 @@ describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
       name: "Empty",
       schema: z.object({}),
     };
-    const normalized = parseSchemas([rawEmptySchema]);
+    const normalized = parseSchemas({ entities: { Empty: rawEmptySchema } });
     expect(normalized).toHaveLength(1);
     const emptySchema = normalized[0];
     expect(emptySchema.name).toBe("Empty");
@@ -59,7 +64,7 @@ describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
   });
 
   it("should handle an empty input array", () => {
-    const normalized = parseSchemas([]);
+    const normalized = parseSchemas({ entities: {} });
     expect(normalized).toHaveLength(0);
   });
 });

@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { parseSchemas } from "../index.js";
 import { RawSchema } from "../types.js";
 import { z } from "zod";
@@ -29,7 +30,9 @@ describe("Schema Parser Deep Edge Cases: Deeply Nested Objects", () => {
       indexes: [{ on: "email", unique: true }],
     };
 
-    const normalized = parseSchemas([rawUserProfileSchema]);
+    const normalized = parseSchemas({
+      entities: { UserProfile: rawUserProfileSchema },
+    });
 
     // Expect the top-level schema + 4 nested schemas
     expect(normalized).toHaveLength(5);

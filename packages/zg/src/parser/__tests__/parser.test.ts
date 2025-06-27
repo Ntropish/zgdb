@@ -27,7 +27,7 @@ const rawUserSchema: ZGEntityDef<any> = {
 
 describe("Schema Parser", () => {
   it("should parse a raw schema into a normalized representation", () => {
-    const normalized = parseSchemas([rawUserSchema]);
+    const normalized = parseSchemas({ entities: { User: rawUserSchema } });
 
     expect(normalized).toHaveLength(2); // User + User_Metadata
 
@@ -75,7 +75,7 @@ describe("Schema Parser", () => {
       },
     };
 
-    const normalized = parseSchemas([rawPostSchema]);
+    const normalized = parseSchemas({ entities: { Post: rawPostSchema } });
 
     expect(normalized).toHaveLength(1);
     const postSchema = normalized[0];
@@ -114,7 +114,9 @@ describe("Schema Parser", () => {
       },
     };
 
-    const normalized = parseSchemas([rawReactionSchema]);
+    const normalized = parseSchemas({
+      entities: { Reaction: rawReactionSchema },
+    });
 
     expect(normalized).toHaveLength(1);
     const reactionSchema = normalized[0];
@@ -161,7 +163,13 @@ describe("Schema Parser", () => {
       schema: z.object({ postId: z.string(), tagId: z.string() }),
     };
 
-    const normalized = parseSchemas([PostSchema, TagSchema, PostTagSchema]);
+    const normalized = parseSchemas({
+      entities: {
+        Post: PostSchema,
+        Tag: TagSchema,
+        PostTag: PostTagSchema,
+      },
+    });
     const postSchema = normalized.find((s) => s.name === "Post")!;
 
     expect(postSchema.manyToMany).toHaveLength(1);
@@ -200,7 +208,12 @@ describe("Schema Parser", () => {
       },
     };
 
-    const normalized = parseSchemas([UserSchema, PostSchema]);
+    const normalized = parseSchemas({
+      entities: {
+        User: UserSchema,
+        Post: PostSchema,
+      },
+    });
     const userSchema = normalized.find((s) => s.name === "User")!;
     const userPostsRelation = userSchema.relationships.find(
       (r) => r.name === "posts"
@@ -227,15 +240,20 @@ describe("Schema Parser", () => {
       },
     };
 
-    const normalized = parseSchemas([rawAuthSchema]);
+    const normalized = parseSchemas({
+      entities: { AuthTest: rawAuthSchema },
+      policies: {
+        can_create: () => true,
+        isOwner: () => true,
+        can_read: () => true,
+      },
+    });
     const authSchema = normalized.find((s) => s.name === "AuthTest")!;
 
     expect(authSchema.auth).toBeDefined();
-    expect(authSchema.auth).toEqual({
-      create: ["can_create"],
-      read: ["isOwner", "can_read"],
-      fields: {},
-      relationships: {},
-    });
+    expect(authSchema.auth!.create).toEqual(["can_create"]);
+    expect(authSchema.auth!.read).toEqual(["isOwner", "can_read"]);
+    expect(authSchema.auth!.fields).toEqual({});
+    expect(authSchema.auth!.relationships).toEqual({});
   });
 });

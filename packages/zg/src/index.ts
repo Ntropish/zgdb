@@ -1,4 +1,9 @@
-import { RawSchema } from "./parser/types.js";
+import {
+  RawSchema,
+  SchemaConfig,
+  EntityDef,
+  AuthContext,
+} from "./parser/types.js";
 
 import { parseSchemas } from "./parser/index.js";
 import { generateFbs } from "./generator/generator.js";
@@ -10,14 +15,27 @@ import { promisify } from "util";
 
 const execPromise = promisify(exec);
 
+/**
+ * Factory function to define the entire application schema.
+ * This is the main entry point for a ZG project.
+ * @param config - The schema configuration object.
+ * @returns The configuration object, which will be consumed by the ZG build process.
+ */
+export function createSchema<
+  TActor,
+  const TEntities extends Record<string, EntityDef<TActor>>
+>(config: SchemaConfig<TActor, TEntities>) {
+  return config;
+}
+
 export interface ZgRunLogger {
   log: (message: string) => void;
   error: (message: string) => void;
 }
 
 export interface ZgRunOptions {
-  /** An array of raw schema definitions to be processed. */
-  schemas: RawSchema[];
+  /** The schema configuration object from createSchema. */
+  config: SchemaConfig<any, any>;
   /** The absolute path to the output directory. */
   outputDir: string;
   /** An optional logger for capturing build output. */
@@ -34,7 +52,7 @@ export interface ZgRunOptions {
  */
 export async function run(options: ZgRunOptions) {
   const {
-    schemas,
+    config,
     outputDir,
     logger = { log: () => {}, error: () => {} },
     flatcPath = "flatc",
@@ -44,7 +62,7 @@ export async function run(options: ZgRunOptions) {
   await fs.mkdir(outputDir, { recursive: true });
 
   // --- 2. Parse and Generate FBS content ---
-  const normalizedSchemas = parseSchemas(schemas);
+  const normalizedSchemas = parseSchemas(config);
   const fbsContent = await generateFbs(normalizedSchemas);
   const fbsFilePath = path.join(outputDir, "schema.fbs");
   await fs.writeFile(fbsFilePath, fbsContent);
@@ -102,4 +120,4 @@ export async function run(options: ZgRunOptions) {
   logger.log("\n🎉 ZG build process complete!");
 }
 
-export type { RawSchema };
+export type { RawSchema, SchemaConfig, EntityDef, AuthContext };

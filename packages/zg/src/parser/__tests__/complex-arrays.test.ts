@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { parseSchemas } from "../index.js";
 import { RawSchema } from "../types.js";
 import { z } from "zod";
@@ -30,7 +31,9 @@ describe("Schema Parser Deep Edge Cases: Complex Array and Union Types", () => {
       relationships: {},
     };
 
-    const normalized = parseSchemas([rawMediaSchema]);
+    const normalized = parseSchemas({
+      entities: { MediaContent: rawMediaSchema },
+    });
 
     // Expect the top-level schema + 1 nested schema from the array
     expect(normalized).toHaveLength(2);
