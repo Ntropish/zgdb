@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
+import type { AppAuthPolicy } from "./policies.js";
 
 export default {
   name: "PostTag",
@@ -46,4 +48,4 @@ export default {
     // Only the author of the post can remove a tag.
     delete: "isPostAuthor",
   },
-};
+} as const satisfies ZGEntityDef<any, AppAuthPolicy>;

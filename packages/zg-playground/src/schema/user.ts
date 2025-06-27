@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
+import type { AppAuthPolicy } from "./policies.js";
 
 export default {
   name: "User",
@@ -87,4 +89,4 @@ export default {
       },
     },
   },
-};
+} as const satisfies ZGEntityDef<any, AppAuthPolicy>;

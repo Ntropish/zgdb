@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
+import type { AppAuthPolicy } from "./policies.js";
 
 export default {
   name: "Follow",
@@ -34,4 +36,4 @@ export default {
     // A user can only delete a follow relationship they initiated.
     delete: "isFollower",
   },
-};
+} as const satisfies ZGEntityDef<any, AppAuthPolicy>;

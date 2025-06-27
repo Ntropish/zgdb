@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
+import type { AppAuthPolicy } from "./policies.js";
 
 export default {
   name: "Image",
@@ -41,4 +43,4 @@ export default {
     // Only the owner can delete an image.
     delete: "isOwner",
   },
-};
+} as const satisfies ZGEntityDef<any, AppAuthPolicy>;

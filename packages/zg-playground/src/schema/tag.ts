@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
+import type { AppAuthPolicy } from "./policies.js";
 
 export default {
   name: "Tag",
@@ -18,4 +20,4 @@ export default {
     // Only admins can delete a tag to prevent abuse.
     delete: "hasAdminRights",
   },
-};
+} as const satisfies ZGEntityDef<any, AppAuthPolicy>;

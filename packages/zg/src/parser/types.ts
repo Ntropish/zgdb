@@ -50,49 +50,69 @@ export interface Field {
   description?: string;
 }
 
+/** An authorization rule can be a single policy string or a list of policy strings (checked with OR logic). */
+export type AuthRule<TAuthPolicy extends string> = TAuthPolicy | TAuthPolicy[];
+
+/** The set of actions that can be controlled on an entity or field. */
+export type AuthAction = "create" | "read" | "update" | "delete";
+
+/** The set of actions that can be controlled on a relationship. */
+export type RelationshipAction = "read" | "add" | "remove";
+
+/** Defines the authorization rules for a ZG entity. */
+export interface AuthBlock<TAuthPolicy extends string> {
+  // --- Root-level rules ---
+  create?: AuthRule<TAuthPolicy>;
+  read?: AuthRule<TAuthPolicy>;
+  update?: AuthRule<TAuthPolicy>;
+  delete?: AuthRule<TAuthPolicy>;
+
+  /** Field-level authorization overrides. */
+  fields?: {
+    [fieldName: string]: {
+      [key in AuthAction]?: AuthRule<TAuthPolicy>;
+    };
+  };
+
+  /** Relationship-level authorization. */
+  relationships?: {
+    [relationshipName: string]: {
+      [key in RelationshipAction]?: AuthRule<TAuthPolicy>;
+    };
+  };
+}
+
 /**
  * The normalized, generator-friendly representation of a single schema entity.
  * This is the core object of our Intermediate Representation.
  */
-export interface NormalizedSchema {
+export interface NormalizedSchema<TAuthPolicy extends string = string> {
   name: string;
   description?: string;
   fields: Field[];
   relationships: (Relationship | PolymorphicRelationship)[];
   manyToMany: ManyToManyRelationship[];
   indexes?: Index[];
-  auth: AuthBlock;
+  auth: AuthBlock<TAuthPolicy>;
 }
-
-/**
- * An authorization rule, which can be either a policy check or a capability check.
- */
-export type AuthRule =
-  | { policy: string; description?: string }
-  | { capability: string; description?: string };
-
-/**
- * A block defining authorization rules for various actions on a schema.
- * The keys are action names (e.g., 'create', 'read', 'addComment').
- */
-export type AuthBlock = {
-  [action: string]: AuthRule[];
-};
 
 /**
  * Represents the raw, user-defined schema file format.
  * This is the input to our `parser` stage.
  */
-export interface RawSchema {
+export interface ZGEntityDef<
+  T extends z.ZodRawShape,
+  TAuthPolicy extends string = string
+> {
   name: string;
   description?: string;
-  schema: z.ZodObject<any>;
+  schema: z.ZodObject<T>;
   relationships?: {
     [nodeName: string]: {
-      // e.g., 'User', 'Post', or 'polymorphic', or 'many-to-many'
       [relationshipName: string]: any;
     };
   };
   indexes?: Index[];
-  auth?: AuthBlock;
+  auth?: AuthBlock<TAuthPolicy>;
+  manyToMany?: any;
 }
