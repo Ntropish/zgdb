@@ -31,4 +31,14 @@ export default {
       },
     },
   },
+  auth: {
+    // Only the owner (the user who uploaded it or the author of the post it's in) can create it.
+    create: "isOwner",
+    // Images are public.
+    read: "isPublic",
+    // Only the owner can update the alt text or other metadata.
+    update: "isOwner",
+    // Only the owner can delete an image.
+    delete: "isOwner",
+  },
 };

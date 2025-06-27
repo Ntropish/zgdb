@@ -31,4 +31,14 @@ export default {
       },
     },
   },
+  auth: {
+    // A user must be the author to create the reaction.
+    create: "isAuthor",
+    // All reactions are public.
+    read: "isPublic",
+    // Reactions are immutable; they cannot be changed.
+    update: "never",
+    // Only the author can delete (i.e., undo) their reaction.
+    delete: "isAuthor",
+  },
 };

@@ -24,4 +24,14 @@ export default {
       },
     },
   },
+  auth: {
+    // A user can only create a follow relationship for themselves.
+    create: "isFollower",
+    // Follow relationships are public knowledge.
+    read: "isPublic",
+    // A follow relationship cannot be changed, only created or deleted.
+    update: "never",
+    // A user can only delete a follow relationship they initiated.
+    delete: "isFollower",
+  },
 };

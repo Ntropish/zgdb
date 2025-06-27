@@ -44,4 +44,23 @@ export default {
       description: "Index to efficiently query a user's comments.",
     },
   ],
+  auth: {
+    // A user must be the author to create the comment.
+    create: "isAuthor",
+    // All comments are public.
+    read: "isPublic",
+    // Only the author can update their own comment.
+    update: "isAuthor",
+    // Only the author can delete their own comment.
+    delete: "isAuthor",
+    relationships: {
+      reactions: {
+        // Anyone can see reactions to a comment.
+        read: "isPublic",
+        // Adding/removing reactions is handled by the Reaction's auth rules.
+        add: "never",
+        remove: "never",
+      },
+    },
+  },
 };

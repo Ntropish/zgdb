@@ -25,6 +25,7 @@ This is the primary interface for the developer. They define their graph's data 
   - **Rich Relationships:** First-class support for `one-to-one`, `one-to-many`, and abstract `many-to-many` relationships.
   - **Polymorphism:** A robust API for defining relationships to one of several possible entity types.
   - **Indexing:** Support for defining single or composite-key database indexes (`btree`, `hash`, `fulltext`) directly in the schema.
+  - **Declarative Authorization:** A powerful `auth` property to define granular access control rules directly on entities, fields, and relationships. These rules are compiled into the database schema and enforced by the runtime.
 
 ### 3.2. The Generator Pipeline (`@tsmk/zg`)
 
@@ -50,4 +51,4 @@ This layer is composed of several specialized, independent packages that provide
 
 A developer starts by defining their application's data graph using the ZG schema API in familiar TypeScript files. They run the `zg` command-line tool, which triggers our generator pipeline. The pipeline parses these files into a Flatbuffers schema and generates a fully-typed TypeScript client API for all database operations (create, read, update, delete, query, traverse).
 
-This generated client is powered by the ZG runtime. When a user creates a `Post`, they are identified by a DID from `@zg/ucan`. The operation is timestamped by `@zg/hlc` and stored directly in a Prolly Tree via `@zg/prolly-tree`. When they want to share this post with a friend, they issue a UCAN token granting read access. The friend's client, using `@zg/sync-webrtc`, connects directly, verifies the UCAN, and synchronizes the data by diffing their local Prolly Tree with the sender's. The result is a secure, decentralized, real-time graph database that "just works," abstracting away the immense complexity of distributed systems.
+This generated client is powered by the ZG runtime. When a user creates a `Post`, they are identified by a DID from `@zg/ucan`. The operation is timestamped by `@zg/hlc` and stored directly in a Prolly Tree via `@zg/prolly-tree`. Before the operation is committed, any `auth` rules defined in the schema are checked against a developer-provided set of authorization logic, which can leverage UCANs to make sophisticated, fine-grained access control decisions. When they want to share this post with a friend, they issue a UCAN token granting read access. The friend's client, using `@zg/sync-webrtc`, connects directly, verifies the UCAN, and synchronizes the data by diffing their local Prolly Tree with the sender's. The result is a secure, decentralized, real-time graph database that "just works," abstracting away the immense complexity of distributed systems.

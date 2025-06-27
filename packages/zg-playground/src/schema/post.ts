@@ -56,4 +56,29 @@ export default {
       description: "Enable full-text search on post content.",
     },
   ],
+  auth: {
+    // Anyone can create a post, as long as they are the author.
+    create: "isAuthor",
+    // All posts are public.
+    read: "isPublic",
+    // Only the author can update their own post.
+    update: "isAuthor",
+    // Only the author can delete their own post.
+    delete: "isAuthor",
+
+    relationships: {
+      comments: {
+        // Anyone can read comments on a post.
+        read: "isPublic",
+        // Adding/removing comments is handled by the Comment's auth rules.
+        add: "never",
+        remove: "never",
+      },
+      images: {
+        // Only the author can add or remove images from their post.
+        add: "isAuthor",
+        remove: "isAuthor",
+      },
+    },
+  },
 };

@@ -36,4 +36,14 @@ export default {
       foreignKey: "tagId",
     },
   },
+  auth: {
+    // Only the author of the post can tag it.
+    create: "isPostAuthor",
+    // The connection is public.
+    read: "isPublic",
+    // The connection cannot be changed, only created or deleted.
+    update: "never",
+    // Only the author of the post can remove a tag.
+    delete: "isPostAuthor",
+  },
 };
