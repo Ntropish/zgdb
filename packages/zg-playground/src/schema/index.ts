@@ -10,9 +10,8 @@ import { ImageDef } from "./image.js";
 import { PostTagDef } from "./post-tag.js";
 import { ReactionDef } from "./reaction.js";
 import { TagDef } from "./tag.js";
-
-// A mock of the future factory function from the core ZG library.
-const createSchema = (config: any) => config;
+import { createSchema } from "@tsmk/zg";
+import { ZgClient } from "../../../../temp-output/schema.zg.js";
 
 // The project-specific Actor type.
 export interface MyAppActor {
@@ -20,7 +19,18 @@ export interface MyAppActor {
   roles: ("admin" | "moderator" | "user")[];
 }
 
-export const AppSchema = createSchema({
+const entities = {
+  User: UserDef,
+  Post: PostDef,
+  Comment: CommentDef,
+  Follow: FollowDef,
+  Image: ImageDef,
+  PostTag: PostTagDef,
+  Reaction: ReactionDef,
+  Tag: TagDef,
+};
+
+export const AppSchema = createSchema<MyAppActor, ZgClient>({
   // Global policies and their default resolvers.
   policies: {
     isPublic: () => true,
@@ -31,16 +41,7 @@ export const AppSchema = createSchema({
   },
 
   // All entity definitions for the application.
-  entities: {
-    User: UserDef,
-    Post: PostDef,
-    Comment: CommentDef,
-    Follow: FollowDef,
-    Image: ImageDef,
-    PostTag: PostTagDef,
-    Reaction: ReactionDef,
-    Tag: TagDef,
-  },
+  entities,
 });
 
 export default AppSchema;

@@ -131,12 +131,12 @@ export type { AuthBlock as ZGAuthBlock } from "./types.js";
 /**
  * The definition for a single entity, including its local policies and default resolvers.
  */
-export interface EntityDef<TActor> {
+export interface EntityDef<TActor, TDB> {
   name: string;
   description?: string;
   policies?: Record<
     string,
-    (context: AuthContext<TActor, any, any>) => boolean | Promise<boolean>
+    (context: AuthContext<TActor, any, TDB, any>) => boolean | Promise<boolean>
   >;
   schema: z.ZodObject<any>;
   relationships?: any;
@@ -150,11 +150,12 @@ export interface EntityDef<TActor> {
  */
 export interface SchemaConfig<
   TActor,
-  TEntities extends Record<string, EntityDef<TActor>>
+  TDB,
+  TEntities extends Record<string, EntityDef<TActor, TDB>>
 > {
   policies?: Record<
     string,
-    (context: AuthContext<TActor, any, any>) => boolean | Promise<boolean>
+    (context: AuthContext<TActor, any, TDB, any>) => boolean | Promise<boolean>
   >;
   entities: TEntities;
 }
@@ -162,9 +163,10 @@ export interface SchemaConfig<
 /**
  * The flexible context object passed to every resolver.
  */
-export interface AuthContext<TActor, TRecord, TContext = {}> {
+export interface AuthContext<TActor, TRecord, TDB, TContext = {}> {
   actor: TActor;
   record?: TRecord;
   input?: Partial<TRecord>;
   context?: TContext;
+  db: TDB;
 }

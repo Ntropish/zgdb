@@ -1,15 +1,20 @@
 import { z } from "zod";
 import { EntityDef, AuthContext } from "@tsmk/zg";
 import { MyAppActor } from "./index.js";
+import { ZgClient } from "../../../../temp-output/schema.zg.js";
 
 // Infer the schema type for type safety in the resolver
 type Post = z.infer<(typeof PostDef)["schema"]>;
 
-export const PostDef: EntityDef<MyAppActor> = {
+export const PostDef: EntityDef<MyAppActor, ZgClient> = {
   name: "Post",
   description: "A post made by a user, which can have comments.",
   policies: {
-    isAuthor: ({ actor, record, input }: AuthContext<MyAppActor, Post>) => {
+    isAuthor: ({
+      actor,
+      record,
+      input,
+    }: AuthContext<MyAppActor, Post, ZgClient>) => {
       if (record) return actor.did === record.author;
       if (input) return actor.did === input.author;
       return false;

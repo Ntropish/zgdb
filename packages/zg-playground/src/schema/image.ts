@@ -3,26 +3,30 @@ import { EntityDef, AuthContext } from "@tsmk/zg";
 import { MyAppActor } from "./index.js";
 import { PostDef } from "./post.js";
 import { UserDef } from "./user.js";
+import { ZgClient } from "../../../../temp-output/schema.zg.js";
 
 // Infer the schema types for type safety in the resolver
 type Post = z.infer<typeof PostDef.schema>;
 type User = z.infer<typeof UserDef.schema>;
 type Image = z.infer<(typeof ImageDef)["schema"]>;
 
-export const ImageDef: EntityDef<MyAppActor> = {
+export const ImageDef: EntityDef<MyAppActor, ZgClient> = {
   name: "Image",
   description:
     "An image, which can be a user's profile picture or part of a post.",
   policies: {
-    isOwner: ({
+    isOwner: async ({
       actor,
-      context,
-    }: AuthContext<MyAppActor, Image, { post?: Post; user?: User }>) => {
-      if (context?.post) {
-        return actor.did === context.post.author;
+      record,
+      db,
+    }: AuthContext<MyAppActor, Image, ZgClient>) => {
+      if (record?.postId) {
+        const post = await db.posts.find(record.postId);
+        return !!post && actor.did === post.author;
       }
-      if (context?.user) {
-        return actor.did === context.user.id;
+      if (record?.userId) {
+        const user = await db.users.find(record.userId);
+        return !!user && actor.did === user.id;
       }
       // If there's no context, we can't determine ownership.
       return false;

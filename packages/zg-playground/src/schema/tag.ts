@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { EntityDef } from "@tsmk/zg";
 import { MyAppActor } from "./index.js";
+import { ZgClient } from "../../../../temp-output/schema.zg.js";
 
-export const TagDef: EntityDef<MyAppActor> = {
+export const TagDef: EntityDef<MyAppActor, ZgClient> = {
   name: "Tag",
   description: "A tag that can be applied to posts to categorize them.",
   schema: z.object({

@@ -1,21 +1,30 @@
 import { z } from "zod";
 import { EntityDef, AuthContext } from "@tsmk/zg";
 import { MyAppActor } from "./index.js";
+import { ZgClient } from "../../../../temp-output/schema.zg.js";
 
-export const UserDef: EntityDef<MyAppActor> = {
+type User = z.infer<(typeof UserDef)["schema"]>;
+
+export const UserDef: EntityDef<MyAppActor, ZgClient> = {
   name: "User",
   description: "A user of the application, who can author posts and comments.",
   policies: {
     isSelf: ({
       actor,
       record,
-    }: AuthContext<MyAppActor, { ownerDid: string }>) =>
-      !!(actor && record && actor.did === record.ownerDid),
-    isCreatingSelf: ({
-      actor,
       input,
-    }: AuthContext<MyAppActor, { ownerDid: string }>) =>
-      !!(actor && input && actor.did === input.ownerDid),
+    }: AuthContext<MyAppActor, User, ZgClient>) => {
+      const id = record?.id || input?.id;
+      return actor.did === id;
+    },
+    isOwner: ({
+      actor,
+      record,
+      input,
+    }: AuthContext<MyAppActor, User, ZgClient>) => {
+      const ownerDid = record?.ownerDid || input?.ownerDid;
+      return actor.did === ownerDid;
+    },
   },
   schema: z.object({
     id: z.string(),

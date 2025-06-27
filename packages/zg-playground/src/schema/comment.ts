@@ -2,27 +2,35 @@ import { z } from "zod";
 import { EntityDef, AuthContext } from "@tsmk/zg";
 import { MyAppActor } from "./index.js";
 import { PostDef } from "./post.js";
+import { ZgClient } from "../../../../temp-output/schema.zg.js";
 
 // Infer the schema types for type safety in the resolver
 type Post = z.infer<typeof PostDef.schema>;
 type Comment = z.infer<(typeof CommentDef)["schema"]>;
 
-export const CommentDef: EntityDef<MyAppActor> = {
+export const CommentDef: EntityDef<MyAppActor, ZgClient> = {
   name: "Comment",
   description: "A comment on a post",
   policies: {
-    isAuthor: ({ actor, record, input }: AuthContext<MyAppActor, Comment>) => {
+    isAuthor: ({
+      actor,
+      record,
+      input,
+    }: AuthContext<MyAppActor, Comment, ZgClient>) => {
       if (record) return actor.did === record.author;
       if (input) return actor.did === input.author;
       return false;
     },
-    isPostAuthor: ({
+    isPostAuthor: async ({
       actor,
-      context,
-    }: AuthContext<MyAppActor, Comment, { post?: Post }>) => {
+      record,
+      db,
+    }: AuthContext<MyAppActor, Comment, ZgClient>) => {
+      if (!record?.regards) return false;
       // The runtime is responsible for fetching the Post and providing it here.
-      if (!context?.post) return false;
-      return actor.did === context.post.author;
+      const post = await db.posts.find(record.regards);
+      if (!post) return false;
+      return actor.did === post.author;
     },
   },
   schema: z.object({
