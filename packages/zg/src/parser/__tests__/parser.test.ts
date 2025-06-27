@@ -3,7 +3,7 @@ import { parseSchemas } from "../index.js";
 import { RawSchema, ZGEntityDef } from "../types.js";
 import { z } from "zod";
 
-const rawUserSchema: RawSchema = {
+const rawUserSchema: ZGEntityDef<any> = {
   name: "User",
   description: "A user of the application.",
   schema: z.object({
