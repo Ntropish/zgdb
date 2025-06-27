@@ -60,6 +60,14 @@ export type AuthAction = "create" | "read" | "update" | "delete";
 /** The set of actions that can be controlled on a relationship. */
 export type RelationshipAction = "read" | "add" | "remove";
 
+/** A generic, permissive resolver function type for the developer-facing interface. */
+export type Resolver<TArgs = {}, TReturn = any> = (
+  context: ResolverContext<any, any, any, any, TArgs>
+) => TReturn;
+
+/** A specialized resolver type for authorization policies, which must return a boolean. */
+export type Policy<TArgs = {}> = Resolver<TArgs, boolean | Promise<boolean>>;
+
 /** Defines the authorization rules for a ZG entity. */
 export interface AuthBlock<TRule> {
   // --- Root-level rules ---
@@ -127,8 +135,8 @@ export type { AuthBlock as ZGAuthBlock } from "./types.js";
  * The definition for a single entity, including its local policies and default resolvers.
  */
 export interface EntityDef<
-  TResolvers extends Record<keyof TResolvers, Function>,
-  TGlobalResolvers extends Record<keyof TGlobalResolvers, Function>
+  TResolvers extends Record<string, Resolver<any, any>>,
+  TGlobalPolicies extends Record<string, Policy<any>>
 > {
   name: string;
   description?: string;
@@ -137,10 +145,11 @@ export interface EntityDef<
   indexes?: any;
   auth?: AuthBlock<
     | keyof TResolvers
-    | keyof TGlobalResolvers
-    | (keyof TResolvers | keyof TGlobalResolvers)[]
+    | keyof TGlobalPolicies
+    | (keyof TResolvers | keyof TGlobalPolicies)[]
   >;
   manyToMany?: any;
+  resolvers?: TResolvers;
 }
 
 /**
@@ -161,7 +170,7 @@ export interface SchemaConfig<
 /**
  * The flexible context object passed to every resolver.
  */
-export interface AuthContext<TActor, TNode, TInput, TDB, TContext = {}> {
+export interface ResolverContext<TActor, TNode, TInput, TDB, TContext = {}> {
   actor: TActor;
   record?: TNode;
   input?: Partial<TInput>;
