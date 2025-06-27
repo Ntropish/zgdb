@@ -1,10 +1,24 @@
 import { z } from "zod";
-import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
-import type { AppAuthPolicy } from "./policies.js";
+import { EntityDef, AuthContext } from "@tsmk/zg";
+import { MyAppActor } from "./index.js";
+import { PostDef } from "./post.js";
 
-export const PostTagDef = {
+// Extracts the schema type for type safety in the resolver
+type Post = z.infer<typeof PostDef.schema>;
+
+export const PostTagDef: EntityDef<MyAppActor> = {
   name: "PostTag",
   description: "The join entity connecting a Post and a Tag.",
+  policies: {
+    isPostAuthor: ({
+      actor,
+      context,
+    }: AuthContext<MyAppActor, any, { post?: Post }>) => {
+      // The runtime is responsible for fetching the Post and providing it here.
+      if (!context?.post) return false;
+      return actor.did === context.post.author;
+    },
+  },
   schema: z.object({
     id: z.string(),
     postId: z.string(),
@@ -26,26 +40,12 @@ export const PostTagDef = {
       },
     },
   },
-  manyToMany: {
-    left: {
-      node: "Post",
-      field: "tags",
-      foreignKey: "postId",
-    },
-    right: {
-      node: "Tag",
-      field: "posts",
-      foreignKey: "tagId",
-    },
-  },
   auth: {
-    // Only the author of the post can tag it.
+    // Creating/updating/deleting a PostTag requires being the author of the Post.
     create: "isPostAuthor",
     // The connection is public.
     read: "isPublic",
-    // The connection cannot be changed, only created or deleted.
-    update: "never",
-    // Only the author of the post can remove a tag.
+    update: "isPostAuthor",
     delete: "isPostAuthor",
   },
-} as const satisfies ZGEntityDef<any, AppAuthPolicy>;
+};

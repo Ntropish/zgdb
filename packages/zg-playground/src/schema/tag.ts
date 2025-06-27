@@ -1,8 +1,8 @@
 import { z } from "zod";
-import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
-import type { AppAuthPolicy } from "./policies.js";
+import { EntityDef } from "@tsmk/zg";
+import { MyAppActor } from "./index.js";
 
-export const TagDef = {
+export const TagDef: EntityDef<MyAppActor> = {
   name: "Tag",
   description: "A tag that can be applied to posts to categorize them.",
   schema: z.object({
@@ -20,4 +20,4 @@ export const TagDef = {
     // Only admins can delete a tag to prevent abuse.
     delete: "hasAdminRights",
   },
-} as const satisfies ZGEntityDef<any, AppAuthPolicy>;
+};

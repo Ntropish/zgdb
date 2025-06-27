@@ -1,11 +1,33 @@
 import { z } from "zod";
-import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
-import type { AppAuthPolicy } from "./policies.js";
+import { EntityDef, AuthContext } from "@tsmk/zg";
+import { MyAppActor } from "./index.js";
+import { PostDef } from "./post.js";
+import { UserDef } from "./user.js";
 
-export const ImageDef = {
+// Infer the schema types for type safety in the resolver
+type Post = z.infer<typeof PostDef.schema>;
+type User = z.infer<typeof UserDef.schema>;
+type Image = z.infer<(typeof ImageDef)["schema"]>;
+
+export const ImageDef: EntityDef<MyAppActor> = {
   name: "Image",
   description:
     "An image, which can be a user's profile picture or part of a post.",
+  policies: {
+    isOwner: ({
+      actor,
+      context,
+    }: AuthContext<MyAppActor, Image, { post?: Post; user?: User }>) => {
+      if (context?.post) {
+        return actor.did === context.post.author;
+      }
+      if (context?.user) {
+        return actor.did === context.user.id;
+      }
+      // If there's no context, we can't determine ownership.
+      return false;
+    },
+  },
   schema: z.object({
     id: z.string(),
     url: z.string().url(),
@@ -34,13 +56,12 @@ export const ImageDef = {
     },
   },
   auth: {
-    // Only the owner (the user who uploaded it or the author of the post it's in) can create it.
+    // Creating, updating, or deleting an image requires ownership,
+    // determined by the parent Post or User.
     create: "isOwner",
     // Images are public.
     read: "isPublic",
-    // Only the owner can update the alt text or other metadata.
     update: "isOwner",
-    // Only the owner can delete an image.
     delete: "isOwner",
   },
-} as const satisfies ZGEntityDef<any, AppAuthPolicy>;
+};

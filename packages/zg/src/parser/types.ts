@@ -136,7 +136,7 @@ export interface EntityDef<TActor> {
   description?: string;
   policies?: Record<
     string,
-    (context: AuthContext<TActor, any>) => boolean | Promise<boolean>
+    (context: AuthContext<TActor, any, any>) => boolean | Promise<boolean>
   >;
   schema: z.ZodObject<any>;
   relationships?: any;
@@ -154,7 +154,7 @@ export interface SchemaConfig<
 > {
   policies?: Record<
     string,
-    (context: AuthContext<TActor, any>) => boolean | Promise<boolean>
+    (context: AuthContext<TActor, any, any>) => boolean | Promise<boolean>
   >;
   entities: TEntities;
 }
@@ -162,8 +162,9 @@ export interface SchemaConfig<
 /**
  * The flexible context object passed to every resolver.
  */
-export interface AuthContext<TActor, TRecord> {
+export interface AuthContext<TActor, TRecord, TContext = {}> {
   actor: TActor;
   record?: TRecord;
   input?: Partial<TRecord>;
+  context?: TContext;
 }

@@ -1,10 +1,30 @@
 import { z } from "zod";
-import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
-import type { AppAuthPolicy } from "./policies.js";
+import { EntityDef, AuthContext } from "@tsmk/zg";
+import { MyAppActor } from "./index.js";
+import { PostDef } from "./post.js";
 
-export const CommentDef = {
+// Infer the schema types for type safety in the resolver
+type Post = z.infer<typeof PostDef.schema>;
+type Comment = z.infer<(typeof CommentDef)["schema"]>;
+
+export const CommentDef: EntityDef<MyAppActor> = {
   name: "Comment",
   description: "A comment on a post",
+  policies: {
+    isAuthor: ({ actor, record, input }: AuthContext<MyAppActor, Comment>) => {
+      if (record) return actor.did === record.author;
+      if (input) return actor.did === input.author;
+      return false;
+    },
+    isPostAuthor: ({
+      actor,
+      context,
+    }: AuthContext<MyAppActor, Comment, { post?: Post }>) => {
+      // The runtime is responsible for fetching the Post and providing it here.
+      if (!context?.post) return false;
+      return actor.did === context.post.author;
+    },
+  },
   schema: z.object({
     id: z.string(),
     content: z.string(),
@@ -53,8 +73,8 @@ export const CommentDef = {
     read: "isPublic",
     // Only the author can update their own comment.
     update: "isAuthor",
-    // Only the author can delete their own comment.
-    delete: "isAuthor",
+    // The comment author or the post author can delete a comment.
+    delete: ["isAuthor", "isPostAuthor"],
     relationships: {
       reactions: {
         // Anyone can see reactions to a comment.
@@ -65,4 +85,4 @@ export const CommentDef = {
       },
     },
   },
-} as const satisfies ZGEntityDef<any, AppAuthPolicy>;
+};

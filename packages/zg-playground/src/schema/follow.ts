@@ -1,11 +1,21 @@
 import { z } from "zod";
-import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
-import type { AppAuthPolicy } from "./policies.js";
+import { EntityDef, AuthContext } from "@tsmk/zg";
+import { MyAppActor } from "./index.js";
 
-export const FollowDef = {
+// Infer the schema type for type safety in the resolver
+type Follow = z.infer<(typeof FollowDef)["schema"]>;
+
+export const FollowDef: EntityDef<MyAppActor> = {
   name: "Follow",
   description:
     "A directional relationship indicating one user follows another.",
+  policies: {
+    isFollower: ({ actor, record, input }: AuthContext<MyAppActor, Follow>) => {
+      if (record) return actor.did === record.followerId;
+      if (input) return actor.did === input.followerId;
+      return false;
+    },
+  },
   schema: z.object({
     id: z.string(),
     followerId: z.string(),
@@ -36,4 +46,4 @@ export const FollowDef = {
     // A user can only delete a follow relationship they initiated.
     delete: "isFollower",
   },
-} as const satisfies ZGEntityDef<any, AppAuthPolicy>;
+};

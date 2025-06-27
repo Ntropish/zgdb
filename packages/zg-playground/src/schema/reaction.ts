@@ -1,11 +1,21 @@
 import { z } from "zod";
-import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
-import type { AppAuthPolicy } from "./policies.js";
+import { EntityDef, AuthContext } from "@tsmk/zg";
+import { MyAppActor } from "./index.js";
 
-export const ReactionDef = {
+// Infer the schema type for type safety in the resolver
+type Reaction = z.infer<(typeof ReactionDef)["schema"]>;
+
+export const ReactionDef: EntityDef<MyAppActor> = {
   name: "Reaction",
   description:
     "A reaction from a user to a specific piece of content, like a post or a comment.",
+  policies: {
+    isAuthor: ({ actor, record, input }: AuthContext<MyAppActor, Reaction>) => {
+      if (record) return actor.did === record.author;
+      if (input) return actor.did === input.author;
+      return false;
+    },
+  },
   schema: z.object({
     id: z.string(),
     type: z.enum(["like", "heart", "laugh", "sad", "angry"]),
@@ -43,4 +53,4 @@ export const ReactionDef = {
     // Only the author can delete (i.e., undo) their reaction.
     delete: "isAuthor",
   },
-} as const satisfies ZGEntityDef<any, AppAuthPolicy>;
+};
