@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Store, ProllyTree } from "../index";
-import { Configuration, defaultConfiguration } from "../configuration";
+import { Store, ProllyTree } from "../index.js";
+import { Configuration, defaultConfiguration } from "../configuration.js";
 
 const enc = new TextEncoder();
 
