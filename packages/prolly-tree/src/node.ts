@@ -93,3 +93,27 @@ export function deserializeNode(data: Uint8Array): Node {
     };
   }
 }
+
+export function createLeafNode(pairs: KeyValuePair[]): LeafNode {
+  return {
+    isLeaf: true,
+    pairs,
+  };
+}
+
+export function createInternalNode(
+  keys: Uint8Array[],
+  children: Address[]
+): InternalNode {
+  // There should always be one more child than keys
+  if (keys.length + 1 !== children.length) {
+    throw new Error(
+      "Invariant violation: An internal node must have exactly one more child than it has keys."
+    );
+  }
+  return {
+    isLeaf: false,
+    keys,
+    children,
+  };
+}
