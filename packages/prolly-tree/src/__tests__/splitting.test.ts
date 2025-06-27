@@ -34,20 +34,21 @@ describe("ProllyTree Splitting", () => {
   });
 
   it("should split a leaf node when it becomes too large", async () => {
-    const initialRootHash = tree.rootHash;
+    const initialRoot = tree.root;
 
     // Insert enough entries to cause a split
     for (let i = 0; i < 10; i++) {
       const key = `key${i}`;
       const value = `value${i}`;
-      tree = await tree.put(enc.encode(key), enc.encode(value));
+      const result = await tree.put(enc.encode(key), enc.encode(value));
+      tree = result.tree;
     }
 
     // After splitting, the root hash should have changed
-    expect(tree.rootHash).not.toEqual(initialRootHash);
+    expect(tree.root).not.toEqual(initialRoot);
 
     // The new root should be an internal node
-    const rootNode = await blockManager.getNode(tree.rootHash);
+    const rootNode = await blockManager.getNode(tree.root);
     expect(rootNode).toBeDefined();
     expect(rootNode!.isLeaf).toBe(false);
 

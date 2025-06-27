@@ -3,20 +3,25 @@ import { Configuration, defaultConfiguration } from "./configuration.js";
 import { LeafNode } from "./node.js";
 import { ProllyTree } from "./prolly-tree.js";
 
+// The Store class is a convenience wrapper around the BlockManager and ProllyTree
+// that provides a simple interface for creating and managing a tree.
+// In a real application, you would likely have a more sophisticated storage
+// layer that manages multiple trees and other data.
 export class Store {
-  public blockManager: BlockManager;
-  private config: Configuration;
+  public readonly blockManager: BlockManager;
+  public readonly config: Configuration;
 
-  constructor(config: Configuration = defaultConfiguration) {
-    this.config = config;
-    this.blockManager = new BlockManager(this.config);
+  constructor(config?: Partial<Configuration>) {
+    // Delegate config merging to the BlockManager, which is the source of truth.
+    this.blockManager = new BlockManager(config);
+    this.config = this.blockManager.config;
   }
 
   async getTree(rootHash?: Uint8Array): Promise<ProllyTree> {
-    // If no root hash is provided, it starts with an empty tree state.
-    const initialLeaf: LeafNode = { isLeaf: true, pairs: [] };
-    const initialRoot =
-      rootHash ?? (await this.blockManager.putNode(initialLeaf));
-    return new ProllyTree(initialRoot, this.blockManager, this.config);
+    if (rootHash) {
+      return ProllyTree.load(rootHash, this.blockManager);
+    } else {
+      return ProllyTree.create(this.blockManager);
+    }
   }
 }
