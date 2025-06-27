@@ -280,9 +280,8 @@ export function parseSchemas<TActor>(
       ...manyToManyNames,
     ]);
 
-    const localPolicyMap = new Map(
-      (rawSchema.policies || []).map((p, i) => [p, i])
-    );
+    const localPolicies = Object.keys(rawSchema.policies || {});
+    const localPolicyMap = new Map(localPolicies.map((p, i) => [p, i]));
 
     const topLevelSchema: NormalizedSchema = {
       name: rawSchema.name,

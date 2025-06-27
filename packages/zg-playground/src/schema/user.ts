@@ -1,10 +1,22 @@
 import { z } from "zod";
-import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
-import type { AppAuthPolicy } from "./policies.js";
+import { EntityDef, AuthContext } from "@tsmk/zg";
+import { MyAppActor } from "./index.js";
 
-export const UserDef = {
+export const UserDef: EntityDef<MyAppActor> = {
   name: "User",
   description: "A user of the application, who can author posts and comments.",
+  policies: {
+    isSelf: ({
+      actor,
+      record,
+    }: AuthContext<MyAppActor, { ownerDid: string }>) =>
+      !!(actor && record && actor.did === record.ownerDid),
+    isCreatingSelf: ({
+      actor,
+      input,
+    }: AuthContext<MyAppActor, { ownerDid: string }>) =>
+      !!(actor && input && actor.did === input.ownerDid),
+  },
   schema: z.object({
     id: z.string(),
     ownerDid: z.string(),
@@ -89,4 +101,4 @@ export const UserDef = {
       },
     },
   },
-} as const satisfies ZGEntityDef<any, AppAuthPolicy>;
+};

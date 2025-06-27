@@ -134,8 +134,7 @@ export type { AuthBlock as ZGAuthBlock } from "./types.js";
 export interface EntityDef<TActor> {
   name: string;
   description?: string;
-  policies?: readonly string[];
-  defaultResolvers?: Record<
+  policies?: Record<
     string,
     (context: AuthContext<TActor, any>) => boolean | Promise<boolean>
   >;
