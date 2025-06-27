@@ -64,11 +64,9 @@ function parseAuthBlock(
   const topLevelActions: AuthAction[] = ["create", "read", "update", "delete"];
   for (const action of topLevelActions) {
     const rule = auth[action];
-    if (rule) {
+    if (rule !== undefined) {
       const indices = asArray(rule).map(resolvePolicy);
-      if (indices.length > 0) {
-        (parsedBlock as any)[action] = indices;
-      }
+      (parsedBlock as any)[action] = indices;
     }
   }
 
@@ -84,11 +82,9 @@ function parseAuthBlock(
       (parsedBlock.fields as any)![fieldName] = {};
       for (const action in fieldRules) {
         const rule = (fieldRules as any)[action];
-        if (rule) {
+        if (rule !== undefined) {
           const indices = asArray(rule).map(resolvePolicy);
-          if (indices.length > 0) {
-            (parsedBlock.fields as any)![fieldName][action] = indices;
-          }
+          (parsedBlock.fields as any)![fieldName][action] = indices;
         }
       }
     }
@@ -106,11 +102,9 @@ function parseAuthBlock(
       (parsedBlock.relationships as any)![relName] = {};
       for (const action in relRules) {
         const rule = (relRules as any)[action];
-        if (rule) {
+        if (rule !== undefined) {
           const indices = asArray(rule).map(resolvePolicy);
-          if (indices.length > 0) {
-            (parsedBlock.relationships as any)![relName][action] = indices;
-          }
+          (parsedBlock.relationships as any)![relName][action] = indices;
         }
       }
     }

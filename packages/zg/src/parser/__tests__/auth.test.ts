@@ -57,7 +57,14 @@ describe("Schema Parser: Auth Block", () => {
         },
       },
     };
-    const normalized = parseSchemas({ entities: { Post: rawSchema } });
+    const normalized = parseSchemas({
+      entities: { Post: rawSchema },
+      policies: {
+        isAuthor: () => true,
+        isPublic: () => true,
+        hasAdminRights: () => true,
+      },
+    });
     expect(normalized[0].auth).toEqual({
       create: ["isAuthor"],
       read: ["isPublic"],

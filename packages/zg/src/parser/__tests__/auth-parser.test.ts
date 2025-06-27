@@ -5,7 +5,7 @@ import type { ZGEntityDef, AuthBlock } from "../types.js";
 
 // Helper to create a minimal valid schema for testing
 const createMockSchema = (
-  auth?: AuthBlock<string>
+  auth?: AuthBlock<string | string[]>
 ): ZGEntityDef<any, string> => ({
   name: "TestSchema",
   schema: z.object({
@@ -41,7 +41,15 @@ describe("Auth Block Parsing Edge Cases", () => {
       },
     });
 
-    const [parsed] = parseSchemas({ entities: { TestSchema: rawSchema } });
+    const [parsed] = parseSchemas({
+      entities: { TestSchema: rawSchema },
+      policies: {
+        isOwner: () => true,
+        isPublic: () => true,
+        hasAdminRights: () => true,
+        isSelf: () => true,
+      },
+    });
 
     expect(parsed.auth.create).toEqual(["isOwner"]);
     expect(parsed.auth.read).toEqual(["isPublic"]);
@@ -58,7 +66,10 @@ describe("Auth Block Parsing Edge Cases", () => {
       },
     });
     expect(() =>
-      parseSchemas({ entities: { TestSchema: schemaWithBadField } })
+      parseSchemas({
+        entities: { TestSchema: schemaWithBadField },
+        policies: { isPublic: () => true },
+      })
     ).toThrow("Auth rule defined for non-existent field: 'nonExistentField'");
 
     const schemaWithBadRel = createMockSchema({
@@ -67,7 +78,10 @@ describe("Auth Block Parsing Edge Cases", () => {
       },
     });
     expect(() =>
-      parseSchemas({ entities: { TestSchema: schemaWithBadRel } })
+      parseSchemas({
+        entities: { TestSchema: schemaWithBadRel },
+        policies: { isPublic: () => true },
+      })
     ).toThrow(
       "Auth rule defined for non-existent relationship: 'nonExistentRel'"
     );
@@ -102,7 +116,14 @@ describe("Auth Block Parsing Edge Cases", () => {
       update: ["isOwner", "isPublic"],
     });
 
-    const [parsed] = parseSchemas({ entities: { TestSchema: rawSchema } });
+    const [parsed] = parseSchemas({
+      entities: { TestSchema: rawSchema },
+      policies: {
+        never: () => false,
+        isOwner: () => true,
+        isPublic: () => true,
+      },
+    });
     expect(parsed.auth.read).toEqual(["never"]);
     expect(parsed.auth.update).toEqual(["isOwner", "isPublic"]);
     // ^ The parser just passes this through. Runtime would handle the logic.
@@ -130,7 +151,10 @@ describe("Auth Block Parsing Edge Cases", () => {
       },
     };
 
-    const [parsed] = parseSchemas({ entities: { Post: complexSchema } });
+    const [parsed] = parseSchemas({
+      entities: { Post: complexSchema },
+      policies: { isAuthor: () => true },
+    });
     expect(parsed.auth.relationships?.tags.add).toEqual(["isAuthor"]);
     // Also test that it throws on a bad many-to-many relationship name
     const badSchema = {
@@ -141,8 +165,11 @@ describe("Auth Block Parsing Edge Cases", () => {
         },
       },
     };
-    expect(() => parseSchemas({ entities: { Post: badSchema } })).toThrow(
-      "Auth rule defined for non-existent relationship: 'badName'"
-    );
+    expect(() =>
+      parseSchemas({
+        entities: { Post: badSchema },
+        policies: { isAuthor: () => true },
+      })
+    ).toThrow("Auth rule defined for non-existent relationship: 'badName'");
   });
 });
