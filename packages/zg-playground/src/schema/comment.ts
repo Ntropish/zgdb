@@ -1,93 +1,74 @@
 import { z } from "zod";
 import { EntityDef, AuthContext } from "@tsmk/zg";
 import { MyAppActor } from "./index.js";
-import { PostDef } from "./post.js";
-import { ZgClient } from "../../../../temp-output/schema.zg.js";
+import { ZgClient, CommentNode } from "../../../../temp-output/schema.zg.js";
+import type { AppGlobalPolicies } from "./index.js";
 
-// Infer the schema types for type safety in the resolver
-type Post = z.infer<typeof PostDef.schema>;
-type Comment = z.infer<(typeof CommentDef)["schema"]>;
+// Step 1: Define the Zod schema and its TypeScript type.
+const CommentSchema = z.object({
+  id: z.string(),
+  content: z.string(),
+  authorId: z.string(),
+  postId: z.string(),
+  createdAt: z.date(),
+});
+type Comment = z.infer<typeof CommentSchema>;
 
-export const CommentDef: EntityDef<MyAppActor, ZgClient> = {
+// Step 2: Define the interface for the resolver fields on this entity.
+export interface ICommentResolvers {
+  isAuthor: (
+    context: AuthContext<MyAppActor, CommentNode, Comment, ZgClient>
+  ) => boolean;
+  isPostAuthor: (
+    context: AuthContext<MyAppActor, CommentNode, Comment, ZgClient>
+  ) => Promise<boolean>;
+}
+
+// Step 3: Define the entity, parameterized by its local and global resolvers.
+export const CommentDef: EntityDef<
+  MyAppActor,
+  ICommentResolvers,
+  AppGlobalPolicies
+> = {
   name: "Comment",
   description: "A comment on a post",
-  policies: {
-    isAuthor: ({
-      actor,
-      record,
-      input,
-    }: AuthContext<MyAppActor, Comment, ZgClient>) => {
-      if (record) return actor.did === record.author;
-      if (input) return actor.did === input.author;
-      return false;
-    },
-    isPostAuthor: async ({
-      actor,
-      record,
-      db,
-    }: AuthContext<MyAppActor, Comment, ZgClient>) => {
-      if (!record?.regards) return false;
-      // The runtime is responsible for fetching the Post and providing it here.
-      const post = await db.posts.find(record.regards);
-      if (!post) return false;
-      return actor.did === post.author;
-    },
-  },
-  schema: z.object({
-    id: z.string(),
-    content: z.string(),
-    author: z.string(),
-    regards: z.string(),
-    createdAt: z.date(),
-  }),
+  schema: CommentSchema,
   relationships: {
-    User: {
-      author: {
-        cardinality: "one",
-        description: "The user who wrote the comment",
-        required: true,
-      },
+    author: {
+      node: "User",
+      field: "authorId",
+      cardinality: "one",
     },
-    Post: {
-      regards: {
-        cardinality: "one",
-        description: "The post that the comment is about",
-        required: true,
-      },
+    post: {
+      node: "Post",
+      field: "postId",
+      cardinality: "one",
     },
-    Reaction: {
-      reactions: {
-        cardinality: "many",
-        description: "Reactions on this comment.",
-        mappedBy: "target",
-      },
+    reactions: {
+      node: "Reaction",
+      cardinality: "many",
+      mappedBy: "target",
     },
   },
   indexes: [
     {
-      on: ["regards", "createdAt"],
+      on: ["postId", "createdAt"],
       description:
         "Index to efficiently query a post's comments, sorted by creation date.",
     },
     {
-      on: "author",
+      on: "authorId",
       description: "Index to efficiently query a user's comments.",
     },
   ],
   auth: {
-    // A user must be the author to create the comment.
     create: "isAuthor",
-    // All comments are public.
     read: "isPublic",
-    // Only the author can update their own comment.
     update: "isAuthor",
-    // The comment author or the post author can delete a comment.
     delete: ["isAuthor", "isPostAuthor"],
     relationships: {
       reactions: {
-        // Anyone can see reactions to a comment.
         read: "isPublic",
-        // Adding/removing reactions is handled by the Reaction's auth rules.
         add: "never",
         remove: "never",
       },

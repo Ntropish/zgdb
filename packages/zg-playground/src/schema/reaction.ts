@@ -1,33 +1,32 @@
 import { z } from "zod";
 import { EntityDef, AuthContext } from "@tsmk/zg";
-import { MyAppActor } from "./index.js";
-import { ZgClient } from "../../../../temp-output/schema.zg.js";
+import { MyAppActor, AppGlobalPolicies } from "./index.js";
+import { ZgClient, ReactionNode } from "../../../../temp-output/schema.zg.js";
 
-// Infer the schema type for type safety in the resolver
-type Reaction = z.infer<(typeof ReactionDef)["schema"]>;
+const ReactionSchema = z.object({
+  id: z.string(),
+  type: z.enum(["like", "heart", "laugh", "sad", "angry"]),
+  author: z.string(),
+  targetId: z.string(),
+  targetType: z.enum(["post", "comment"]),
+});
+type Reaction = z.infer<typeof ReactionSchema>;
 
-export const ReactionDef: EntityDef<MyAppActor, ZgClient> = {
+export interface IReactionResolvers {
+  isAuthor: (
+    context: AuthContext<MyAppActor, ReactionNode, Reaction, ZgClient>
+  ) => boolean;
+}
+
+export const ReactionDef: EntityDef<
+  MyAppActor,
+  IReactionResolvers,
+  AppGlobalPolicies
+> = {
   name: "Reaction",
   description:
     "A reaction from a user to a specific piece of content, like a post or a comment.",
-  policies: {
-    isAuthor: ({
-      actor,
-      record,
-      input,
-    }: AuthContext<MyAppActor, Reaction, ZgClient>) => {
-      if (record) return actor.did === record.author;
-      if (input) return actor.did === input.author;
-      return false;
-    },
-  },
-  schema: z.object({
-    id: z.string(),
-    type: z.enum(["like", "heart", "laugh", "sad", "angry"]),
-    author: z.string(),
-    targetId: z.string(),
-    targetType: z.enum(["post", "comment"]),
-  }),
+  schema: ReactionSchema,
   relationships: {
     User: {
       author: {

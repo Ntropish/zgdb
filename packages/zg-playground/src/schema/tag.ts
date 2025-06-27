@@ -1,15 +1,17 @@
 import { z } from "zod";
 import { EntityDef } from "@tsmk/zg";
-import { MyAppActor } from "./index.js";
-import { ZgClient } from "../../../../temp-output/schema.zg.js";
+import { MyAppActor, AppGlobalPolicies } from "./index.js";
 
-export const TagDef: EntityDef<MyAppActor, ZgClient> = {
+const TagSchema = z.object({
+  id: z.string(),
+  name: z.string().max(50),
+});
+// type Tag = z.infer<typeof TagSchema>; // Not needed as no resolvers
+
+export const TagDef: EntityDef<MyAppActor, {}, AppGlobalPolicies> = {
   name: "Tag",
   description: "A tag that can be applied to posts to categorize them.",
-  schema: z.object({
-    id: z.string(),
-    name: z.string().max(50),
-  }),
+  schema: TagSchema,
   relationships: {},
   auth: {
     // Any authenticated user can create a new tag.

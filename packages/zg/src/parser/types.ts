@@ -133,17 +133,21 @@ export type { AuthBlock as ZGAuthBlock } from "./types.js";
 /**
  * The definition for a single entity, including its local policies and default resolvers.
  */
-export interface EntityDef<TActor, TDB> {
+export interface EntityDef<
+  TActor,
+  TResolvers extends Record<string, Function>,
+  TGlobalResolvers extends Record<string, Function>
+> {
   name: string;
   description?: string;
-  policies?: Record<
-    string,
-    (context: AuthContext<TActor, any, TDB, any>) => boolean | Promise<boolean>
-  >;
   schema: z.ZodObject<any>;
   relationships?: any;
   indexes?: any;
-  auth?: AuthBlock<string | string[]>;
+  auth?: AuthBlock<
+    | keyof TResolvers
+    | keyof TGlobalResolvers
+    | (keyof TResolvers | keyof TGlobalResolvers)[]
+  >;
   manyToMany?: any;
 }
 
@@ -153,22 +157,22 @@ export interface EntityDef<TActor, TDB> {
 export interface SchemaConfig<
   TActor,
   TDB,
-  TEntities extends Record<string, EntityDef<TActor, TDB>>
+  TEntities extends Record<string, EntityDef<TActor, any, any>>,
+  TResolvers extends Record<string, Record<string, Function>>,
+  TGlobalResolvers extends Record<string, Function>
 > {
-  policies?: Record<
-    string,
-    (context: AuthContext<TActor, any, TDB, any>) => boolean | Promise<boolean>
-  >;
+  globalPolicies?: TGlobalResolvers;
   entities: TEntities;
+  resolvers?: TResolvers;
 }
 
 /**
  * The flexible context object passed to every resolver.
  */
-export interface AuthContext<TActor, TRecord, TDB, TContext = {}> {
+export interface AuthContext<TActor, TNode, TInput, TDB, TContext = {}> {
   actor: TActor;
-  record?: TRecord;
-  input?: Partial<TRecord>;
+  record?: TNode;
+  input?: Partial<TInput>;
   context?: TContext;
   db: TDB;
 }

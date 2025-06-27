@@ -1,32 +1,31 @@
 import { z } from "zod";
 import { EntityDef, AuthContext } from "@tsmk/zg";
-import { MyAppActor } from "./index.js";
-import { ZgClient } from "../../../../temp-output/schema.zg.js";
+import { MyAppActor, AppGlobalPolicies } from "./index.js";
+import { ZgClient, FollowNode } from "../../../../temp-output/schema.zg.js";
 
-// Infer the schema type for type safety in the resolver
-type Follow = z.infer<(typeof FollowDef)["schema"]>;
+const FollowSchema = z.object({
+  id: z.string(),
+  followerId: z.string(),
+  followingId: z.string(),
+  createdAt: z.date(),
+});
+type Follow = z.infer<typeof FollowSchema>;
 
-export const FollowDef: EntityDef<MyAppActor, ZgClient> = {
+export interface IFollowResolvers {
+  isFollower: (
+    context: AuthContext<MyAppActor, FollowNode, Follow, ZgClient>
+  ) => boolean;
+}
+
+export const FollowDef: EntityDef<
+  MyAppActor,
+  IFollowResolvers,
+  AppGlobalPolicies
+> = {
   name: "Follow",
   description:
     "A directional relationship indicating one user follows another.",
-  policies: {
-    isFollower: ({
-      actor,
-      record,
-      input,
-    }: AuthContext<MyAppActor, Follow, ZgClient>) => {
-      if (record) return actor.did === record.followerId;
-      if (input) return actor.did === input.followerId;
-      return false;
-    },
-  },
-  schema: z.object({
-    id: z.string(),
-    followerId: z.string(),
-    followingId: z.string(),
-    createdAt: z.date(),
-  }),
+  schema: FollowSchema,
   relationships: {
     User: {
       followerId: {
