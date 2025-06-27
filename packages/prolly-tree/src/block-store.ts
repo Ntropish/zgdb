@@ -2,9 +2,9 @@ import { Configuration } from "./configuration.js";
 import { HashFn, getHashFn } from "./hashing.js";
 import { Node, serializeNode, deserializeNode, Address } from "./node.js";
 
-// A mock BlockStore that simulates content-addressing with a Map.
+// A mock BlockManager that simulates content-addressing with a Map.
 // In a real implementation, this would be a more sophisticated storage layer.
-export class BlockStore {
+export class BlockManager {
   private blocks = new Map<string, Uint8Array>();
   private hashFn: HashFn;
 
