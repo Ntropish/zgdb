@@ -116,3 +116,10 @@ export interface ZGEntityDef<
   auth?: AuthBlock<TAuthPolicy>;
   manyToMany?: any;
 }
+
+/**
+ * @deprecated Use ZGEntityDef instead.
+ * Represents the raw, user-defined schema file format.
+ * This is the input to our `parser` stage.
+ */
+export type RawSchema = ZGEntityDef<any, any>;

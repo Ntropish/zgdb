@@ -1,5 +1,6 @@
+import { describe, it, expect } from "vitest";
 import { parseSchemas } from "../index.js";
-import { RawSchema } from "../types.js";
+import { RawSchema, ZGEntityDef } from "../types.js";
 import { z } from "zod";
 
 const rawUserSchema: RawSchema = {
@@ -217,12 +218,12 @@ describe("Schema Parser", () => {
   });
 
   it("should parse an auth block", () => {
-    const rawAuthSchema: RawSchema = {
+    const rawAuthSchema: ZGEntityDef<any, string> = {
       name: "AuthTest",
       schema: z.object({ id: z.string() }),
       auth: {
-        create: [{ capability: "auth:create" }],
-        read: [{ policy: "owner" }, { capability: "auth:read" }],
+        create: "can_create",
+        read: ["isOwner", "can_read"],
       },
     };
 
@@ -231,8 +232,10 @@ describe("Schema Parser", () => {
 
     expect(authSchema.auth).toBeDefined();
     expect(authSchema.auth).toEqual({
-      create: [{ capability: "auth:create" }],
-      read: [{ policy: "owner" }, { capability: "auth:read" }],
+      create: ["can_create"],
+      read: ["isOwner", "can_read"],
+      fields: {},
+      relationships: {},
     });
   });
 });

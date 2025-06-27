@@ -32,14 +32,12 @@ export async function generateFbs(
     if (schema.auth && Object.keys(schema.auth).length > 0) {
       const rules = Object.entries(schema.auth)
         .map(([action, rules]) => {
+          if (!Array.isArray(rules)) return null;
           if (rules.length === 0) return null;
           const ruleDescriptions = rules
-            .map((rule) => {
-              if ("policy" in rule) return `    - Policy: ${rule.policy}`;
-              return `    - Capability: ${rule.capability}`;
-            })
+            .map((ruleName) => `    - '${ruleName}'`)
             .join("\\n");
-          return `  - ${action}: requires ONE OF:\\n${ruleDescriptions}`;
+          return `  - ${action}: requires one of:\\n${ruleDescriptions}`;
         })
         .filter(Boolean)
         .join("\\n");
