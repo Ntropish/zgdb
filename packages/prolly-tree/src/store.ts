@@ -4,7 +4,7 @@ import { LeafNode } from "./node.js";
 import { ProllyTree } from "./prolly-tree.js";
 
 export class Store {
-  private blockStore: BlockStore;
+  public blockStore: BlockStore;
   private config: Configuration;
 
   constructor(config: Configuration = defaultConfiguration) {

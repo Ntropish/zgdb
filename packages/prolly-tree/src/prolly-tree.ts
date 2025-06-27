@@ -1,6 +1,6 @@
 import { BlockStore } from "./block.js";
 import { Configuration, defaultConfiguration } from "./configuration.js";
-import { isLeafNode, LeafNode } from "./node.js";
+import { isLeafNode, LeafNode, InternalNode, serializeNode } from "./node.js";
 import { Diff } from "./types.js";
 import { compare } from "uint8arrays/compare";
 
@@ -91,16 +91,68 @@ export class ProllyTree {
 
       const updatedLeaf: LeafNode = { ...node, pairs: newPairs };
 
-      // TODO: Check if node needs to be split
-      // const nodeIsTooLarge = serializeNode(updatedLeaf).length > this.config.valueChunking.maxChunkSize;
-      // if (nodeIsTooLarge) {
-      //   ... split logic ...
-      // }
+      let nodeIsTooLarge = false;
+      if (this.config.valueChunking.chunkingStrategy === "fastcdc-v2020") {
+        nodeIsTooLarge =
+          serializeNode(updatedLeaf).length >
+          this.config.valueChunking.maxChunkSize;
+      }
 
-      return this.store.putNode(updatedLeaf);
+      if (nodeIsTooLarge) {
+        // The node is too large, we need to split it.
+        const midpoint = Math.ceil(updatedLeaf.pairs.length / 2);
+        const leftPairs = updatedLeaf.pairs.slice(0, midpoint);
+        const rightPairs = updatedLeaf.pairs.slice(midpoint);
+
+        const leftLeaf: LeafNode = { isLeaf: true, pairs: leftPairs };
+        const rightLeaf: LeafNode = { isLeaf: true, pairs: rightPairs };
+
+        const [leftAddress, rightAddress] = await Promise.all([
+          this.store.putNode(leftLeaf),
+          this.store.putNode(rightLeaf),
+        ]);
+
+        // The key for the new internal node is the first key of the right leaf.
+        const splitKey = rightPairs[0][0];
+
+        const newInternalNode: InternalNode = {
+          isLeaf: false,
+          keys: [splitKey],
+          children: [leftAddress, rightAddress],
+        };
+        return this.store.putNode(newInternalNode);
+      } else {
+        // The node is not too large, just store it.
+        return this.store.putNode(updatedLeaf);
+      }
     } else {
       // TODO: Internal node logic
-      throw new Error("Internal node put logic not implemented yet.");
+      // Find the correct child to descend into
+      const childIndex = node.keys.findIndex(
+        (k: Uint8Array) => compare(key, k) > 0
+      );
+      const address =
+        childIndex === -1 ? node.children[0] : node.children[childIndex + 1];
+      const childNode = await this.store.getNode(address);
+      if (!childNode) {
+        throw new Error("Failed to traverse tree: child node not found");
+      }
+      const newChildAddress = await this._put(childNode, key, value);
+
+      if (newChildAddress) {
+        // A child was updated, so we need to create a new internal node
+        const newChildren = [...node.children];
+        newChildren[childIndex === -1 ? 0 : childIndex + 1] = newChildAddress;
+        const newInternalNode: InternalNode = {
+          ...node,
+          children: newChildren,
+        };
+        // TODO: Handle splitKey from child, which could cause this node to split
+        return this.store.putNode(newInternalNode);
+      } else {
+        // Child was not modified, so no change needed
+        return null;
+      }
     }
   }
 }
