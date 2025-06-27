@@ -71,14 +71,7 @@ export interface AuthBlock<TRule> {
   /** Field-level authorization overrides. */
   fields?: {
     [fieldName: string]: {
-      [key in AuthAction]?: TRule;
-    };
-  };
-
-  /** Relationship-level authorization. */
-  relationships?: {
-    [relationshipName: string]: {
-      [key in RelationshipAction]?: TRule;
+      [key in AuthAction | RelationshipAction]?: TRule;
     };
   };
 }

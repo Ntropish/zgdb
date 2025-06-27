@@ -77,7 +77,7 @@ export const PostDef: EntityDef<IPostResolvers, AppGlobalPolicies> = {
     // Only the author can delete their own post.
     delete: "isAuthor",
 
-    relationships: {
+    fields: {
       comments: {
         // Anyone can read comments on a post.
         read: "isPublic",

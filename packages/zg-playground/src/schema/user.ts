@@ -83,8 +83,6 @@ export const UserDef: EntityDef<IUserResolvers, AppGlobalPolicies> = {
       email: {
         read: "isSelf",
       },
-    },
-    relationships: {
       posts: {
         add: "isSelf",
         remove: "isSelf",
@@ -93,6 +91,11 @@ export const UserDef: EntityDef<IUserResolvers, AppGlobalPolicies> = {
         read: "isPublic",
         add: "never",
         remove: "never",
+      },
+    },
+    relationships: {
+      posts: {
+        add: "isSelf",
       },
     },
   },

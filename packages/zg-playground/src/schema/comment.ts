@@ -62,7 +62,7 @@ export const CommentDef: EntityDef<ICommentResolvers, AppGlobalPolicies> = {
     read: "isPublic",
     update: "isAuthor",
     delete: ["isAuthor", "isPostAuthor"],
-    relationships: {
+    fields: {
       reactions: {
         read: "isPublic",
         add: "never",
