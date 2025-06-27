@@ -19,18 +19,9 @@ const execPromise = promisify(exec);
 export function createSchema<
   TActor,
   TDB,
-  TEntities extends Record<string, EntityDef<any, any>>,
-  TEntityResolvers extends Record<string, Record<string, Function>>,
-  TGlobalResolvers extends Record<string, Function>
->(
-  config: SchemaConfig<
-    TActor,
-    TDB,
-    TEntities,
-    TEntityResolvers,
-    TGlobalResolvers
-  >
-) {
+  const TEntities extends Record<string, EntityDef<any, any>>,
+  const TGlobalResolvers extends Record<string, Function>
+>(config: SchemaConfig<TActor, TDB, TEntities, TGlobalResolvers>) {
   return config;
 }
 
@@ -41,7 +32,7 @@ export interface ZgRunLogger {
 
 export interface ZgRunOptions {
   /** The schema configuration object from createSchema. */
-  config: SchemaConfig<any, any, any, any, any>;
+  config: SchemaConfig<any, any, any, any>;
   /** The absolute path to the output directory. */
   outputDir: string;
   /** An optional logger for capturing build output. */

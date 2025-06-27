@@ -160,21 +160,6 @@ export interface EntityDef<
 }
 
 /**
- * The configuration object for the main `createSchema` factory.
- */
-export interface SchemaConfig<
-  TActor,
-  TDB,
-  TEntities extends Record<string, EntityDef<any, any>>,
-  TEntityResolvers extends Record<string, Record<string, Function>>,
-  TGlobalResolvers extends Record<string, Function>
-> {
-  globalResolvers?: TGlobalResolvers;
-  entities: TEntities;
-  resolvers?: TEntityResolvers;
-}
-
-/**
  * The flexible context object passed to every resolver.
  */
 export interface ResolverContext<TActor, TNode, TInput, TDB, TContext = {}> {
@@ -183,4 +168,42 @@ export interface ResolverContext<TActor, TNode, TInput, TDB, TContext = {}> {
   input?: Partial<TInput>;
   context?: TContext;
   db: TDB;
+}
+
+/**
+ * A helper type that infers the shape of the `resolvers` object
+ * based on the provided entities. It provides type-safe `context`
+ * arguments to resolver functions.
+ */
+export type InferredResolvers<
+  TActor,
+  TDB,
+  TEntities extends Record<string, EntityDef<any, any>>
+> = {
+  [K in keyof TEntities]?: {
+    [key: string]: (
+      context: ResolverContext<
+        TActor,
+        // We can't know the generated `Node` type here, so we use `any`.
+        // The `input` type, however, is strongly-typed from the Zod schema.
+        any,
+        z.infer<TEntities[K]["schema"]>,
+        TDB
+      >
+    ) => any;
+  };
+};
+
+/**
+ * The configuration object for the main `createSchema` factory.
+ */
+export interface SchemaConfig<
+  TActor,
+  TDB,
+  TEntities extends Record<string, EntityDef<any, any>>,
+  TGlobalResolvers extends Record<string, Function>
+> {
+  globalResolvers?: TGlobalResolvers;
+  entities: TEntities;
+  resolvers?: InferredResolvers<TActor, TDB, TEntities>;
 }

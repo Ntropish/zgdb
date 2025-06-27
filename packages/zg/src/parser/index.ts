@@ -280,7 +280,7 @@ function parseAllRelationships(
  * @returns An array of all normalized schema objects, including nested ones.
  */
 export function parseSchemas(
-  config: SchemaConfig<any, any, any, any, any>
+  config: SchemaConfig<any, any, any, any>
 ): NormalizedSchema[] {
   const allSchemas: NormalizedSchema[] = [];
   const {
