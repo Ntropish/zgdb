@@ -46,54 +46,89 @@ ${fields}
 function generateDbAccessors(schema: NormalizedSchema): string {
   const schemaNameLower =
     schema.name.charAt(0).toLowerCase() + schema.name.slice(1);
-  const { auth } = schema;
+  const { auth, policies, localResolvers } = schema;
 
   const generateAuthCheck = (
-    action: "create" | "read" | "update" | "delete"
+    action: "create" | "read" | "update" | "delete",
+    options: {
+      isGet?: boolean;
+      takesInput?: boolean;
+      fetchRecord?: boolean;
+    } = {}
   ) => {
     if (!auth || !auth[action]) {
-      return `        // No '${action}' auth rules defined for ${schema.name}`;
+      return `// No '${action}' auth rules defined for ${schema.name}`;
     }
 
     const rules = asArray(auth[action] as number | number[]);
 
     if (rules.length === 0) {
-      return `        // No '${action}' auth rules defined for ${schema.name}`;
+      return `// No '${action}' auth rules defined for ${schema.name}`;
     }
 
-    const checks = rules
+    const checkLogic = rules
       .map((ruleIndex: number) => {
-        // This is a placeholder. Real implementation will be more sophisticated.
-        return `        // TODO: Implement policy check for rule index ${ruleIndex} on ${action}`;
+        const isGlobal = ruleIndex < 0;
+        const policyName = isGlobal
+          ? policies![(ruleIndex + 1) * -1]
+          : Object.keys(localResolvers!)[ruleIndex];
+
+        const resolverAccess = isGlobal
+          ? `this.globalResolvers.${policyName}`
+          : `this.localResolvers['${schema.name}'].${policyName}`;
+
+        const contextParts = ["actor: this.authContext.actor", "db: this"];
+        if (options.takesInput) {
+          contextParts.push("input: data");
+        }
+        // The record is passed under the 'record' key.
+        // For get, it's the result. For update/delete, it's fetched.
+        contextParts.push("record: record");
+
+        return `await ${resolverAccess}({ ${contextParts.join(", ")} })`;
       })
-      .join("\n");
+      .join(" || "); // Use OR logic for multiple policies
 
     return `
-        const checkAuth = async () => {
-${checks}
-          throw new Error('Authorization failed for ${action} on ${schema.name}');
-        };
-        await checkAuth();`;
+      const checkAuth = async (record?: any) => {
+        if (!this.authContext) throw new Error("Auth context not set");
+        const passed = ${checkLogic || "true"};
+        if (!passed) {
+          throw new Error('Authorization failed for ${action} on ${
+      schema.name
+    }');
+        }
+      };
+      ${
+        options.fetchRecord
+          ? `const record = await this.db.getRaw('${schema.name}', id);`
+          : ""
+      }
+      // In a get() call, auth is checked AFTER the result is fetched.
+      // For create, it's checked before. For update/delete, it's checked on the fetched record.
+      await checkAuth(${options.isGet ? "result" : "record"});
+      `;
   };
 
   return `
   get ${schemaNameLower}s() {
     return {
       get: async (id: string): Promise<${schema.name}Node | null> => {
-        if (!this.authContext) throw new Error("Auth context not set");
-${generateAuthCheck("read")}
         const result = await this.db.get<LowLevel.${schema.name}, ${
     schema.name
   }Node>('${schema.name}', id, (db, fbb, ac) => new ${
     schema.name
   }Node(db, fbb, ac));
+        ${generateAuthCheck("read", { isGet: true }).replace(
+          "await checkAuth(result);",
+          "if (result) await checkAuth(result);"
+        )}
         return result;
       },
       create: async (data: Partial<I${schema.name}>>): Promise<${
     schema.name
   }Node> => {
-        if (!this.authContext) throw new Error("Auth context not set");
-${generateAuthCheck("create")}
+        ${generateAuthCheck("create", { takesInput: true })}
         return this.db.create<LowLevel.${schema.name}, ${schema.name}Node>('${
     schema.name
   }', data, (db, fbb, ac) => new ${schema.name}Node(db, fbb, ac));
@@ -101,15 +136,13 @@ ${generateAuthCheck("create")}
       update: async (id: string, data: Partial<I${schema.name}>>): Promise<${
     schema.name
   }Node> => {
-        if (!this.authContext) throw new Error("Auth context not set");
-${generateAuthCheck("update")}
+        ${generateAuthCheck("update", { takesInput: true, fetchRecord: true })}
         return this.db.update<LowLevel.${schema.name}, ${schema.name}Node>('${
     schema.name
   }', id, data, (db, fbb, ac) => new ${schema.name}Node(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {
-        if (!this.authContext) throw new Error("Auth context not set");
-${generateAuthCheck("delete")}
+        ${generateAuthCheck("delete", { fetchRecord: true })}
         return this.db.delete('${schema.name}', id);
       }
     };
@@ -138,9 +171,13 @@ ${nodeClasses}
 export class ZgClient {
   private db: ZgDatabase;
   private authContext: ZgAuthContext | null = null;
+  private localResolvers: Record<string, Record<string, Function>>;
+  private globalResolvers: Record<string, Function>;
 
   constructor(config: any) {
-    this.db = new ZgDatabase(config);
+    this.db = new ZgDatabase(config.db);
+    this.globalResolvers = config.resolvers.global;
+    this.localResolvers = config.resolvers.local;
   }
 
   setAuthContext(context: ZgAuthContext) {

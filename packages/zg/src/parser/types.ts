@@ -96,6 +96,8 @@ export interface NormalizedSchema {
   indexes?: Index[];
   auth: NormalizedAuthBlock;
   policies?: string[]; // The canonical list of ALL policies
+  localResolvers?: Record<string, Function>;
+  globalResolvers?: Record<string, Function>;
 }
 
 /**

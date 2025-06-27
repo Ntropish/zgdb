@@ -255,13 +255,14 @@ function parseAllRelationships(
  * @param config - The schema configuration object.
  * @returns An array of all normalized schema objects, including nested ones.
  */
-export function parseSchemas<TActor>(
-  config: SchemaConfig<TActor, Record<string, EntityDef<TActor>>>
+export function parseSchemas<TActor, TDB>(
+  config: SchemaConfig<TActor, TDB, Record<string, EntityDef<TActor, TDB>>>
 ): NormalizedSchema[] {
   const allSchemas: NormalizedSchema[] = [];
 
-  const globalPolicies = Object.keys(config.policies || {});
-  const globalPolicyMap = new Map(globalPolicies.map((p, i) => [p, i]));
+  const globalPolicies = config.policies || {};
+  const globalPolicyNames = Object.keys(globalPolicies);
+  const globalPolicyMap = new Map(globalPolicyNames.map((p, i) => [p, i]));
 
   const rawSchemas = Object.values(config.entities);
 
@@ -280,8 +281,9 @@ export function parseSchemas<TActor>(
       ...manyToManyNames,
     ]);
 
-    const localPolicies = Object.keys(rawSchema.policies || {});
-    const localPolicyMap = new Map(localPolicies.map((p, i) => [p, i]));
+    const localPolicies = rawSchema.policies || {};
+    const localPolicyNames = Object.keys(localPolicies);
+    const localPolicyMap = new Map(localPolicyNames.map((p, i) => [p, i]));
 
     const topLevelSchema: NormalizedSchema = {
       name: rawSchema.name,
@@ -301,7 +303,9 @@ export function parseSchemas<TActor>(
         localPolicyMap,
         globalPolicyMap
       ),
-      policies: globalPolicies, // Storing global policies for the generator
+      policies: globalPolicyNames, // Storing global policy names for the generator
+      localResolvers: localPolicies,
+      globalResolvers: globalPolicies,
     };
 
     // Add the fully-populated top-level schema to the list.
