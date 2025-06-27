@@ -14,6 +14,7 @@ import { Configuration, defaultConfiguration } from "../configuration.js";
 import { fromString } from "uint8arrays/from-string";
 import { faker } from "@faker-js/faker";
 import { compare } from "uint8arrays/compare";
+import { sampleSize } from "lodash-es";
 
 // A helper to find the path from the root to the correct leaf for a given key.
 // This simulates the traversal logic that a tree implementation would use.
@@ -125,7 +126,7 @@ describe("NodeManager Deep Tests", () => {
     }
 
     // 4. Update a random subset of manuscripts
-    const manuscriptsToUpdate = manuscriptData.slice(0, 50).map((m) => ({
+    const manuscriptsToUpdate = sampleSize(manuscriptData, 50).map((m) => ({
       ...m,
       value: fromString(faker.lorem.sentence()), // new, shorter content
     }));

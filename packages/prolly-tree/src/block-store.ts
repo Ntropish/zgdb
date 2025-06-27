@@ -1,6 +1,7 @@
 import { Configuration, defaultConfiguration } from "./configuration.js";
 import { HashFn, getHashFn } from "./hashing.js";
 import { Node, serializeNode, deserializeNode, Address } from "./node.js";
+import { merge } from "lodash-es";
 
 // A mock BlockManager that simulates content-addressing with a Map.
 // In a real implementation, this would be a more sophisticated storage layer.
@@ -10,18 +11,7 @@ export class BlockManager {
   private readonly hashFn: HashFn;
 
   constructor(config?: Partial<Configuration>) {
-    this.config = {
-      ...defaultConfiguration,
-      ...config,
-      treeDefinition: {
-        ...defaultConfiguration.treeDefinition,
-        ...config?.treeDefinition,
-      },
-      valueChunking: {
-        ...defaultConfiguration.valueChunking,
-        ...config?.valueChunking,
-      },
-    };
+    this.config = merge({}, defaultConfiguration, config);
     this.hashFn = getHashFn(this.config.hashingAlgorithm);
   }
 

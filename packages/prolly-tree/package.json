@@ -20,9 +20,11 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@tsmk/builder": "workspace:*",
     "@noble/hashes": "^1.8.0",
+    "@tsmk/builder": "workspace:*",
+    "@types/lodash-es": "^4.17.12",
     "fastcdc": "^1.0.1",
+    "lodash-es": "^4.17.21",
     "uint8arrays": "^5.1.0"
   }
 }
