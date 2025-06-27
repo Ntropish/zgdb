@@ -1,13 +1,76 @@
 import {
-  RawSchema,
+  ZGEntityDef,
   NormalizedSchema,
   Field,
   Relationship,
   PolymorphicRelationship,
   ManyToManyRelationship,
+  AuthBlock,
+  AuthRule,
+  AuthAction,
+  RelationshipAction,
 } from "./types.js";
 import { ZodTypeAny, ZodObject } from "zod";
 import { mapZodToFlatBufferType } from "./type-map.js";
+
+const asArray = <T>(value: T | T[]): T[] => {
+  return Array.isArray(value) ? value : [value];
+};
+
+/**
+ * Parses and normalizes the `auth` block from a raw schema definition.
+ * @param auth - The raw `auth` block from the user's schema file.
+ * @returns A normalized AuthBlock object.
+ */
+function parseAuthBlock<T extends string>(
+  auth: AuthBlock<T> | undefined
+): AuthBlock<string> {
+  const defaultBlock: AuthBlock<string> = {
+    fields: {},
+    relationships: {},
+  };
+
+  if (!auth) {
+    return defaultBlock;
+  }
+
+  const parsedBlock: AuthBlock<string> = { ...defaultBlock };
+
+  // Normalize top-level actions
+  const topLevelActions: AuthAction[] = ["create", "read", "update", "delete"];
+  for (const action of topLevelActions) {
+    if (auth[action]) {
+      parsedBlock[action] = asArray(auth[action] as AuthRule<string>);
+    }
+  }
+
+  // Normalize field-level actions
+  if (auth.fields) {
+    for (const fieldName in auth.fields) {
+      const fieldRules = auth.fields[fieldName];
+      parsedBlock.fields![fieldName] = {};
+      for (const action in fieldRules) {
+        parsedBlock.fields![fieldName][action as AuthAction] = asArray(
+          fieldRules[action as AuthAction] as AuthRule<string>
+        );
+      }
+    }
+  }
+
+  // Normalize relationship-level actions
+  if (auth.relationships) {
+    for (const relName in auth.relationships) {
+      const relRules = auth.relationships[relName];
+      parsedBlock.relationships![relName] = {};
+      for (const action in relRules) {
+        parsedBlock.relationships![relName][action as RelationshipAction] =
+          asArray(relRules[action as RelationshipAction] as AuthRule<string>);
+      }
+    }
+  }
+
+  return parsedBlock;
+}
 
 /**
  * Parses the Zod schema definition to extract a normalized list of fields.
@@ -59,7 +122,9 @@ export function parseZodSchema(
  * @param relationships - The raw relationships object.
  * @returns An object containing arrays of normalized relationships.
  */
-function parseAllRelationships(relationships: RawSchema["relationships"]): {
+function parseAllRelationships(
+  relationships: ZGEntityDef<any>["relationships"]
+): {
   standard: (Relationship | PolymorphicRelationship)[];
   manyToMany: ManyToManyRelationship[];
 } {
@@ -127,7 +192,9 @@ function parseAllRelationships(relationships: RawSchema["relationships"]): {
  * @param rawSchemas - An array of raw schema objects from the loader.
  * @returns An array of all normalized schema objects, including nested ones.
  */
-export function parseSchemas(rawSchemas: RawSchema[]): NormalizedSchema[] {
+export function parseSchemas(
+  rawSchemas: ZGEntityDef<any>[]
+): NormalizedSchema[] {
   const allSchemas: NormalizedSchema[] = [];
 
   for (const rawSchema of rawSchemas) {
@@ -146,7 +213,7 @@ export function parseSchemas(rawSchemas: RawSchema[]): NormalizedSchema[] {
         on: Array.isArray(index.on) ? index.on : [index.on],
         type: index.type || "btree",
       })),
-      auth: rawSchema.auth || {},
+      auth: parseAuthBlock(rawSchema.auth),
     };
 
     topLevelSchema.fields = parseZodSchema(
