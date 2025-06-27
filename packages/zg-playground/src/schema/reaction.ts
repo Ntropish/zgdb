@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
 import type { AppAuthPolicy } from "./policies.js";
 
-export default {
+export const ReactionDef = {
   name: "Reaction",
   description:
     "A reaction from a user to a specific piece of content, like a post or a comment.",

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
 import type { AppAuthPolicy } from "./policies.js";
 
-export default {
+export const ImageDef = {
   name: "Image",
   description:
     "An image, which can be a user's profile picture or part of a post.",

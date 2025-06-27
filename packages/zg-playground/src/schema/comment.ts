@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ZGEntityDef } from "../../../zg/src/parser/types.js";
 import type { AppAuthPolicy } from "./policies.js";
 
-export default {
+export const CommentDef = {
   name: "Comment",
   description: "A comment on a post",
   schema: z.object({
