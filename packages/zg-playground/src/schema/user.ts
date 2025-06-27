@@ -5,6 +5,7 @@ export default {
   description: "A user of the application, who can author posts and comments.",
   schema: z.object({
     id: z.string(),
+    ownerDid: z.string(),
     name: z.string(),
     email: z.string().email(),
   }),
@@ -62,4 +63,28 @@ export default {
       description: "Index user names for sorting and searching.",
     },
   ],
+  auth: {
+    create: "isCreatingSelf",
+    read: "isPublic",
+    update: ["isSelf", "hasAdminRights"],
+    delete: "isSelf",
+
+    fields: {
+      email: {
+        read: "isSelf",
+      },
+    },
+
+    relationships: {
+      posts: {
+        add: "isSelf",
+        remove: "isSelf",
+      },
+      followers: {
+        read: "isPublic",
+        add: "never",
+        remove: "never",
+      },
+    },
+  },
 };
