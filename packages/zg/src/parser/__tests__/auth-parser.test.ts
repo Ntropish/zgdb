@@ -51,12 +51,13 @@ describe("Auth Block Parsing Edge Cases", () => {
       },
     });
 
-    expect(parsed.auth.create).toEqual(["isOwner"]);
-    expect(parsed.auth.read).toEqual(["isPublic"]);
-    expect(parsed.auth.update).toEqual(["isOwner", "hasAdminRights"]);
+    // isOwner: -1, isPublic: -2, hasAdminRights: -3, isSelf: -4
+    expect(parsed.auth.create).toEqual([-1]);
+    expect(parsed.auth.read).toEqual([-2]);
+    expect(parsed.auth.update).toEqual([-1, -3]);
     expect(parsed.auth.delete).toEqual([]);
     expect(parsed.auth.fields?.email.read).toBeUndefined();
-    expect(parsed.auth.fields?.email.update).toEqual(["isSelf"]);
+    expect(parsed.auth.fields?.email.update).toEqual([-4]);
   });
 
   it("Case 2: Should throw an error for auth rules on non-existent fields or relationships", () => {
@@ -124,8 +125,9 @@ describe("Auth Block Parsing Edge Cases", () => {
         isPublic: () => true,
       },
     });
-    expect(parsed.auth.read).toEqual(["never"]);
-    expect(parsed.auth.update).toEqual(["isOwner", "isPublic"]);
+    // never: -1, isOwner: -2, isPublic: -3
+    expect(parsed.auth.read).toEqual([-1]);
+    expect(parsed.auth.update).toEqual([-2, -3]);
     // ^ The parser just passes this through. Runtime would handle the logic.
   });
 
@@ -155,7 +157,8 @@ describe("Auth Block Parsing Edge Cases", () => {
       entities: { Post: complexSchema },
       policies: { isAuthor: () => true },
     });
-    expect(parsed.auth.relationships?.tags.add).toEqual(["isAuthor"]);
+    // isAuthor: -1
+    expect(parsed.auth.relationships?.tags.add).toEqual([-1]);
     // Also test that it throws on a bad many-to-many relationship name
     const badSchema = {
       ...complexSchema,

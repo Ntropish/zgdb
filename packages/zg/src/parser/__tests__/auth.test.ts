@@ -65,15 +65,16 @@ describe("Schema Parser: Auth Block", () => {
         hasAdminRights: () => true,
       },
     });
+    // isAuthor: -1, isPublic: -2, hasAdminRights: -3
     expect(normalized[0].auth).toEqual({
-      create: ["isAuthor"],
-      read: ["isPublic"],
-      update: ["isAuthor", "hasAdminRights"],
-      delete: ["hasAdminRights"],
+      create: [-1],
+      read: [-2],
+      update: [-1, -3],
+      delete: [-3],
       fields: {
         privateNotes: {
-          read: ["isAuthor"],
-          update: ["isAuthor"],
+          read: [-1],
+          update: [-1],
         },
       },
       relationships: {},

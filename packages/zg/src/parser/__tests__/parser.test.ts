@@ -250,9 +250,10 @@ describe("Schema Parser", () => {
     });
     const authSchema = normalized.find((s) => s.name === "AuthTest")!;
 
+    // can_create: -1, isOwner: -2, can_read: -3
     expect(authSchema.auth).toBeDefined();
-    expect(authSchema.auth!.create).toEqual(["can_create"]);
-    expect(authSchema.auth!.read).toEqual(["isOwner", "can_read"]);
+    expect(authSchema.auth!.create).toEqual([-1]);
+    expect(authSchema.auth!.read).toEqual([-2, -3]);
     expect(authSchema.auth!.fields).toEqual({});
     expect(authSchema.auth!.relationships).toEqual({});
   });
