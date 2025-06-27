@@ -1,7 +1,7 @@
 /**
  * This file is the single source of truth for the entire application schema.
  */
-import { createSchema, AuthContext, EntityDef } from "@tsmk/zg";
+import { createSchema, EntityDef } from "@tsmk/zg";
 import { ZgClient, CommentNode } from "../../../../temp-output/schema.zg.js";
 
 // Import all schema definitions
@@ -13,6 +13,15 @@ import { ImageDef, IImageResolvers } from "./image.js";
 import { PostTagDef, IPostTagResolvers } from "./post-tag.js";
 import { ReactionDef, IReactionResolvers } from "./reaction.js";
 import { TagDef } from "./tag.js";
+import {
+  UserNode,
+  PostNode,
+  FollowNode,
+  ImageNode,
+  ReactionNode,
+  PostTagNode,
+} from "../../../../temp-output/schema.zg.js";
+import { z } from "zod";
 
 // The project-specific Actor type.
 export interface MyAppActor {
@@ -20,12 +29,27 @@ export interface MyAppActor {
   roles: ("admin" | "moderator" | "user")[];
 }
 
+/**
+ * A specialized version of the core `ResolverContext` that is pre-configured
+ * with the application-specific `MyAppActor` and `ZgClient` types.
+ *
+ * @template TNode The generated ZG Node type for the entity (e.g., `UserNode`).
+ * @template TInput The raw Zod schema type for the entity (e.g., `User`).
+ * @template TContext Optional additional context for a specific resolver.
+ */
+export type AppContext<TNode, TInput, TContext = {}> = ResolverContext<
+  MyAppActor,
+  TNode,
+  TInput,
+  ZgClient,
+  TContext
+>;
+
 // Define the global policies and their implementations.
 export const globalPolicies = {
   isPublic: () => true,
-  isAuthenticated: ({ actor }: AuthContext<MyAppActor, any, any, ZgClient>) =>
-    !!actor.did,
-  hasAdminRights: ({ actor }: AuthContext<MyAppActor, any, any, ZgClient>) =>
+  isAuthenticated: ({ actor }: AppContext<any, any>) => !!actor.did,
+  hasAdminRights: ({ actor }: AppContext<any, any>) =>
     actor.roles.includes("admin"),
   never: () => false,
 };
@@ -45,17 +69,19 @@ type AppResolvers = {
 };
 
 // Define default implementations for any resolvers.
-const defaultResolvers: Partial<AppResolvers> = {
+const defaultResolvers: AppResolvers = {
   Comment: {
-    isAuthor: ({ actor, record, input }) => {
-      const authorId = record?.author || input?.authorId;
+    isAuthor: ({ actor, record, input }: AppContext<CommentNode, Comment>) => {
+      const authorId = record?.authorId || input?.authorId;
+      if (typeof authorId !== "string") return false;
       return actor.did === authorId;
     },
-    isPostAuthor: async ({ actor, record }) => {
+    isPostAuthor: async ({ actor, record }: AppContext<PostNode, Post>) => {
       if (!record) return false;
-      const post = await record.regards;
+      const post = await record.post;
       if (!post) return false;
       const authorId = post.author;
+      if (typeof authorId !== "string") return false;
       return actor.did === authorId;
     },
   },
@@ -87,8 +113,8 @@ const defaultResolvers: Partial<AppResolvers> = {
       // For a create operation, we must check the input
       if (input) {
         if (input.postId) {
-          const post = await db.posts.find(input.postId);
-          return !!post && actor.did === post.author;
+          const post = await db.Post.find(input.postId);
+          return !!post && post.author === actor.did;
         }
         if (input.userId) {
           // This logic assumes user's `id` is their DID.
@@ -98,11 +124,12 @@ const defaultResolvers: Partial<AppResolvers> = {
       // For update/delete, we check the existing record
       if (record) {
         if (record.postId) {
-          const post = await db.posts.find(record.postId);
-          return !!post && actor.did === post.author;
+          const post = await record.post;
+          return !!post && post.author === actor.did;
         }
         if (record.userId) {
-          return actor.did === record.userId;
+          const user = await record.user;
+          return !!user && user.id === actor.did;
         }
       }
       return false;
@@ -120,7 +147,7 @@ const defaultResolvers: Partial<AppResolvers> = {
     isPostAuthor: async ({ actor, record, input, db }) => {
       const postId = record?.postId || input?.postId;
       if (!postId) return false;
-      const post = await db.posts.find(postId);
+      const post = await db.Post.find(postId);
       if (!post) return false;
       return actor.did === post.author;
     },
