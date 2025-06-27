@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { EntityDef, AuthContext } from "@tsmk/zg";
-import { MyAppActor, AppGlobalPolicies } from "./index.js";
+import { EntityDef } from "@tsmk/zg";
+import { AppContext, AppGlobalPolicies } from "./index.js";
 import { PostDef } from "./post.js";
 import { ZgClient, PostTagNode } from "../../../../temp-output/schema.zg.js";
+import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
 // Extracts the schema type for type safety in the resolver
 type Post = z.infer<typeof PostDef.schema>;
@@ -14,11 +15,9 @@ const PostTagSchema = z.object({
   tagId: z.string(),
 });
 
-export interface IPostTagResolvers {
-  isPostAuthor: (
-    context: AuthContext<MyAppActor, PostTagNode, PostTag, ZgClient>
-  ) => Promise<boolean>;
-}
+export type IPostTagResolvers = {
+  isPostAuthor: Policy;
+};
 
 export const PostTagDef: EntityDef<IPostTagResolvers, AppGlobalPolicies> = {
   name: "PostTag",

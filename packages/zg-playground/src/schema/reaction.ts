@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { EntityDef, AuthContext } from "@tsmk/zg";
-import { MyAppActor, AppGlobalPolicies } from "./index.js";
+import { EntityDef } from "@tsmk/zg";
+import { AppContext, AppGlobalPolicies } from "./index.js";
 import { ZgClient, ReactionNode } from "../../../../temp-output/schema.zg.js";
+import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
 const ReactionSchema = z.object({
   id: z.string(),
@@ -12,11 +13,9 @@ const ReactionSchema = z.object({
 });
 type Reaction = z.infer<typeof ReactionSchema>;
 
-export interface IReactionResolvers {
-  isAuthor: (
-    context: AuthContext<MyAppActor, ReactionNode, Reaction, ZgClient>
-  ) => boolean;
-}
+export type IReactionResolvers = {
+  isAuthor: Policy;
+};
 
 export const ReactionDef: EntityDef<IReactionResolvers, AppGlobalPolicies> = {
   name: "Reaction",

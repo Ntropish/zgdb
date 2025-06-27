@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { EntityDef, AuthContext } from "@tsmk/zg";
-import { MyAppActor, AppGlobalPolicies } from "./index.js";
+import { EntityDef } from "@tsmk/zg";
+import { AppContext, AppGlobalPolicies } from "./index.js";
 import { ZgClient, UserNode } from "../../../../temp-output/schema.zg.js";
+import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
 const UserSchema = z.object({
   id: z.string(),
@@ -9,16 +10,11 @@ const UserSchema = z.object({
   name: z.string(),
   email: z.string().email(),
 });
-type User = z.infer<typeof UserSchema>;
 
-export interface IUserResolvers {
-  isSelf: (
-    context: AuthContext<MyAppActor, UserNode, User, ZgClient>
-  ) => boolean;
-  isOwner: (
-    context: AuthContext<MyAppActor, UserNode, User, ZgClient>
-  ) => boolean;
-}
+export type IUserResolvers = {
+  isSelf: Policy;
+  isOwner: Policy;
+};
 
 export const UserDef: EntityDef<IUserResolvers, AppGlobalPolicies> = {
   name: "User",
@@ -91,11 +87,6 @@ export const UserDef: EntityDef<IUserResolvers, AppGlobalPolicies> = {
         read: "isPublic",
         add: "never",
         remove: "never",
-      },
-    },
-    relationships: {
-      posts: {
-        add: "isSelf",
       },
     },
   },

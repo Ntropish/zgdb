@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { EntityDef, AuthContext } from "@tsmk/zg";
-import { MyAppActor } from "./index.js";
+import { EntityDef } from "@tsmk/zg";
+import { AppGlobalPolicies } from "./index.js";
 import { ZgClient, CommentNode } from "../../../../temp-output/schema.zg.js";
-import type { AppGlobalPolicies } from "./index.js";
+import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
 // Step 1: Define the Zod schema and its TypeScript type.
 const CommentSchema = z.object({
@@ -15,14 +15,10 @@ const CommentSchema = z.object({
 type Comment = z.infer<typeof CommentSchema>;
 
 // Step 2: Define the interface for the resolver fields on this entity.
-export interface ICommentResolvers {
-  isAuthor: (
-    context: AuthContext<MyAppActor, CommentNode, Comment, ZgClient>
-  ) => boolean;
-  isPostAuthor: (
-    context: AuthContext<MyAppActor, CommentNode, Comment, ZgClient>
-  ) => Promise<boolean>;
-}
+export type ICommentResolvers = {
+  isAuthor: Policy;
+  isPostAuthor: Policy;
+};
 
 // Step 3: Define the entity, parameterized by its local and global resolvers.
 export const CommentDef: EntityDef<ICommentResolvers, AppGlobalPolicies> = {

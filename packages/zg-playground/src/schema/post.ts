@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { EntityDef, AuthContext } from "@tsmk/zg";
-import { MyAppActor, AppGlobalPolicies } from "./index.js";
+import { EntityDef } from "@tsmk/zg";
+import { AppContext, AppGlobalPolicies } from "./index.js";
 import { ZgClient, PostNode } from "../../../../temp-output/schema.zg.js";
+import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
 // Infer the schema type for type safety in the resolver
 type Post = z.infer<typeof PostSchema>;
@@ -14,11 +15,9 @@ const PostSchema = z.object({
   createdAt: z.date(),
 });
 
-export interface IPostResolvers {
-  isAuthor: (
-    context: AuthContext<MyAppActor, PostNode, Post, ZgClient>
-  ) => boolean;
-}
+export type IPostResolvers = {
+  isAuthor: Policy;
+};
 
 export const PostDef: EntityDef<IPostResolvers, AppGlobalPolicies> = {
   name: "Post",

@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { EntityDef, AuthContext } from "@tsmk/zg";
-import { MyAppActor, AppGlobalPolicies } from "./index.js";
-import { ZgClient, FollowNode } from "../../../../temp-output/schema.zg.js";
+import { EntityDef } from "@tsmk/zg";
+import { AppGlobalPolicies } from "./index.js";
+import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
 const FollowSchema = z.object({
   id: z.string(),
@@ -11,11 +11,9 @@ const FollowSchema = z.object({
 });
 type Follow = z.infer<typeof FollowSchema>;
 
-export interface IFollowResolvers {
-  isFollower: (
-    context: AuthContext<MyAppActor, FollowNode, Follow, ZgClient>
-  ) => boolean;
-}
+export type IFollowResolvers = {
+  isFollower: Policy;
+};
 
 export const FollowDef: EntityDef<IFollowResolvers, AppGlobalPolicies> = {
   name: "Follow",
