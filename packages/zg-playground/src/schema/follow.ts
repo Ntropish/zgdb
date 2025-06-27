@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EntityDef } from "@tsmk/zg";
-import { AppGlobalPolicies } from "./index.js";
+import { AppGlobalResolvers } from "./index.js";
 import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
 const FollowSchema = z.object({
@@ -15,7 +15,7 @@ export type IFollowResolvers = {
   isFollower: Policy;
 };
 
-export const FollowDef: EntityDef<IFollowResolvers, AppGlobalPolicies> = {
+export const FollowDef: EntityDef<IFollowResolvers, AppGlobalResolvers> = {
   name: "Follow",
   description:
     "A directional relationship indicating one user follows another.",

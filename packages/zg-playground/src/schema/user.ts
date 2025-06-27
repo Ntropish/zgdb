@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EntityDef } from "@tsmk/zg";
-import { AppContext, AppGlobalPolicies } from "./index.js";
+import { AppContext, AppGlobalResolvers } from "./index.js";
 import { ZgClient, UserNode } from "../../../../temp-output/schema.zg.js";
 import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
@@ -16,7 +16,7 @@ export type IUserResolvers = {
   isOwner: Policy;
 };
 
-export const UserDef: EntityDef<IUserResolvers, AppGlobalPolicies> = {
+export const UserDef: EntityDef<IUserResolvers, AppGlobalResolvers> = {
   name: "User",
   description: "A user of the application, who can author posts and comments.",
   schema: UserSchema,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EntityDef } from "@tsmk/zg";
-import { AppContext, AppGlobalPolicies } from "./index.js";
+import { AppContext, AppGlobalResolvers } from "./index.js";
 import { ZgClient, ReactionNode } from "../../../../temp-output/schema.zg.js";
 import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
@@ -17,7 +17,7 @@ export type IReactionResolvers = {
   isAuthor: Policy;
 };
 
-export const ReactionDef: EntityDef<IReactionResolvers, AppGlobalPolicies> = {
+export const ReactionDef: EntityDef<IReactionResolvers, AppGlobalResolvers> = {
   name: "Reaction",
   description:
     "A reaction from a user to a specific piece of content, like a post or a comment.",

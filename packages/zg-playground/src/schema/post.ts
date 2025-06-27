@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EntityDef } from "@tsmk/zg";
-import { AppContext, AppGlobalPolicies } from "./index.js";
+import { AppContext, AppGlobalResolvers } from "./index.js";
 import { ZgClient, PostNode } from "../../../../temp-output/schema.zg.js";
 import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
@@ -19,7 +19,7 @@ export type IPostResolvers = {
   isAuthor: Policy;
 };
 
-export const PostDef: EntityDef<IPostResolvers, AppGlobalPolicies> = {
+export const PostDef: EntityDef<IPostResolvers, AppGlobalResolvers> = {
   name: "Post",
   description: "A post made by a user, which can have comments.",
   schema: PostSchema,

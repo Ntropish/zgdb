@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EntityDef } from "@tsmk/zg";
-import { AppGlobalPolicies } from "./index.js";
+import { AppGlobalResolvers } from "./index.js";
 import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
 const ImageSchema = z.object({
@@ -21,7 +21,7 @@ export type IImageResolvers = {
   isOwner: Policy;
 };
 
-export const ImageDef: EntityDef<IImageResolvers, AppGlobalPolicies> = {
+export const ImageDef: EntityDef<IImageResolvers, AppGlobalResolvers> = {
   name: "Image",
   description:
     "An image, which can be a user's profile picture or part of a post.",

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EntityDef } from "@tsmk/zg";
-import { AppGlobalPolicies } from "./index.js";
+import { AppGlobalResolvers } from "./index.js";
 import { ZgClient, CommentNode } from "../../../../temp-output/schema.zg.js";
 import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
@@ -21,7 +21,7 @@ export type ICommentResolvers = {
 };
 
 // Step 3: Define the entity, parameterized by its local and global resolvers.
-export const CommentDef: EntityDef<ICommentResolvers, AppGlobalPolicies> = {
+export const CommentDef: EntityDef<ICommentResolvers, AppGlobalResolvers> = {
   name: "Comment",
   description: "A comment on a post",
   schema: CommentSchema,

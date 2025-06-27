@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EntityDef } from "@tsmk/zg";
-import { AppContext, AppGlobalPolicies } from "./index.js";
+import { AppContext, AppGlobalResolvers } from "./index.js";
 import { PostDef } from "./post.js";
 import { ZgClient, PostTagNode } from "../../../../temp-output/schema.zg.js";
 import { Policy } from "@tsmk/zg/dist/parser/types.js";
@@ -19,7 +19,7 @@ export type IPostTagResolvers = {
   isPostAuthor: Policy;
 };
 
-export const PostTagDef: EntityDef<IPostTagResolvers, AppGlobalPolicies> = {
+export const PostTagDef: EntityDef<IPostTagResolvers, AppGlobalResolvers> = {
   name: "PostTag",
   description: "The join entity connecting a Post and a Tag.",
   schema: PostTagSchema,

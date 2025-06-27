@@ -4,6 +4,7 @@
 import { createSchema, EntityDef } from "@tsmk/zg";
 import { ZgClient, CommentNode } from "../../../../temp-output/schema.zg.js";
 
+import { ResolverContext } from "@tsmk/zg/dist/parser/types.js";
 // Import all schema definitions
 import { UserDef, IUserResolvers } from "./user.js";
 import { PostDef, IPostResolvers } from "./post.js";
@@ -46,14 +47,14 @@ export type AppContext<TNode, TInput, TContext = {}> = ResolverContext<
 >;
 
 // Define the global policies and their implementations.
-export const globalPolicies = {
+export const globalResolvers = {
   isPublic: () => true,
   isAuthenticated: ({ actor }: AppContext<any, any>) => !!actor.did,
   hasAdminRights: ({ actor }: AppContext<any, any>) =>
     actor.roles.includes("admin"),
   never: () => false,
 };
-export type AppGlobalPolicies = typeof globalPolicies;
+export type AppGlobalResolvers = typeof globalResolvers;
 
 // Combine all resolver interfaces into a single type for the factory.
 type AppResolvers = {
@@ -166,7 +167,7 @@ const entities = {
 };
 
 export const AppSchema = createSchema({
-  globalPolicies,
+  globalPolicies: globalResolvers,
   entities,
   resolvers: defaultResolvers,
 });
