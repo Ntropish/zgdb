@@ -1,5 +1,11 @@
 import { createFluentBuilder, FluentBuilder } from "@tsmk/builder";
-import { LeafNode, InternalNode, Node, KeyValuePair } from "../node.js";
+import {
+  LeafNode,
+  InternalNode,
+  Node,
+  KeyValuePair,
+  Address,
+} from "../node.js";
 
 /**
  * A map of events that can be handled by the node builder.
@@ -8,6 +14,8 @@ import { LeafNode, InternalNode, Node, KeyValuePair } from "../node.js";
 interface NodeBuilderEventMap {
   isLeaf(isLeaf: boolean): void;
   setPairs(pairs: KeyValuePair[]): void;
+  setKeys(keys: Uint8Array[]): void;
+  setChildren(children: Address[]): void;
 }
 
 /**
@@ -38,11 +46,19 @@ const nodeBuilderCapabilities: {
   setPairs: {
     apply: (pairs: KeyValuePair[]) => pairs,
     build: (product: Partial<Node>, pairs: KeyValuePair[]) => {
-      if (product.isLeaf) {
-        (product as Partial<LeafNode>).pairs = pairs;
-      } else {
-        throw new Error("Cannot set pairs on a branch node.");
-      }
+      (product as Partial<LeafNode>).pairs = pairs;
+    },
+  },
+  setKeys: {
+    apply: (keys: Uint8Array[]) => keys,
+    build: (product: Partial<Node>, keys: Uint8Array[]) => {
+      (product as Partial<InternalNode>).keys = keys;
+    },
+  },
+  setChildren: {
+    apply: (children: Address[]) => children,
+    build: (product: Partial<Node>, children: Address[]) => {
+      (product as Partial<InternalNode>).children = children;
     },
   },
 };
@@ -52,9 +68,35 @@ const nodeBuilderCapabilities: {
  * @returns A new NodeBuilder instance.
  */
 export function createNodeBuilder(): NodeBuilder {
-  // We have to cast because the generic builder doesn't know about the specific product type
   const builder = createFluentBuilder<Partial<Node>, NodeBuilderEventMap>(
     nodeBuilderCapabilities
   );
+
+  const originalBuild = builder.build;
+  builder.build = async (
+    product: Partial<Node> = {}
+  ): Promise<Partial<Node>> => {
+    const builtProduct = await originalBuild(product);
+
+    if (builtProduct.isLeaf === undefined) {
+      throw new Error("Node type must be specified by calling isLeaf()");
+    }
+
+    if (builtProduct.isLeaf) {
+      if ((builtProduct as Partial<InternalNode>).keys) {
+        throw new Error("Cannot set keys on a leaf node.");
+      }
+      if ((builtProduct as Partial<InternalNode>).children) {
+        throw new Error("Cannot set children on a leaf node.");
+      }
+    } else {
+      if ((builtProduct as Partial<LeafNode>).pairs) {
+        throw new Error("Cannot set pairs on a branch node.");
+      }
+    }
+
+    return builtProduct;
+  };
+
   return builder;
 }
