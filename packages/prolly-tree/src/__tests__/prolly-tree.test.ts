@@ -136,20 +136,36 @@ describe("ProllyTree with Store", () => {
     });
   });
 
-  // These features are not implemented yet, so we skip the tests.
-  describe.skip("Advanced Features", () => {
+  // A key property of Prolly Trees is that the final tree state is independent of the insertion order.
+  describe("Advanced Features", () => {
     it("root hash should be identical regardless of insertion order", async () => {
-      let tree1 = await baseTree.put(enc.encode("a"), enc.encode("1"));
-      tree1 = await tree1.put(enc.encode("b"), enc.encode("2"));
+      const entries: [string, string][] = [
+        ["a", "1"],
+        ["b", "2"],
+        ["c", "3"],
+        ["d", "4"],
+        ["e", "5"],
+      ];
 
-      let tree2 = await store.getTree();
-      tree2 = await tree2.put(enc.encode("b"), enc.encode("2"));
-      tree2 = await tree2.put(enc.encode("a"), enc.encode("1"));
+      const forwardEntries = entries;
+      const backwardEntries = [...entries].reverse();
+
+      let tree1 = await baseTree;
+      for (const [key, value] of forwardEntries) {
+        tree1 = await tree1.put(enc.encode(key), enc.encode(value));
+      }
+
+      let tree2 = await baseTree;
+      for (const [key, value] of backwardEntries) {
+        tree2 = await tree2.put(enc.encode(key), enc.encode(value));
+      }
 
       expect(tree1.rootHash).toEqual(tree2.rootHash);
+      expect(tree1.rootHash).not.toEqual(baseTree.rootHash);
     });
 
-    it("should correctly diff additions between two branches", async () => {
+    // This feature is not implemented yet, so we skip the test.
+    it.skip("should correctly diff additions between two branches", async () => {
       const branch1 = await baseTree.put(enc.encode("a"), enc.encode("1"));
       const branch2 = await baseTree.put(enc.encode("b"), enc.encode("2"));
       const diffs = await branch1.diff(branch2);
