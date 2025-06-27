@@ -21,8 +21,16 @@ export function createSchema<
   TDB,
   TEntities extends Record<string, EntityDef<any, any>>,
   TEntityResolvers extends Record<string, Record<string, Function>>,
-  TResolvers extends Record<string, Function>
->(config: SchemaConfig<TActor, TDB, TEntities, TEntityResolvers, TResolvers>) {
+  TGlobalResolvers extends Record<string, Function>
+>(
+  config: SchemaConfig<
+    TActor,
+    TDB,
+    TEntities,
+    TEntityResolvers,
+    TGlobalResolvers
+  >
+) {
   return config;
 }
 

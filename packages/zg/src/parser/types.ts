@@ -167,11 +167,11 @@ export interface SchemaConfig<
   TDB,
   TEntities extends Record<string, EntityDef<any, any>>,
   TEntityResolvers extends Record<string, Record<string, Function>>,
-  TResolvers extends Record<string, Function>
+  TGlobalResolvers extends Record<string, Function>
 > {
-  resolvers?: TResolvers;
+  globalResolvers?: TGlobalResolvers;
   entities: TEntities;
-  entityResolvers?: TEntityResolvers;
+  resolvers?: TEntityResolvers;
 }
 
 /**

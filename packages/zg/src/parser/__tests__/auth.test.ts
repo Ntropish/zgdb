@@ -68,7 +68,7 @@ describe("Schema Parser: Auth Block", () => {
           },
         },
       },
-      resolvers: {
+      globalResolvers: {
         isAdmin: () => true,
       },
     });

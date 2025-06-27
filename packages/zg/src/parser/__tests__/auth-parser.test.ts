@@ -20,10 +20,14 @@ describe("Auth Block Parsing Edge Cases", () => {
             update: ["isOwner", "isAdmin"],
             delete: "isAdmin",
           },
-          resolvers: { isOwner: () => true },
+          resolvers: {
+            isOwner: () => true,
+          },
         },
       },
-      resolvers: { isAdmin: () => true },
+      globalResolvers: {
+        isAdmin: () => true,
+      },
     });
 
     const schema = findSchema(schemas, "Test");
@@ -45,9 +49,9 @@ describe("Auth Block Parsing Edge Cases", () => {
         entities: {
           Test: { ...baseSchema, auth: { fields: { bad: { read: "p" } } } },
         },
-        resolvers: { p: () => true },
+        globalResolvers: { p: () => true },
       });
-    }).toThrow("Auth rule defined for non-existent field: 'bad'");
+    }).toThrow("[Test] Auth rule defined for non-existent field: 'bad'");
 
     expect(() => {
       parseSchemas({
@@ -57,9 +61,9 @@ describe("Auth Block Parsing Edge Cases", () => {
             auth: { relationships: { bad: { read: "p" } } },
           },
         },
-        resolvers: { p: () => true },
+        globalResolvers: { p: () => true },
       });
-    }).toThrow("Auth rule defined for non-existent relationship: 'bad'");
+    }).toThrow("[Test] Auth rule defined for non-existent relationship: 'bad'");
   });
 
   it("Case 3: Should handle empty, null, or undefined auth blocks gracefully", () => {
@@ -126,7 +130,9 @@ describe("Auth Block Parsing Edge Cases", () => {
               },
             },
           },
-          resolvers: { isPostOwner: () => true },
+          resolvers: {
+            isPostOwner: () => true,
+          },
         },
         Tag: {
           name: "Tag",
@@ -137,7 +143,9 @@ describe("Auth Block Parsing Edge Cases", () => {
           schema: z.object({ postId: z.string(), tagId: z.string() }),
         },
       },
-      resolvers: { isAdmin: () => true },
+      globalResolvers: {
+        isAdmin: () => true,
+      },
     });
     const schema = findSchema(schemas, "Post");
     const auth = schema?.auth as any;

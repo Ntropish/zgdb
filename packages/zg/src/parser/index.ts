@@ -24,19 +24,21 @@ const asArray = <T>(value: T | T[]): T[] => {
 
 /**
  * Parses and normalizes the `auth` block from a raw schema definition.
+ * @param entityName - The name of the entity.
  * @param auth - The raw `auth` block from the user's schema file.
  * @param fieldNames - The set of field names in the schema.
  * @param relationshipNames - The set of relationship names in the schema.
  * @param localPolicyMap - The map of policies for the schema.
- * @param globalPolicyMap - The map of policies for the schema.
+ * @param globalResolverMap - The map of policies for the schema.
  * @returns A normalized AuthBlock object.
  */
 function parseAuthBlock(
+  entityName: string,
   auth: AuthBlock<string | string[]> | undefined,
   fieldNames: Set<string>,
   relationshipNames: Set<string>,
   localPolicyMap: Map<string, number>,
-  globalPolicyMap: Map<string, number>
+  globalResolverMap: Map<string, number>
 ): NormalizedAuthBlock {
   const defaultBlock: NormalizedAuthBlock = {
     fields: {},
@@ -54,11 +56,17 @@ function parseAuthBlock(
     if (localPolicyMap.has(policy)) {
       return localPolicyMap.get(policy)!;
     }
-    if (globalPolicyMap.has(policy)) {
+    if (globalResolverMap.has(policy)) {
       // Use negative indices to signify global policies
-      return (globalPolicyMap.get(policy)! + 1) * -1;
+      return (globalResolverMap.get(policy)! + 1) * -1;
     }
-    throw new Error(`Unknown auth policy: '${policy}'`);
+    const available = [
+      ...[...localPolicyMap.keys()].map((k) => `'${k}' (local)`),
+      ...[...globalResolverMap.keys()].map((k) => `'${k}' (global)`),
+    ].join(", ");
+    throw new Error(
+      `[${entityName}] Unknown auth policy: '${policy}'. Available policies: ${available}`
+    );
   };
 
   // Normalize top-level actions
@@ -76,7 +84,7 @@ function parseAuthBlock(
     for (const fieldName in auth.fields) {
       if (!fieldNames.has(fieldName)) {
         throw new Error(
-          `Auth rule defined for non-existent field: '${fieldName}'`
+          `[${entityName}] Auth rule defined for non-existent field: '${fieldName}'`
         );
       }
       const fieldRules = auth.fields[fieldName];
@@ -96,7 +104,7 @@ function parseAuthBlock(
     for (const relName in auth.relationships) {
       if (!relationshipNames.has(relName)) {
         throw new Error(
-          `Auth rule defined for non-existent relationship: '${relName}'`
+          `[${entityName}] Auth rule defined for non-existent relationship: '${relName}'`
         );
       }
       const relRules = auth.relationships[relName];
@@ -275,12 +283,16 @@ export function parseSchemas(
   config: SchemaConfig<any, any, any, any, any>
 ): NormalizedSchema[] {
   const allSchemas: NormalizedSchema[] = [];
-  const { entities, resolvers: globalResolvers = {} } = config;
+  const {
+    entities,
+    globalResolvers = {},
+    resolvers: entityResolvers = {},
+  } = config;
 
   // Pre-process to build the global policy map
-  const globalPolicyMap = new Map<string, number>();
+  const globalResolverMap = new Map<string, number>();
   Object.keys(globalResolvers).forEach((name, i) =>
-    globalPolicyMap.set(name, i)
+    globalResolverMap.set(name, i)
   );
 
   for (const entityName in entities) {
@@ -300,18 +312,23 @@ export function parseSchemas(
     const fields = parseZodSchema(zodSchema, schemaDef.name, allSchemas);
     const fieldNames = new Set(fields.map((f) => f.name));
 
-    const localResolvers = schemaDef.resolvers || {};
+    const localResolvers = {
+      ...(schemaDef.resolvers || {}),
+      ...((entityResolvers as any)[entityName] || {}),
+    };
+
     const localPolicyMap = new Map<string, number>();
     Object.keys(localResolvers).forEach((name, i) =>
       localPolicyMap.set(name, i)
     );
 
     const auth = parseAuthBlock(
+      schemaDef.name,
       schemaDef.auth as ZGAuthBlock<string | string[]>,
       fieldNames,
       relationshipNames,
       localPolicyMap,
-      globalPolicyMap
+      globalResolverMap
     );
 
     const indexes = parseIndexes(schemaDef.indexes, fieldNames);
@@ -324,7 +341,7 @@ export function parseSchemas(
       manyToMany: manyToManyRelationships,
       auth,
       indexes,
-      policies: [...localPolicyMap.keys(), ...globalPolicyMap.keys()],
+      policies: [...localPolicyMap.keys(), ...globalResolverMap.keys()],
       localResolvers: localResolvers as Record<string, Function>,
       globalResolvers: globalResolvers as Record<string, Function>,
     };

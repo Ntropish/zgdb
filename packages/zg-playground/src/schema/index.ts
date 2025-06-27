@@ -167,7 +167,7 @@ const entities = {
 };
 
 export const AppSchema = createSchema({
-  globalPolicies: globalResolvers,
+  globalResolvers,
   entities,
   resolvers: defaultResolvers,
 });
