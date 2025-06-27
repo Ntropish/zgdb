@@ -134,7 +134,6 @@ export type { AuthBlock as ZGAuthBlock } from "./types.js";
  * The definition for a single entity, including its local policies and default resolvers.
  */
 export interface EntityDef<
-  TActor,
   TResolvers extends Record<keyof TResolvers, Function>,
   TGlobalResolvers extends Record<keyof TGlobalResolvers, Function>
 > {
@@ -157,13 +156,13 @@ export interface EntityDef<
 export interface SchemaConfig<
   TActor,
   TDB,
-  TEntities extends Record<string, EntityDef<TActor, any, any>>,
-  TResolvers extends Record<string, Record<string, Function>>,
-  TGlobalResolvers extends Record<string, Function>
+  TEntities extends Record<string, EntityDef<any, any>>,
+  TEntityResolvers extends Record<string, Record<string, Function>>,
+  TResolvers extends Record<string, Function>
 > {
-  globalPolicies?: TGlobalResolvers;
-  entities: TEntities;
   resolvers?: TResolvers;
+  entities: TEntities;
+  entityResolvers?: TEntityResolvers;
 }
 
 /**
