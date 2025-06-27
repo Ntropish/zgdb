@@ -193,6 +193,9 @@ importers:
       '@noble/hashes':
         specifier: ^1.8.0
         version: 1.8.0
+      fastcdc:
+        specifier: ^1.0.1
+        version: 1.0.1
       uint8arrays:
         specifier: ^5.1.0
         version: 5.1.0
@@ -1738,6 +1741,10 @@ packages:
   caniuse-lite@1.0.30001724:
     resolution: {integrity: sha512-WqJo7p0TbHDOythNTqYujmaJTvtYRZrjpP8TCvH6Vb9CYJerJNKamKzIWOM4BkQatWj9H2lYulpdAQNBe7QhNA==}
 
+  cargo-cp-artifact@0.1.9:
+    resolution: {integrity: sha512-6F+UYzTaGB+awsTXg0uSJA1/b/B3DDJzpKVRu0UmyI7DmNeaAl2RFHuTGIN6fEgpadRxoXGb7gbC1xo4C3IdyA==}
+    hasBin: true
+
   chai@4.5.0:
     resolution: {integrity: sha512-RITGBfijLkBddZvnn8jdqoTypxvqbOLYQkGGxXzeFjVHvudaPw0HNFD9x928/eUwYWd2dPCugVqspGALTZZQKw==}
     engines: {node: '>=4'}
@@ -2063,6 +2070,9 @@ packages:
 
   fast-json-stable-stringify@2.1.0:
     resolution: {integrity: sha512-lhd/wF+Lk98HZoTCtlVraHtfh5XYijIjalXck7saUtuanSDyLMxnHhSXEDJqHxD7msR8D0uCmqlkwjCV8xvwHw==}
+
+  fastcdc@1.0.1:
+    resolution: {integrity: sha512-jAfKW7WsehfxppXeWFD7NyRHPDMwhO7/sjFRAN6F3o5j5lybtLNij20XN4fz6SwNJMl2ilmJlur+MMAwqlZzxA==}
 
   fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
@@ -5262,6 +5272,8 @@ snapshots:
 
   caniuse-lite@1.0.30001724: {}
 
+  cargo-cp-artifact@0.1.9: {}
+
   chai@4.5.0:
     dependencies:
       assertion-error: 1.1.0
@@ -5726,6 +5738,10 @@ snapshots:
       micromatch: 4.0.8
 
   fast-json-stable-stringify@2.1.0: {}
+
+  fastcdc@1.0.1:
+    dependencies:
+      cargo-cp-artifact: 0.1.9
 
   fastq@1.19.1:
     dependencies:
