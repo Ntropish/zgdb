@@ -130,6 +130,9 @@ describe("NodeManager Deep Tests", () => {
       ...m,
       value: fromString(faker.lorem.sentence()), // new, shorter content
     }));
+    const updatedIds = new Set(
+      manuscriptsToUpdate.map((m) => m.key.toString())
+    );
 
     for (const data of manuscriptsToUpdate) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
@@ -167,7 +170,7 @@ describe("NodeManager Deep Tests", () => {
       }
     }
 
-    // 5. Verify updated manuscripts and a sample of unchanged ones
+    // 5. Verify updated manuscripts and a sample of truly unchanged ones
     for (const data of manuscriptsToUpdate) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
       const leaf = path[path.length - 1] as LeafNode;
@@ -175,7 +178,11 @@ describe("NodeManager Deep Tests", () => {
       expect(foundPair).toBeDefined();
       expect(foundPair![1]).toEqual(data.value);
     }
-    for (const data of manuscriptData.slice(50, 100)) {
+
+    const unchangedManuscripts = manuscriptData.filter(
+      (m) => !updatedIds.has(m.key.toString())
+    );
+    for (const data of sampleSize(unchangedManuscripts, 50)) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
       const leaf = path[path.length - 1] as LeafNode;
       const foundPair = leaf.pairs.find((p) => compare(p[0], data.key) === 0);
