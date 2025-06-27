@@ -93,9 +93,6 @@ importers:
 
   packages/client:
     dependencies:
-      '@zg/crdt':
-        specifier: workspace:*
-        version: link:../crdt
       flatbuffers:
         specifier: ^2.0.0
         version: 2.0.7
@@ -115,27 +112,6 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@20.19.1)(@vitest/ui@3.2.4)
-
-  packages/crdt:
-    devDependencies:
-      '@types/jest':
-        specifier: ^29.5.12
-        version: 29.5.14
-      jest:
-        specifier: ^29.7.0
-        version: 29.7.0(@types/node@20.19.1)
-      ts-jest:
-        specifier: ^29.1.2
-        version: 29.4.0(@babel/core@7.27.4)(@jest/transform@30.0.2)(@jest/types@30.0.1)(babel-jest@29.7.0(@babel/core@7.27.4))(jest-util@30.0.2)(jest@29.7.0(@types/node@20.19.1))(typescript@5.8.3)
-      typescript:
-        specifier: ^5.4.5
-        version: 5.8.3
-      vite:
-        specifier: ^7.0.0
-        version: 7.0.0(@types/node@20.19.1)
-      vite-plugin-dts:
-        specifier: ^4.5.4
-        version: 4.5.4(@types/node@20.19.1)(rollup@4.44.0)(typescript@5.8.3)(vite@7.0.0(@types/node@20.19.1))
 
   packages/fbs-builder:
     devDependencies:
