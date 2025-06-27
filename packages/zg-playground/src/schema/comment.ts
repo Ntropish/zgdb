@@ -1,8 +1,7 @@
 import { z } from "zod";
-import { EntityDef } from "@tsmk/zg";
+import { EntityDef, Policy } from "@tsmk/zg";
 import { AppGlobalResolvers } from "./index.js";
 import { ZgClient, CommentNode } from "../../../../temp-output/schema.zg.js";
-import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
 // Step 1: Define the Zod schema and its TypeScript type.
 const CommentSchema = z.object({

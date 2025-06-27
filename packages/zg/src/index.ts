@@ -1,9 +1,4 @@
-import {
-  RawSchema,
-  SchemaConfig,
-  EntityDef,
-  AuthContext,
-} from "./parser/types.js";
+import { SchemaConfig, EntityDef, Resolver } from "./parser/types.js";
 
 import { parseSchemas } from "./parser/index.js";
 import { generateFbs } from "./generator/generator.js";
@@ -24,8 +19,10 @@ const execPromise = promisify(exec);
 export function createSchema<
   TActor,
   TDB,
-  const TEntities extends Record<string, EntityDef<TActor, TDB>>
->(config: SchemaConfig<TActor, TDB, TEntities>) {
+  TEntities extends Record<string, EntityDef<any, any>>,
+  TEntityResolvers extends Record<string, Record<string, Function>>,
+  TResolvers extends Record<string, Function>
+>(config: SchemaConfig<TActor, TDB, TEntities, TEntityResolvers, TResolvers>) {
   return config;
 }
 
@@ -36,7 +33,7 @@ export interface ZgRunLogger {
 
 export interface ZgRunOptions {
   /** The schema configuration object from createSchema. */
-  config: SchemaConfig<any, any, any>;
+  config: SchemaConfig<any, any, any, any, any>;
   /** The absolute path to the output directory. */
   outputDir: string;
   /** An optional logger for capturing build output. */
@@ -121,4 +118,6 @@ export async function run(options: ZgRunOptions) {
   logger.log("\n🎉 ZG build process complete!");
 }
 
-export type { RawSchema, SchemaConfig, EntityDef, AuthContext };
+export type { SchemaConfig, EntityDef, Resolver };
+
+export { type Policy } from "./parser/types.js";
