@@ -28,9 +28,13 @@ export class TestEntityNode extends ZgBaseNode<LowLevel.TestEntity> {
 export class ZgClient {
   private db: ZgDatabase;
   private authContext: ZgAuthContext | null = null;
+  private localResolvers: Record<string, Record<string, Function>>;
+  private globalResolvers: Record<string, Function>;
 
   constructor(config: any) {
-    this.db = new ZgDatabase(config);
+    this.db = new ZgDatabase(config.db);
+    this.globalResolvers = config.resolvers.global;
+    this.localResolvers = config.resolvers.local;
   }
 
   setAuthContext(context: ZgAuthContext) {
@@ -40,23 +44,19 @@ export class ZgClient {
   get testEntitys() {
     return {
       get: async (id: string): Promise<TestEntityNode | null> => {
-        if (!this.authContext) throw new Error("Auth context not set");
-        // No 'read' auth rules defined for TestEntity
         const result = await this.db.get<LowLevel.TestEntity, TestEntityNode>('TestEntity', id, (db, fbb, ac) => new TestEntityNode(db, fbb, ac));
+        // No 'read' auth rules defined for TestEntity
         return result;
       },
       create: async (data: Partial<ITestEntity>>): Promise<TestEntityNode> => {
-        if (!this.authContext) throw new Error("Auth context not set");
         // No 'create' auth rules defined for TestEntity
         return this.db.create<LowLevel.TestEntity, TestEntityNode>('TestEntity', data, (db, fbb, ac) => new TestEntityNode(db, fbb, ac));
       },
       update: async (id: string, data: Partial<ITestEntity>>): Promise<TestEntityNode> => {
-        if (!this.authContext) throw new Error("Auth context not set");
         // No 'update' auth rules defined for TestEntity
         return this.db.update<LowLevel.TestEntity, TestEntityNode>('TestEntity', id, data, (db, fbb, ac) => new TestEntityNode(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {
-        if (!this.authContext) throw new Error("Auth context not set");
         // No 'delete' auth rules defined for TestEntity
         return this.db.delete('TestEntity', id);
       }

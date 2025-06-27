@@ -13,6 +13,7 @@ import {
   SchemaConfig,
   EntityDef,
   NormalizedAuthBlock,
+  Index,
 } from "./types.js";
 import { ZodTypeAny, ZodObject } from "zod";
 import { mapZodToFlatBufferType } from "./type-map.js";
@@ -114,25 +115,61 @@ function parseAuthBlock(
 }
 
 /**
- * Parses the `manyToMany` block of a raw schema into a normalized array of relationship names.
- * @param manyToMany - The raw manyToMany object.
- * @returns A set of relationship names defined in the block.
+ * Parses and validates the `indexes` block from a raw schema definition.
+ * @param indexes - The raw `indexes` array from the user's schema file.
+ * @param fieldNames - A set of all valid field names for the entity.
+ * @returns A normalized array of Index objects.
  */
-function parseManyToManyRelationships(
-  manyToMany: ZGEntityDef<any>["manyToMany"]
-): Set<string> {
-  const names = new Set<string>();
-  if (!manyToMany) {
-    return names;
+function parseIndexes(
+  indexes: Index[] | undefined,
+  fieldNames: Set<string>
+): Index[] {
+  if (!indexes) {
+    return [];
   }
 
-  for (const groupKey in manyToMany) {
-    const group = manyToMany[groupKey];
-    for (const relName in group) {
-      names.add(relName);
+  return indexes.map((index) => {
+    // Ensure `on` is always an array and validate fields.
+    const fields = asArray(index.on);
+    for (const field of fields) {
+      if (!fieldNames.has(field)) {
+        throw new Error(
+          `Index defined on non-existent field: '${field}'. Valid fields are: ${[
+            ...fieldNames,
+          ].join(", ")}`
+        );
+      }
     }
+    // Return a new object with `on` normalized to an array.
+    return { ...index, on: fields, type: index.type ?? "btree" };
+  });
+}
+
+/**
+ * Parses the `manyToMany` block of a raw schema into a normalized array of relationship objects.
+ * @param manyToMany - The raw manyToMany object from the schema definition.
+ * @returns An array of normalized ManyToManyRelationship objects.
+ */
+function parseManyToMany(
+  manyToMany: ZGEntityDef<any>["manyToMany"]
+): ManyToManyRelationship[] {
+  const relationships: ManyToManyRelationship[] = [];
+  if (!manyToMany) {
+    return relationships;
   }
-  return names;
+
+  for (const relName in manyToMany) {
+    const relDef = manyToMany[relName];
+    relationships.push({
+      name: relName,
+      node: relDef.node,
+      through: relDef.through,
+      myKey: relDef.myKey,
+      theirKey: relDef.theirKey,
+      description: relDef.description,
+    });
+  }
+  return relationships;
 }
 
 /**
@@ -183,40 +220,19 @@ export function parseZodSchema(
 /**
  * Parses the `relationships` block of a raw schema into a normalized array.
  * @param relationships - The raw relationships object.
- * @returns An object containing arrays of normalized relationships.
+ * @returns An array of normalized standard and polymorphic relationships.
  */
 function parseAllRelationships(
   relationships: ZGEntityDef<any>["relationships"]
-): {
-  standard: (Relationship | PolymorphicRelationship)[];
-  manyToMany: ManyToManyRelationship[];
-} {
+): (Relationship | PolymorphicRelationship)[] {
   const standard: (Relationship | PolymorphicRelationship)[] = [];
-  const manyToMany: ManyToManyRelationship[] = [];
 
   if (!relationships) {
-    return { standard, manyToMany };
+    return standard;
   }
 
   for (const nodeName in relationships) {
     const relGroup = relationships[nodeName];
-
-    // Handle the special 'many-to-many' block
-    if (nodeName === "many-to-many") {
-      for (const relName in relGroup) {
-        const relDef = relGroup[relName];
-        manyToMany.push({
-          name: relName,
-          node: relDef.node,
-          through: relDef.through,
-          myKey: relDef.myKey,
-          theirKey: relDef.theirKey,
-          description: relDef.description,
-        });
-      }
-      continue; // Move to the next block
-    }
-
     for (const relName in relGroup) {
       const relDef = relGroup[relName];
 
@@ -245,7 +261,7 @@ function parseAllRelationships(
     }
   }
 
-  return { standard, manyToMany };
+  return standard;
 }
 
 /**
@@ -255,86 +271,85 @@ function parseAllRelationships(
  * @param config - The schema configuration object.
  * @returns An array of all normalized schema objects, including nested ones.
  */
-export function parseSchemas<TActor, TDB>(
-  config: SchemaConfig<TActor, TDB, Record<string, EntityDef<TActor, TDB>>>
+export function parseSchemas(
+  config: SchemaConfig<any, any, any, any, any>
 ): NormalizedSchema[] {
   const allSchemas: NormalizedSchema[] = [];
+  const { entities, resolvers: globalResolvers = {} } = config;
 
-  const globalPolicies = config.policies || {};
-  const globalPolicyNames = Object.keys(globalPolicies);
-  const globalPolicyMap = new Map(globalPolicyNames.map((p, i) => [p, i]));
+  // Pre-process to build the global policy map
+  const globalPolicyMap = new Map<string, number>();
+  Object.keys(globalResolvers).forEach((name, i) =>
+    globalPolicyMap.set(name, i)
+  );
 
-  const rawSchemas = Object.values(config.entities);
+  for (const entityName in entities) {
+    const schemaDef = entities[entityName];
 
-  for (const rawSchema of rawSchemas) {
-    const { standard, manyToMany } = parseAllRelationships(
-      rawSchema.relationships
+    const standardRelationships = parseAllRelationships(
+      schemaDef.relationships
     );
+    const manyToManyRelationships = parseManyToMany(schemaDef.manyToMany);
 
-    const manyToManyNames = parseManyToManyRelationships(rawSchema.manyToMany);
-
-    // Nested schemas discovered during field parsing are added to allSchemas.
-    const fields = parseZodSchema(rawSchema.schema, rawSchema.name, allSchemas);
-    const fieldNames = new Set(fields.map((f) => f.name));
     const relationshipNames = new Set([
-      ...standard.map((rel) => rel.name),
-      ...manyToManyNames,
+      ...standardRelationships.map((r) => r.name),
+      ...manyToManyRelationships.map((r) => r.name),
     ]);
 
-    const localPolicies = rawSchema.policies || {};
-    const localPolicyNames = Object.keys(localPolicies);
-    const localPolicyMap = new Map(localPolicyNames.map((p, i) => [p, i]));
+    const zodSchema = schemaDef.schema as ZodObject<any>;
+    const fields = parseZodSchema(zodSchema, schemaDef.name, allSchemas);
+    const fieldNames = new Set(fields.map((f) => f.name));
 
-    const topLevelSchema: NormalizedSchema = {
-      name: rawSchema.name,
-      description: rawSchema.description,
+    const localResolvers = schemaDef.resolvers || {};
+    const localPolicyMap = new Map<string, number>();
+    Object.keys(localResolvers).forEach((name, i) =>
+      localPolicyMap.set(name, i)
+    );
+
+    const auth = parseAuthBlock(
+      schemaDef.auth as ZGAuthBlock<string | string[]>,
+      fieldNames,
+      relationshipNames,
+      localPolicyMap,
+      globalPolicyMap
+    );
+
+    const indexes = parseIndexes(schemaDef.indexes, fieldNames);
+
+    const normalizedSchema: NormalizedSchema = {
+      name: schemaDef.name,
+      description: schemaDef.description,
       fields,
-      relationships: standard,
-      manyToMany: manyToMany,
-      indexes: (rawSchema.indexes || []).map((index: any) => ({
-        ...index,
-        on: Array.isArray(index.on) ? index.on : [index.on],
-        type: index.type || "btree",
-      })),
-      auth: parseAuthBlock(
-        rawSchema.auth,
-        fieldNames,
-        relationshipNames,
-        localPolicyMap,
-        globalPolicyMap
-      ),
-      policies: globalPolicyNames, // Storing global policy names for the generator
-      localResolvers: localPolicies,
-      globalResolvers: globalPolicies,
+      relationships: standardRelationships,
+      manyToMany: manyToManyRelationships,
+      auth,
+      indexes,
+      policies: [...localPolicyMap.keys(), ...globalPolicyMap.keys()],
+      localResolvers: localResolvers as Record<string, Function>,
+      globalResolvers: globalResolvers as Record<string, Function>,
     };
-
-    // Add the fully-populated top-level schema to the list.
-    // Any nested schemas will have already been added to allSchemas by the call above.
-    allSchemas.push(topLevelSchema);
+    allSchemas.push(normalizedSchema);
   }
 
-  // Final pass: resolve one-to-many relationships
+  // Final pass to link relationships
   for (const schema of allSchemas) {
     for (const rel of schema.relationships) {
       if (rel.mappedBy) {
         const targetSchema = allSchemas.find((s) => s.name === rel.node);
         if (!targetSchema) {
           throw new Error(
-            `Could not find target schema '${rel.node}' for relationship '${rel.name}' on schema '${schema.name}'.`
+            `Relationship '${schema.name}.${rel.name}' points to non-existent entity '${rel.node}'`
           );
         }
-
-        const targetRelation = targetSchema.relationships.find(
+        const mappedRel = targetSchema.relationships.find(
           (r) => r.name === rel.mappedBy
         );
-
-        if (!targetRelation) {
+        if (!mappedRel) {
           throw new Error(
-            `Could not find 'mappedBy' relation '${rel.mappedBy}' on target schema '${rel.node}'.`
+            `Relationship '${schema.name}.${rel.name}' has 'mappedBy' pointing to non-existent relationship '${targetSchema.name}.${rel.mappedBy}'`
           );
         }
-
-        rel.targetField = rel.mappedBy;
+        // This is where you might add linking logic if needed in the IR
       }
     }
   }

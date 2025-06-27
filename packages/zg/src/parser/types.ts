@@ -82,6 +82,13 @@ export interface AuthBlock<TRule> {
       [key in AuthAction | RelationshipAction]?: TRule;
     };
   };
+
+  /** Relationship-level authorization overrides. */
+  relationships?: {
+    [relationshipName: string]: {
+      [key in RelationshipAction]?: TRule;
+    };
+  };
 }
 
 /**

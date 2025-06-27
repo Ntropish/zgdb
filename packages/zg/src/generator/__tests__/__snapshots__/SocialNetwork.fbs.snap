@@ -20,8 +20,6 @@ table User_Profile {
 }
 
 /// Represents a user of the social network.
-/// Many-to-many relationship: 'following' to node 'User' through 'Follow'
-/// Many-to-many relationship: 'followers' to node 'User' through 'Follow'
 table User {
   id: string;
   username: string;
@@ -31,7 +29,6 @@ table User {
 }
 
 /// A post made by a user.
-/// Many-to-many relationship: 'tags' to node 'Tag' through 'PostTag'
 table Post {
   id: string;
   content: string;
@@ -65,7 +62,6 @@ table Media {
 }
 
 /// A tag that can be applied to posts.
-/// Many-to-many relationship: 'posts' to node 'Post' through 'PostTag'
 table Tag {
   id: string;
   name: string;

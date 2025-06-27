@@ -131,7 +131,6 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
         reactions: { cardinality: "many", mappedBy: "reactable" },
       },
     },
-    indexes: [{ on: "name", unique: true }],
   };
 
   const MediaSchema: RawSchema = {

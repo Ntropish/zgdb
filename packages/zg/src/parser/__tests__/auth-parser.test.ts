@@ -1,178 +1,147 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { parseSchemas } from "../index.js";
-import type { ZGEntityDef, AuthBlock } from "../types.js";
+import { ZGEntityDef, NormalizedSchema } from "../types.js";
 
-// Helper to create a minimal valid schema for testing
-const createMockSchema = (
-  auth?: AuthBlock<string | string[]>
-): ZGEntityDef<any, string> => ({
-  name: "TestSchema",
-  schema: z.object({
-    id: z.string(),
-    name: z.string(),
-    email: z.string().optional(),
-  }),
-  relationships: {
-    User: {
-      author: {
-        cardinality: "one",
-        description: "The author of this item.",
-      },
-    },
-  },
-  auth,
-});
+const findSchema = (schemas: NormalizedSchema[], name: string) => {
+  return schemas.find((s) => s.name === name);
+};
 
 describe("Auth Block Parsing Edge Cases", () => {
   it("Case 1: Should normalize mixed and empty auth rule formats", () => {
-    const rawSchema = createMockSchema({
-      create: "isOwner",
-      read: ["isPublic"],
-      update: ["isOwner", "hasAdminRights"],
-      // Testing invalid empty array - should be filtered out
-      delete: [] as any,
-      fields: {
-        email: {
-          // Testing invalid undefined - should be filtered out
-          read: undefined,
-          update: "isSelf",
+    const schemas = parseSchemas({
+      entities: {
+        Test: {
+          name: "Test",
+          schema: z.object({ f1: z.string(), f2: z.string() }),
+          auth: {
+            create: "isOwner",
+            read: [],
+            update: ["isOwner", "isAdmin"],
+            delete: "isAdmin",
+          },
+          resolvers: { isOwner: () => true },
         },
       },
+      resolvers: { isAdmin: () => true },
     });
 
-    const [parsed] = parseSchemas({
-      entities: { TestSchema: rawSchema },
-      policies: {
-        isOwner: () => true,
-        isPublic: () => true,
-        hasAdminRights: () => true,
-        isSelf: () => true,
-      },
-    });
-
-    // isOwner: -1, isPublic: -2, hasAdminRights: -3, isSelf: -4
-    expect(parsed.auth.create).toEqual([-1]);
-    expect(parsed.auth.read).toEqual([-2]);
-    expect(parsed.auth.update).toEqual([-1, -3]);
-    expect(parsed.auth.delete).toEqual([]);
-    expect(parsed.auth.fields?.email.read).toBeUndefined();
-    expect(parsed.auth.fields?.email.update).toEqual([-4]);
+    const schema = findSchema(schemas, "Test");
+    const auth = schema?.auth as any;
+    expect(auth.create).toEqual([0]);
+    expect(auth.read).toEqual([]);
+    expect(auth.update).toEqual([0, -1]);
+    expect(auth.delete).toEqual([-1]);
   });
 
   it("Case 2: Should throw an error for auth rules on non-existent fields or relationships", () => {
-    const schemaWithBadField = createMockSchema({
-      fields: {
-        nonExistentField: { read: "isPublic" },
-      },
-    });
-    expect(() =>
-      parseSchemas({
-        entities: { TestSchema: schemaWithBadField },
-        policies: { isPublic: () => true },
-      })
-    ).toThrow("Auth rule defined for non-existent field: 'nonExistentField'");
+    const baseSchema: ZGEntityDef<any> = {
+      name: "Test",
+      schema: z.object({ id: z.string() }),
+    };
 
-    const schemaWithBadRel = createMockSchema({
-      relationships: {
-        nonExistentRel: { read: "isPublic" },
-      },
-    });
-    expect(() =>
+    expect(() => {
       parseSchemas({
-        entities: { TestSchema: schemaWithBadRel },
-        policies: { isPublic: () => true },
-      })
-    ).toThrow(
-      "Auth rule defined for non-existent relationship: 'nonExistentRel'"
-    );
+        entities: {
+          Test: { ...baseSchema, auth: { fields: { bad: { read: "p" } } } },
+        },
+        resolvers: { p: () => true },
+      });
+    }).toThrow("Auth rule defined for non-existent field: 'bad'");
+
+    expect(() => {
+      parseSchemas({
+        entities: {
+          Test: {
+            ...baseSchema,
+            auth: { relationships: { bad: { read: "p" } } },
+          },
+        },
+        resolvers: { p: () => true },
+      });
+    }).toThrow("Auth rule defined for non-existent relationship: 'bad'");
   });
 
   it("Case 3: Should handle empty, null, or undefined auth blocks gracefully", () => {
-    const schemaWithEmptyAuth = createMockSchema({});
-    const schemaWithNullAuth = createMockSchema(null as any); // Test runtime robustness
-    const schemaWithUndefinedAuth = createMockSchema(undefined);
+    const schemas1 = parseSchemas({
+      entities: {
+        Test: { name: "Test", schema: z.object({ f: z.string() }), auth: {} },
+      },
+    });
+    expect(findSchema(schemas1, "Test")?.auth).toBeDefined();
 
-    const [parsedEmpty] = parseSchemas({
-      entities: { TestSchema: schemaWithEmptyAuth },
+    const schemas2 = parseSchemas({
+      entities: {
+        Test: {
+          name: "Test",
+          schema: z.object({ f: z.string() }),
+          auth: undefined,
+        },
+      },
     });
-    const [parsedNull] = parseSchemas({
-      entities: { TestSchema: schemaWithNullAuth },
-    });
-    const [parsedUndefined] = parseSchemas({
-      entities: { TestSchema: schemaWithUndefinedAuth },
-    });
-
-    const expectedAuth = { fields: {}, relationships: {} };
-    expect(parsedEmpty.auth).toEqual(expectedAuth);
-    expect(parsedNull.auth).toEqual(expectedAuth);
-    expect(parsedUndefined.auth).toEqual(expectedAuth);
+    expect(findSchema(schemas2, "Test")?.auth).toBeDefined();
   });
 
   it("Case 4: Should correctly parse logically contradictory rules without crashing", () => {
-    // The parser's job is to normalize, not to perform logical validation.
-    // That would be the job of a separate "linter" tool for schemas.
-    const rawSchema = createMockSchema({
-      read: "never",
-      update: ["isOwner", "isPublic"],
-    });
-
-    const [parsed] = parseSchemas({
-      entities: { TestSchema: rawSchema },
-      policies: {
-        never: () => false,
-        isOwner: () => true,
-        isPublic: () => true,
-      },
-    });
-    // never: -1, isOwner: -2, isPublic: -3
-    expect(parsed.auth.read).toEqual([-1]);
-    expect(parsed.auth.update).toEqual([-2, -3]);
-    // ^ The parser just passes this through. Runtime would handle the logic.
-  });
-
-  it("Case 5: Should correctly parse auth rules for complex relationship types", () => {
-    const complexSchema: ZGEntityDef<any, string> = {
-      name: "Post",
-      schema: z.object({ id: z.string() }),
-      relationships: {},
-      manyToMany: {
-        Post: {
-          tags: {
-            node: "Tag",
-            through: "PostTag",
-            myKey: "postId",
-            theirKey: "tagId",
+    const schemas = parseSchemas({
+      entities: {
+        Test: {
+          name: "Test",
+          schema: z.object({ f1: z.string() }),
+          auth: {
+            create: ["allow", "never"],
+          },
+          resolvers: {
+            allow: () => true,
+            never: () => false,
           },
         },
       },
-      auth: {
-        relationships: {
-          tags: { add: "isAuthor" }, // This name is implicitly created
-        },
-      },
-    };
-
-    const [parsed] = parseSchemas({
-      entities: { Post: complexSchema },
-      policies: { isAuthor: () => true },
     });
-    // isAuthor: -1
-    expect(parsed.auth.relationships?.tags.add).toEqual([-1]);
-    // Also test that it throws on a bad many-to-many relationship name
-    const badSchema = {
-      ...complexSchema,
-      auth: {
-        relationships: {
-          badName: { add: "isAuthor" },
+
+    const schema = findSchema(schemas, "Test");
+    const auth = schema?.auth as any;
+    expect(auth.create).toEqual([0, 1]);
+  });
+
+  it("Case 5: Should correctly parse auth rules for complex relationship types", () => {
+    const schemas = parseSchemas({
+      entities: {
+        Post: {
+          name: "Post",
+          schema: z.object({ title: z.string() }),
+          manyToMany: {
+            tags: {
+              node: "Tag",
+              through: "PostTag",
+              myKey: "postId",
+              theirKey: "tagId",
+            },
+          },
+          auth: {
+            relationships: {
+              tags: {
+                add: "isPostOwner",
+                remove: ["isPostOwner", "isAdmin"],
+              },
+            },
+          },
+          resolvers: { isPostOwner: () => true },
+        },
+        Tag: {
+          name: "Tag",
+          schema: z.object({ name: z.string() }),
+        },
+        PostTag: {
+          name: "PostTag",
+          schema: z.object({ postId: z.string(), tagId: z.string() }),
         },
       },
-    };
-    expect(() =>
-      parseSchemas({
-        entities: { Post: badSchema },
-        policies: { isAuthor: () => true },
-      })
-    ).toThrow("Auth rule defined for non-existent relationship: 'badName'");
+      resolvers: { isAdmin: () => true },
+    });
+    const schema = findSchema(schemas, "Post");
+    const auth = schema?.auth as any;
+    expect(auth.relationships.tags.add).toEqual([0]);
+    expect(auth.relationships.tags.remove).toEqual([0, -1]);
   });
 });

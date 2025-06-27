@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { parseSchemas } from "../index.js";
-import { RawSchema, ZGEntityDef } from "../types.js";
+import { RawSchema, ZGEntityDef, NormalizedSchema } from "../types.js";
 import { z } from "zod";
+
+const findSchema = (schemas: NormalizedSchema[], name: string) => {
+  return schemas.find((s) => s.name === name);
+};
 
 const rawUserSchema: ZGEntityDef<any> = {
   name: "User",
@@ -137,49 +141,37 @@ describe("Schema Parser", () => {
   });
 
   it("should parse a many-to-many relationship", () => {
-    const PostSchema: RawSchema = {
-      name: "Post",
-      schema: z.object({ id: z.string() }),
-      relationships: {
-        "many-to-many": {
-          tags: {
-            node: "Tag",
-            through: "PostTag",
-            myKey: "postId",
-            theirKey: "tagId",
-            description: "Tags on the post.",
+    const schemas = parseSchemas({
+      entities: {
+        Post: {
+          name: "Post",
+          schema: z.object({ id: z.string() }),
+          manyToMany: {
+            tags: {
+              node: "Tag",
+              through: "PostTag",
+              myKey: "postId",
+              theirKey: "tagId",
+            },
           },
         },
-      },
-    };
-
-    const TagSchema: RawSchema = {
-      name: "Tag",
-      schema: z.object({ id: z.string(), name: z.string() }),
-    };
-
-    const PostTagSchema: RawSchema = {
-      name: "PostTag",
-      schema: z.object({ postId: z.string(), tagId: z.string() }),
-    };
-
-    const normalized = parseSchemas({
-      entities: {
-        Post: PostSchema,
-        Tag: TagSchema,
-        PostTag: PostTagSchema,
+        Tag: { name: "Tag", schema: z.object({ id: z.string() }) },
+        PostTag: {
+          name: "PostTag",
+          schema: z.object({ postId: z.string(), tagId: z.string() }),
+        },
       },
     });
-    const postSchema = normalized.find((s) => s.name === "Post")!;
 
-    expect(postSchema.manyToMany).toHaveLength(1);
-    expect(postSchema.manyToMany[0]).toEqual({
+    const postSchema = findSchema(schemas, "Post");
+    expect(postSchema?.manyToMany).toHaveLength(1);
+    expect(postSchema?.manyToMany[0]).toEqual({
       name: "tags",
       node: "Tag",
       through: "PostTag",
       myKey: "postId",
       theirKey: "tagId",
-      description: "Tags on the post.",
+      description: undefined,
     });
   });
 
@@ -226,35 +218,83 @@ describe("Schema Parser", () => {
       cardinality: "many",
       description: "Posts by the user.",
       mappedBy: "author",
-      targetField: "author",
+      required: undefined,
     });
   });
 
   it("should parse an auth block", () => {
-    const rawAuthSchema: ZGEntityDef<any, string> = {
-      name: "AuthTest",
-      schema: z.object({ id: z.string() }),
-      auth: {
-        create: "can_create",
-        read: ["isOwner", "can_read"],
-      },
+    const authBlock = {
+      create: "can_create",
+      read: "can_read",
     };
-
-    const normalized = parseSchemas({
-      entities: { AuthTest: rawAuthSchema },
-      policies: {
-        can_create: () => true,
-        isOwner: () => true,
-        can_read: () => true,
+    const schemas = parseSchemas({
+      entities: {
+        Test: {
+          name: "Test",
+          schema: z.object({ id: z.string() }),
+          auth: authBlock,
+          resolvers: {
+            can_create: () => true,
+            can_read: () => true,
+          },
+        },
       },
     });
-    const authSchema = normalized.find((s) => s.name === "AuthTest")!;
+    const authSchema = findSchema(schemas, "Test");
+    expect(authSchema).toBeDefined();
+    const auth = authSchema?.auth as any;
+    expect(auth.create).toEqual([0]);
+    expect(auth.read).toEqual([1]);
+  });
 
-    // can_create: -1, isOwner: -2, can_read: -3
-    expect(authSchema.auth).toBeDefined();
-    expect(authSchema.auth!.create).toEqual([-1]);
-    expect(authSchema.auth!.read).toEqual([-2, -3]);
-    expect(authSchema.auth!.fields).toEqual({});
-    expect(authSchema.auth!.relationships).toEqual({});
+  it("should correctly parse indexes, setting defaults and validating fields", () => {
+    const schemas = parseSchemas({
+      entities: {
+        Test: {
+          name: "Test",
+          schema: z.object({
+            id: z.string(),
+            email: z.string(),
+            name: z.string(),
+          }),
+          indexes: [
+            { on: "id", unique: true },
+            { on: ["name", "email"], type: "hash" },
+          ],
+        },
+      },
+    });
+
+    const testSchema = findSchema(schemas, "Test");
+    expect(testSchema?.indexes).toBeDefined();
+    expect(testSchema?.indexes).toHaveLength(2);
+
+    // Check first index
+    const index1 = testSchema?.indexes?.[0];
+    expect(index1?.on).toEqual(["id"]);
+    expect(index1?.unique).toBe(true);
+    expect(index1?.type).toBe("btree"); // Default type
+
+    // Check second index
+    const index2 = testSchema?.indexes?.[1];
+    expect(index2?.on).toEqual(["name", "email"]);
+    expect(index2?.unique).toBeUndefined();
+    expect(index2?.type).toBe("hash");
+  });
+
+  it("should throw an error for an index on a non-existent field", () => {
+    expect(() => {
+      parseSchemas({
+        entities: {
+          Test: {
+            name: "Test",
+            schema: z.object({ id: z.string() }),
+            indexes: [{ on: "nonExistentField" }],
+          },
+        },
+      });
+    }).toThrow(
+      "Index defined on non-existent field: 'nonExistentField'. Valid fields are: id"
+    );
   });
 });

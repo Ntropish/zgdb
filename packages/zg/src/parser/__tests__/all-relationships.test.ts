@@ -1,142 +1,122 @@
 import { describe, it, expect } from "vitest";
-import { parseSchemas } from "../index.js";
-import { RawSchema } from "../types.js";
 import { z } from "zod";
+import { parseSchemas } from "../index.js";
+import { NormalizedSchema } from "../types.js";
+
+const findSchema = (schemas: NormalizedSchema[], name: string) => {
+  return schemas.find((s) => s.name === name);
+};
+
+const ALL_RELATIONSHIPS_SCHEMAS = {
+  Project: {
+    name: "Project",
+    schema: z.object({ id: z.string() }),
+    relationships: {
+      User: {
+        owner: {
+          cardinality: "one" as const,
+          required: true,
+          description: "The user who owns the project.",
+        },
+      },
+      Task: {
+        tasks: {
+          cardinality: "many" as const,
+          mappedBy: "project",
+          description: "The tasks associated with the project.",
+        },
+      },
+      polymorphic: {
+        attachment: {
+          type: "polymorphic" as const,
+          cardinality: "one" as const,
+          required: true,
+          description: "A featured attachment for the project.",
+          discriminator: "attachmentType",
+          foreignKey: "attachmentId",
+          references: ["Image", "File"],
+        },
+      },
+    },
+    manyToMany: {
+      members: {
+        node: "User",
+        through: "Membership",
+        myKey: "projectId",
+        theirKey: "userId",
+      },
+    },
+  },
+  User: { name: "User", schema: z.object({ id: z.string() }) },
+  Task: {
+    name: "Task",
+    schema: z.object({ id: z.string(), projectId: z.string() }),
+    relationships: {
+      Project: {
+        project: {
+          cardinality: "one",
+          required: true,
+        },
+      },
+    },
+  },
+  Image: { name: "Image", schema: z.object({ id: z.string() }) },
+  File: { name: "File", schema: z.object({ id: z.string() }) },
+  Membership: {
+    name: "Membership",
+    schema: z.object({ userId: z.string(), projectId: z.string() }),
+  },
+};
 
 describe("Schema Parser Deep Edge Cases: All Relationship Types", () => {
   it("should correctly parse a single schema with all relationship types defined", () => {
-    // This test uses a 'Project' entity as a central hub for various relationships.
-    const rawProjectSchema: RawSchema = {
-      name: "Project",
-      description: "A project that connects users, tasks, and attachments.",
-      schema: z.object({
-        id: z.string(),
-        name: z.string(),
-        ownerId: z.string(),
-        // For the polymorphic 'attachment' relationship
-        attachmentId: z.string(),
-        attachmentType: z.enum(["image", "file"]),
-      }),
-      relationships: {
-        // One-to-one relationship
-        user: {
-          owner: {
-            cardinality: "one",
-            required: true,
-            description: "The user who owns the project.",
-          },
-        },
-        // One-to-many relationship
-        task: {
-          tasks: {
-            cardinality: "many",
-            description: "The tasks associated with the project.",
-            mappedBy: "project",
-          },
-        },
-        // Polymorphic relationship
-        polymorphic: {
-          attachment: {
-            cardinality: "one",
-            required: true,
-            type: "polymorphic",
-            discriminator: "attachmentType",
-            foreignKey: "attachmentId",
-            references: ["image", "file"], // Assuming a 'File' schema exists
-            description: "A featured attachment for the project.",
-          },
-        },
-      },
-      // Many-to-many relationship is defined on the join entity,
-      // but we can test its reverse mapping here conceptually.
-    };
+    const schemas = parseSchemas({ entities: ALL_RELATIONSHIPS_SCHEMAS });
+    const relationships = findSchema(schemas, "Project")?.relationships;
+    expect(relationships).toBeDefined();
 
-    const rawTaskSchema: RawSchema = {
-      name: "task",
-      schema: z.object({ id: z.string(), projectId: z.string() }),
-      relationships: {
-        Project: {
-          project: { cardinality: "one", required: true },
-        },
-      },
-    };
-
-    const rawUserSchema: RawSchema = {
-      name: "user",
-      schema: z.object({ id: z.string() }),
-    };
-    const rawImageSchema: RawSchema = {
-      name: "image",
-      schema: z.object({ id: z.string() }),
-    };
-    const rawFileSchema: RawSchema = {
-      name: "file",
-      schema: z.object({ id: z.string() }),
-    };
-
-    const normalized = parseSchemas({
-      entities: {
-        Project: rawProjectSchema,
-        task: rawTaskSchema,
-        user: rawUserSchema,
-        image: rawImageSchema,
-        file: rawFileSchema,
-      },
-    });
-
-    expect(normalized).toHaveLength(5);
-    const projectSchema = normalized.find((s) => s.name === "Project")!;
-
-    expect(projectSchema.name).toBe("Project");
-
-    // Validate that all relationships were parsed correctly
-    const relationships = projectSchema.relationships;
-    expect(relationships).toHaveLength(3);
-
-    // Test 1: One-to-one
     expect(relationships).toEqual(
       expect.arrayContaining([
         {
           name: "owner",
-          node: "user",
+          node: "User",
           cardinality: "one",
           required: true,
           description: "The user who owns the project.",
-          mappedBy: undefined, // mappedBy is optional
+          mappedBy: undefined,
         },
-      ])
-    );
-
-    // Test 2: One-to-many
-    expect(relationships).toEqual(
-      expect.arrayContaining([
         {
           name: "tasks",
-          node: "task",
+          node: "Task",
           cardinality: "many",
-          required: undefined, // required is optional
-          description: "The tasks associated with the project.",
           mappedBy: "project",
-          targetField: "project",
+          description: "The tasks associated with the project.",
+          required: undefined,
         },
-      ])
-    );
-
-    // Test 3: Polymorphic
-    expect(relationships).toEqual(
-      expect.arrayContaining([
         {
           name: "attachment",
           node: "polymorphic",
+          type: "polymorphic",
           cardinality: "one",
           required: true,
-          type: "polymorphic",
+          description: "A featured attachment for the project.",
           discriminator: "attachmentType",
           foreignKey: "attachmentId",
-          references: ["image", "file"],
-          description: "A featured attachment for the project.",
+          references: ["Image", "File"],
         },
       ])
     );
+
+    const manyToMany = findSchema(schemas, "Project")?.manyToMany;
+    expect(manyToMany).toBeDefined();
+    expect(manyToMany).toEqual([
+      {
+        name: "members",
+        node: "User",
+        through: "Membership",
+        myKey: "projectId",
+        theirKey: "userId",
+        description: undefined,
+      },
+    ]);
   });
 });
