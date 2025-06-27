@@ -135,8 +135,8 @@ export type { AuthBlock as ZGAuthBlock } from "./types.js";
  */
 export interface EntityDef<
   TActor,
-  TResolvers extends Record<string, Function>,
-  TGlobalResolvers extends Record<string, Function>
+  TResolvers extends Record<keyof TResolvers, Function>,
+  TGlobalResolvers extends Record<keyof TGlobalResolvers, Function>
 > {
   name: string;
   description?: string;
