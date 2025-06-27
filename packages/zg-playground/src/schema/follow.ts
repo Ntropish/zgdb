@@ -23,17 +23,19 @@ export const FollowDef: EntityDef<IFollowResolvers, AppGlobalPolicies> = {
     "A directional relationship indicating one user follows another.",
   schema: FollowSchema,
   relationships: {
-    User: {
-      followerId: {
-        cardinality: "one",
-        description: "The user who is initiating the follow.",
-        required: true,
-      },
-      followingId: {
-        cardinality: "one",
-        description: "The user who is being followed.",
-        required: true,
-      },
+    follower: {
+      type: "User",
+      field: "followerId",
+      cardinality: "one",
+      description: "The user who is initiating the follow.",
+      required: true,
+    },
+    following: {
+      type: "User",
+      field: "followingId",
+      cardinality: "one",
+      description: "The user who is being followed.",
+      required: true,
     },
   },
   auth: {

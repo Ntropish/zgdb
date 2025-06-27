@@ -25,37 +25,34 @@ export const PostDef: EntityDef<IPostResolvers, AppGlobalPolicies> = {
   description: "A post made by a user, which can have comments.",
   schema: PostSchema,
   relationships: {
-    User: {
-      author: {
-        cardinality: "one",
-        description: "The user who wrote the post.",
-        required: true,
-      },
+    author: {
+      type: "User",
+      field: "author",
+      cardinality: "one",
+      description: "The user who wrote the post.",
+      required: true,
     },
-    Comment: {
-      comments: {
-        cardinality: "many",
-        description: "Comments on this post.",
-        /**
-         * This relationship is the reverse of the 'regards' relationship on the Comment node.
-         * The 'mappedBy' property indicates that the foreign key is stored on the other node.
-         */
-        mappedBy: "author",
-      },
+    comments: {
+      type: "Comment",
+      cardinality: "many",
+      description: "Comments on this post.",
+      /**
+       * This relationship is the reverse of the 'regards' relationship on the Comment node.
+       * The 'mappedBy' property indicates that the foreign key is stored on the other node.
+       */
+      mappedBy: "post",
     },
-    Image: {
-      images: {
-        cardinality: "many",
-        description: "Images included in this post.",
-        mappedBy: "postId",
-      },
+    images: {
+      type: "Image",
+      cardinality: "many",
+      description: "Images included in this post.",
+      mappedBy: "post",
     },
-    Reaction: {
-      reactions: {
-        cardinality: "many",
-        description: "Reactions on this post.",
-        mappedBy: "target",
-      },
+    reactions: {
+      type: "Reaction",
+      cardinality: "many",
+      description: "Reactions on this post.",
+      mappedBy: "target",
     },
   },
   indexes: [

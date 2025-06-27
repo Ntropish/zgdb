@@ -25,19 +25,19 @@ export const PostTagDef: EntityDef<IPostTagResolvers, AppGlobalPolicies> = {
   description: "The join entity connecting a Post and a Tag.",
   schema: PostTagSchema,
   relationships: {
-    Post: {
-      postId: {
-        cardinality: "one",
-        description: "The post being tagged.",
-        required: true,
-      },
+    post: {
+      type: "Post",
+      field: "postId",
+      cardinality: "one",
+      description: "The post being tagged.",
+      required: true,
     },
-    Tag: {
-      tagId: {
-        cardinality: "one",
-        description: "The tag being applied.",
-        required: true,
-      },
+    tag: {
+      type: "Tag",
+      field: "tagId",
+      cardinality: "one",
+      description: "The tag being applied.",
+      required: true,
     },
   },
   auth: {

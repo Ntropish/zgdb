@@ -31,17 +31,17 @@ export const CommentDef: EntityDef<ICommentResolvers, AppGlobalPolicies> = {
   schema: CommentSchema,
   relationships: {
     author: {
-      node: "User",
+      type: "User",
       field: "authorId",
       cardinality: "one",
     },
     post: {
-      node: "Post",
+      type: "Post",
       field: "postId",
       cardinality: "one",
     },
     reactions: {
-      node: "Reaction",
+      type: "Reaction",
       cardinality: "many",
       mappedBy: "target",
     },

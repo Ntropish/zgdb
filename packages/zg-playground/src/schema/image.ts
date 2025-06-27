@@ -36,17 +36,17 @@ export const ImageDef: EntityDef<IImageResolvers, AppGlobalPolicies> = {
     "An image, which can be a user's profile picture or part of a post.",
   schema: ImageSchema,
   relationships: {
-    Post: {
-      postId: {
-        cardinality: "one",
-        description: "The post this image is associated with, if any.",
-      },
+    post: {
+      type: "Post",
+      field: "postId",
+      cardinality: "one",
+      description: "The post this image is associated with, if any.",
     },
-    User: {
-      userId: {
-        cardinality: "one",
-        description: "The user this image is a profile picture for, if any.",
-      },
+    user: {
+      type: "User",
+      field: "userId",
+      cardinality: "one",
+      description: "The user this image is a profile picture for, if any.",
     },
   },
   auth: {

@@ -24,23 +24,21 @@ export const ReactionDef: EntityDef<IReactionResolvers, AppGlobalPolicies> = {
     "A reaction from a user to a specific piece of content, like a post or a comment.",
   schema: ReactionSchema,
   relationships: {
-    User: {
-      author: {
-        cardinality: "one",
-        description: "The user who made the reaction.",
-        required: true,
-      },
+    author: {
+      type: "User",
+      field: "author",
+      cardinality: "one",
+      description: "The user who made the reaction.",
+      required: true,
     },
-    polymorphic: {
-      target: {
-        cardinality: "one",
-        description: "The content that was reacted to.",
-        required: true,
-        type: "polymorphic",
-        discriminator: "targetType",
-        foreignKey: "targetId",
-        references: ["Post", "Comment"],
-      },
+    target: {
+      cardinality: "one",
+      description: "The content that was reacted to.",
+      required: true,
+      type: "polymorphic",
+      discriminator: "targetType",
+      foreignKey: "targetId",
+      references: ["Post", "Comment"],
     },
   },
   auth: {
