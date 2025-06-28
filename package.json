@@ -9,7 +9,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "clean": "turbo run clean",
-    "dev": "pnpm turbo run dev --filter=@tsmk/zg --filter=@zgdb/client",
+    "dev": "pnpm turbo run dev --filter=@zgdb/generate --filter=@zgdb/client",
     "test:ui": "pnpm -r test:ui",
     "lint": "pnpm -r lint",
     "lint:fix": "pnpm -r lint:fix",

@@ -2,7 +2,7 @@
  * This file is the single source of truth for the entire application schema.
  */
 import { createSchemaFactory } from "@zgdb/generate";
-import { ZgClient } from "../../zg/schema.zg.js";
+// import { ZgClient } from "../../zg/schema.zg.js";
 
 // Import all schema definitions
 import { UserDef } from "./user.js";
