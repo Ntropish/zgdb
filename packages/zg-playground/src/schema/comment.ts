@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EntityDef } from "@tsmk/zg";
 
 // Step 1: Define the Zod schema and its TypeScript type.
 const CommentSchema = z.object({
@@ -10,23 +11,26 @@ const CommentSchema = z.object({
 });
 
 // Step 3: Define the entity, parameterized by its local and global resolvers.
-export const CommentDef = {
+export const CommentDef: EntityDef = {
   name: "Comment",
   description: "A comment on a post",
   schema: CommentSchema,
   relationships: {
     author: {
-      type: "User",
+      type: "standard",
+      entity: "User",
       field: "authorId",
       cardinality: "one",
     },
     post: {
-      type: "Post",
+      type: "standard",
+      entity: "Post",
       field: "postId",
       cardinality: "one",
     },
     reactions: {
-      type: "Reaction",
+      type: "standard",
+      entity: "Reaction",
       cardinality: "many",
       mappedBy: "target",
     },

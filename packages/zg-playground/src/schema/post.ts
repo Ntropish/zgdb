@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EntityDef } from "@tsmk/zg";
 
 const PostSchema = z.object({
   id: z.string(),
@@ -8,20 +9,22 @@ const PostSchema = z.object({
   createdAt: z.date(),
 });
 
-export const PostDef = {
+export const PostDef: EntityDef = {
   name: "Post",
   description: "A post made by a user, which can have comments.",
   schema: PostSchema,
   relationships: {
     author: {
-      type: "User",
+      type: "standard",
+      entity: "User",
       field: "author",
       cardinality: "one",
       description: "The user who wrote the post.",
       required: true,
     },
     comments: {
-      type: "Comment",
+      type: "standard",
+      entity: "Comment",
       cardinality: "many",
       description: "Comments on this post.",
       /**
@@ -31,13 +34,15 @@ export const PostDef = {
       mappedBy: "post",
     },
     images: {
-      type: "Image",
+      type: "standard",
+      entity: "Image",
       cardinality: "many",
       description: "Images included in this post.",
       mappedBy: "post",
     },
     reactions: {
-      type: "Reaction",
+      type: "standard",
+      entity: "Reaction",
       cardinality: "many",
       description: "Reactions on this post.",
       mappedBy: "target",

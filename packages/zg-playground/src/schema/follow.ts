@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EntityDef } from "@tsmk/zg";
 
 const FollowSchema = z.object({
   id: z.string(),
@@ -7,21 +8,23 @@ const FollowSchema = z.object({
   createdAt: z.date(),
 });
 
-export const FollowDef = {
+export const FollowDef: EntityDef = {
   name: "Follow",
   description:
     "A directional relationship indicating one user follows another.",
   schema: FollowSchema,
   relationships: {
     follower: {
-      type: "User",
+      type: "standard",
+      entity: "User",
       field: "followerId",
       cardinality: "one",
       description: "The user who is initiating the follow.",
       required: true,
     },
     following: {
-      type: "User",
+      type: "standard",
+      entity: "User",
       field: "followingId",
       cardinality: "one",
       description: "The user who is being followed.",

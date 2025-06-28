@@ -4,7 +4,7 @@ import path from "path";
 import { pathToFileURL } from "node:url";
 import { promises as fs } from "fs";
 import ora from "ora";
-import { buildSchema } from "@tsmk/zg";
+import { generate, parseSchemas } from "@tsmk/zg";
 
 export function parseArgs(argv: string[]) {
   program
@@ -59,15 +59,8 @@ export function parseArgs(argv: string[]) {
 
           const buildSpinner = ora("Building schema and client...").start();
           try {
-            await buildSchema({
-              config: schemaConfig,
-              outputDir,
-              logger: {
-                log: (msg) => (buildSpinner.text = msg),
-                error: (msg) => buildSpinner.fail(msg),
-              },
-              flatcPath: options.flatc,
-            });
+            const normalizedSchemas = parseSchemas(schemaConfig);
+            await generate(normalizedSchemas, outputDir);
             buildSpinner.succeed("Build complete!");
           } catch (e: any) {
             // The logger inside buildSchema should have already failed the spinner.

@@ -1,8 +1,8 @@
 /**
  * This file is the single source of truth for the entire application schema.
  */
-import { createSchemaFactory } from "@tsmk/zg";
-import { ZgClient } from "../../../../temp-output/schema.zg.js";
+import { SchemaConfig } from "@tsmk/zg";
+import { ZgClient } from "../../zg/schema.zg.js";
 
 // Import all schema definitions
 import { UserDef } from "./user.js";
@@ -29,9 +29,7 @@ export const globalResolvers = {
   never: () => false,
 };
 
-const createMyAppSchema = createSchemaFactory<MyAppActor, ZgClient>();
-
-export const AppSchema = createMyAppSchema({
+export const AppSchema: SchemaConfig<ZgClient, MyAppActor> = {
   globalResolvers,
   entities: {
     User: UserDef,
@@ -175,6 +173,6 @@ export const AppSchema = createMyAppSchema({
       delete: "isPostAuthor",
     },
   },
-});
+};
 
 export default AppSchema;

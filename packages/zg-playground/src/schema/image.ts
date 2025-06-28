@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EntityDef } from "@tsmk/zg";
 
 const ImageSchema = z.object({
   id: z.string(),
@@ -14,7 +15,7 @@ const ImageSchema = z.object({
   userId: z.string().optional(),
 });
 
-export const ImageDef = {
+export const ImageDef: EntityDef = {
   name: "Image",
   description:
     "An image, which can be a user's profile picture or part of a post.",
@@ -33,4 +34,4 @@ export const ImageDef = {
       description: "The user this image is a profile picture for, if any.",
     },
   },
-} as const;
+};

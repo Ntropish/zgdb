@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EntityDef } from "@tsmk/zg";
 
 const ReactionSchema = z.object({
   id: z.string(),
@@ -8,14 +9,15 @@ const ReactionSchema = z.object({
   targetType: z.enum(["post", "comment"]),
 });
 
-export const ReactionDef = {
+export const ReactionDef: EntityDef = {
   name: "Reaction",
   description:
     "A reaction from a user to a specific piece of content, like a post or a comment.",
   schema: ReactionSchema,
   relationships: {
     author: {
-      type: "User",
+      type: "standard",
+      entity: "User",
       field: "author",
       cardinality: "one",
       description: "The user who made the reaction.",

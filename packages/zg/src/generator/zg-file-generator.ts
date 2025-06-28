@@ -60,22 +60,21 @@ function generateDbAccessors(schema: NormalizedSchema): string {
       return `// No '${action}' auth rules defined for ${schema.name}`;
     }
 
-    const rules = asArray(auth[action] as number | number[]);
+    const rules = asArray(auth[action] as string | string[]);
 
     if (rules.length === 0) {
       return `// No '${action}' auth rules defined for ${schema.name}`;
     }
 
     const checkLogic = rules
-      .map((ruleIndex: number) => {
-        const isGlobal = ruleIndex < 0;
-        const policyName = isGlobal
-          ? Object.keys(globalResolvers!)[(ruleIndex + 1) * -1]
-          : Object.keys(localResolvers!)[ruleIndex];
+      .map((policyName: string) => {
+        // This logic now assumes policy names directly map to resolver functions.
+        // We need to determine if it's a global or local resolver.
+        // For simplicity, we'll check local first, then global.
+        const localResolverAccess = `this.localResolvers['${schema.name}']['${policyName}']`;
+        const globalResolverAccess = `this.globalResolvers['${policyName}']`;
 
-        const resolverAccess = isGlobal
-          ? `this.globalResolvers.${policyName}`
-          : `this.localResolvers['${schema.name}'].${policyName}`;
+        const resolverAccess = `(${localResolverAccess} || ${globalResolverAccess})`;
 
         const contextParts = ["actor: this.authContext.actor", "db: this"];
         if (options.takesInput) {

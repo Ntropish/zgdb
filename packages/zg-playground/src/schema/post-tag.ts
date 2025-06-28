@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EntityDef } from "@tsmk/zg";
 
 const PostTagSchema = z.object({
   id: z.string(),
@@ -6,7 +7,7 @@ const PostTagSchema = z.object({
   tagId: z.string(),
 });
 
-export const PostTagDef = {
+export const PostTagDef: EntityDef = {
   name: "PostTag",
   description: "The join entity connecting a Post and a Tag.",
   schema: PostTagSchema,

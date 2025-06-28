@@ -1,10 +1,17 @@
+import { promises as fs } from "fs";
+import path from "path";
+import { exec } from "child_process";
+import { promisify } from "util";
+import { generateZgFile } from "./zg-file-generator.js";
 import {
   createFbsBuilder,
-  createInitialFbsFileState,
   renderFbs,
+  createInitialFbsFileState,
 } from "@tsmk/fbs-builder";
 import { NormalizedSchema } from "../parser/types.js";
 import { topologicalSort } from "./topological-sort.js";
+
+const execAsync = promisify(exec);
 
 /**
  * The main generator function that transforms a complete IR into a single
@@ -12,7 +19,7 @@ import { topologicalSort } from "./topological-sort.js";
  * @param schemas - An array of all normalized schemas, including nested ones.
  * @returns The content of the .fbs file as a string.
  */
-export async function generateFbs(
+export async function generateFbsFile(
   schemas: NormalizedSchema[]
 ): Promise<string> {
   const builder = createFbsBuilder();
@@ -23,28 +30,14 @@ export async function generateFbs(
   const sortedSchemas = topologicalSort(schemas);
 
   for (const schema of sortedSchemas) {
+    // We don't generate fbs for tables that are purely for joins
+    if (schema.isJoinTable) {
+      continue;
+    }
     const tableBuilder = builder.table(schema.name);
 
     if (schema.description) {
       tableBuilder.docs(schema.description);
-    }
-
-    if (schema.auth && Object.keys(schema.auth).length > 0) {
-      const rules = Object.entries(schema.auth)
-        .map(([action, rules]) => {
-          if (!Array.isArray(rules)) return null;
-          if (rules.length === 0) return null;
-          const ruleDescriptions = rules
-            .map((ruleName) => `    - '${ruleName}'`)
-            .join("\\n");
-          return `  - ${action}: requires one of:\\n${ruleDescriptions}`;
-        })
-        .filter(Boolean)
-        .join("\\n");
-
-      if (rules) {
-        tableBuilder.docs(`Authorization Rules:\\n${rules}`);
-      }
     }
 
     for (const field of schema.fields) {
@@ -63,4 +56,45 @@ export async function generateFbs(
   const initialState = createInitialFbsFileState();
   const finalState = await builder.build(initialState);
   return renderFbs(finalState);
+}
+
+export async function generate(
+  schemas: NormalizedSchema[],
+  outputDirectory: string
+) {
+  // Ensure the output directory exists
+  await fs.mkdir(outputDirectory, { recursive: true });
+
+  // --- Step 1: Generate the FlatBuffers schema (.fbs) file ---
+  const fbsContent = await generateFbsFile(schemas);
+  const fbsFilePath = path.join(outputDirectory, "schema.fbs");
+  await fs.writeFile(fbsFilePath, fbsContent);
+  console.log(`Generated FlatBuffers schema at ${fbsFilePath}`);
+
+  // --- Step 2: Compile the .fbs file to TypeScript using flatc ---
+  // The output of this will be `schema_generated.ts` in the output directory.
+  const flatcPath = "flatc"; // Assumes flatc is in the system's PATH
+  const command = `${flatcPath} --ts --gen-mutable --gen-all -o ${outputDirectory} ${fbsFilePath}`;
+
+  try {
+    const { stdout, stderr } = await execAsync(command);
+    if (stderr && !stderr.includes("binary schema")) {
+      // flatc often outputs benign warnings to stderr about binary schema files not being generated
+      // so we will ignore those.
+      console.error(`flatc error: ${stderr}`);
+    }
+    console.log(`Successfully compiled FlatBuffers schema with flatc`);
+    if (stdout) {
+      console.log(stdout);
+    }
+  } catch (error) {
+    console.error(`Failed to execute flatc: ${error}`);
+    // Decide if we should stop here or continue
+  }
+
+  // --- Step 3: Generate the schema.zg.ts file ---
+  const tsContent = generateZgFile(schemas);
+  const tsFilePath = path.join(outputDirectory, "schema.zg.ts");
+  await fs.writeFile(tsFilePath, tsContent);
+  console.log(`Generated ZG schema at ${tsFilePath}`);
 }
