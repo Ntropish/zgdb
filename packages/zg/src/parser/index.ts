@@ -1,5 +1,5 @@
 import {
-  ZGEntityDef,
+  EntityDef,
   NormalizedSchema,
   Field,
   Relationship,
@@ -9,10 +9,8 @@ import {
   AuthRule,
   AuthAction,
   RelationshipAction,
-  ZGAuthBlock,
-  SchemaConfig,
-  EntityDef,
   NormalizedAuthBlock,
+  SchemaConfig,
   Index,
 } from "./types.js";
 import { ZodTypeAny, ZodObject } from "zod";
@@ -159,7 +157,7 @@ function parseIndexes(
  * @returns An array of normalized ManyToManyRelationship objects.
  */
 function parseManyToMany(
-  manyToMany: ZGEntityDef<any>["manyToMany"]
+  manyToMany: EntityDef<any, any>["manyToMany"]
 ): ManyToManyRelationship[] {
   const relationships: ManyToManyRelationship[] = [];
   if (!manyToMany) {
@@ -231,7 +229,7 @@ export function parseZodSchema(
  * @returns An array of normalized standard and polymorphic relationships.
  */
 function parseAllRelationships(
-  relationships: ZGEntityDef<any>["relationships"]
+  relationships: EntityDef<any, any>["relationships"]
 ): (Relationship | PolymorphicRelationship)[] {
   const standard: (Relationship | PolymorphicRelationship)[] = [];
 
@@ -324,7 +322,7 @@ export function parseSchemas(
 
     const auth = parseAuthBlock(
       schemaDef.name,
-      schemaDef.auth as ZGAuthBlock<string | string[]>,
+      schemaDef.auth,
       fieldNames,
       relationshipNames,
       localPolicyMap,

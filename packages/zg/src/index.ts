@@ -1,27 +1,35 @@
-import { SchemaConfig, EntityDef, Resolver } from "./parser/types.js";
-
-import { parseSchemas } from "./parser/index.js";
-import { generateFbs } from "./generator/generator.js";
-import { generateZgFile } from "./generator/zg-file-generator.js";
 import { promises as fs } from "fs";
 import path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
+import {
+  SchemaConfig,
+  EntityDef,
+  Resolver,
+  Policy,
+  NormalizedSchema,
+} from "./parser/types.js";
+import { parseSchemas } from "./parser/index.js";
+import { generateFbs } from "./generator/generator.js";
+import { generateZgFile } from "./generator/zg-file-generator.js";
 
 const execPromise = promisify(exec);
 
+export type { SchemaConfig, EntityDef, Resolver, Policy };
+
 /**
- * Factory function to define the entire application schema.
- * This is the main entry point for a ZG project.
- * @param config - The schema configuration object.
+ * The main factory function for creating a ZG schema configuration.
+ * It provides type inference and a structured way to define all entities,
+ * global resolvers, and local resolvers.
+ *
  * @returns The configuration object, which will be consumed by the ZG build process.
  */
 export function createSchema<
   TActor,
-  TDB,
+  TClient,
   const TEntities extends Record<string, EntityDef<any, any>>,
   const TGlobalResolvers extends Record<string, Function>
->(config: SchemaConfig<TActor, TDB, TEntities, TGlobalResolvers>) {
+>(config: SchemaConfig<TActor, TClient, TEntities, TGlobalResolvers>) {
   return config;
 }
 
@@ -47,7 +55,7 @@ export interface ZgRunOptions {
  *
  * @param options - The configuration options for the run.
  */
-export async function run(options: ZgRunOptions) {
+export async function zg(options: ZgRunOptions) {
   const {
     config,
     outputDir,
@@ -59,7 +67,7 @@ export async function run(options: ZgRunOptions) {
   await fs.mkdir(outputDir, { recursive: true });
 
   // --- 2. Parse and Generate FBS content ---
-  const normalizedSchemas = parseSchemas(config);
+  const normalizedSchemas: NormalizedSchema[] = parseSchemas(config);
   const fbsContent = await generateFbs(normalizedSchemas);
   const fbsFilePath = path.join(outputDir, "schema.fbs");
   await fs.writeFile(fbsFilePath, fbsContent);
@@ -70,7 +78,6 @@ export async function run(options: ZgRunOptions) {
   try {
     const { stdout, stderr } = await execPromise(flatcCommand);
     if (stderr) {
-      // flatc can write to stderr even on success, so we check for "error"
       if (stderr.toLowerCase().includes("error")) {
         throw new Error(`flatc error: ${stderr}`);
       }
@@ -80,12 +87,10 @@ export async function run(options: ZgRunOptions) {
       logger.log(`flatc output:\n${stdout}`);
     }
 
-    // After running, explicitly check if the file was created.
     const generatedTsPath = path.join(outputDir, "schema_generated.ts");
     const flatcOutputPath = path.join(outputDir, "schema.ts");
 
     try {
-      // flatc generates `schema.ts`, so we check for that and rename it.
       await fs.access(flatcOutputPath);
       await fs.rename(flatcOutputPath, generatedTsPath);
       logger.log(`✅ Successfully compiled FBS to ${generatedTsPath}`);
@@ -116,7 +121,3 @@ export async function run(options: ZgRunOptions) {
 
   logger.log("\n🎉 ZG build process complete!");
 }
-
-export type { SchemaConfig, EntityDef, Resolver };
-
-export { type Policy } from "./parser/types.js";

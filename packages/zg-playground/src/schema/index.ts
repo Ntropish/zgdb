@@ -2,27 +2,17 @@
  * This file is the single source of truth for the entire application schema.
  */
 import { createSchema, EntityDef } from "@tsmk/zg";
-import { ZgClient, CommentNode } from "../../../../temp-output/schema.zg.js";
+import { ZgClient } from "../../../../temp-output/schema.zg.js";
 
-import { ResolverContext } from "@tsmk/zg/dist/parser/types.js";
 // Import all schema definitions
-import { UserDef, IUserResolvers } from "./user.js";
-import { PostDef, IPostResolvers } from "./post.js";
-import { CommentDef, ICommentResolvers } from "./comment.js";
-import { FollowDef, IFollowResolvers } from "./follow.js";
-import { ImageDef, IImageResolvers } from "./image.js";
-import { PostTagDef, IPostTagResolvers } from "./post-tag.js";
-import { ReactionDef, IReactionResolvers } from "./reaction.js";
+import { UserDef } from "./user.js";
+import { PostDef } from "./post.js";
+import { CommentDef } from "./comment.js";
+import { FollowDef } from "./follow.js";
+import { ImageDef } from "./image.js";
+import { PostTagDef } from "./post-tag.js";
+import { ReactionDef } from "./reaction.js";
 import { TagDef } from "./tag.js";
-import {
-  UserNode,
-  PostNode,
-  FollowNode,
-  ImageNode,
-  ReactionNode,
-  PostTagNode,
-} from "../../../../temp-output/schema.zg.js";
-import { z } from "zod";
 
 // The project-specific Actor type.
 export interface MyAppActor {
@@ -30,43 +20,13 @@ export interface MyAppActor {
   roles: ("admin" | "moderator" | "user")[];
 }
 
-/**
- * A specialized version of the core `ResolverContext` that is pre-configured
- * with the application-specific `MyAppActor` and `ZgClient` types.
- *
- * @template TNode The generated ZG Node type for the entity (e.g., `UserNode`).
- * @template TInput The raw Zod schema type for the entity (e.g., `User`).
- * @template TContext Optional additional context for a specific resolver.
- */
-export type AppContext<TNode, TInput, TContext = {}> = ResolverContext<
-  MyAppActor,
-  TNode,
-  TInput,
-  ZgClient,
-  TContext
->;
-
 // Define the global policies and their implementations.
 export const globalResolvers = {
   isPublic: () => true,
-  isAuthenticated: ({ actor }: AppContext<any, any>) => !!actor.did,
-  hasAdminRights: ({ actor }: AppContext<any, any>) =>
+  isAuthenticated: ({ actor }: { actor: MyAppActor }) => !!actor.did,
+  hasAdminRights: ({ actor }: { actor: MyAppActor }) =>
     actor.roles.includes("admin"),
   never: () => false,
-};
-export type AppGlobalResolvers = typeof globalResolvers;
-
-// Combine all resolver interfaces into a single type for the factory.
-type AppResolvers = {
-  Comment: ICommentResolvers;
-  User: IUserResolvers;
-  Post: IPostResolvers;
-  Follow: IFollowResolvers;
-  Image: IImageResolvers;
-  Reaction: IReactionResolvers;
-  Tag: {};
-  PostTag: IPostTagResolvers;
-  // ... other resolver interfaces
 };
 
 const entities = {
@@ -80,27 +40,21 @@ const entities = {
   Tag: TagDef,
 };
 
-export const AppSchema = createSchema({
+export const AppSchema = createSchema<MyAppActor, ZgClient>({
   globalResolvers,
   entities,
   resolvers: {
     Comment: {
-      isAuthor: ({
-        actor,
-        record,
-        input,
-      }: AppContext<CommentNode, Comment>) => {
+      isAuthor: ({ actor, record, input }) => {
         const authorId = record?.authorId || input?.authorId;
         if (typeof authorId !== "string") return false;
         return actor.did === authorId;
       },
-      isPostAuthor: async ({ actor, record }: AppContext<PostNode, Post>) => {
+      isPostAuthor: async ({ actor, record, db }) => {
         if (!record) return false;
-        const post = await record.post;
+        const post = await db.find("Post", record.postId);
         if (!post) return false;
-        const authorId = post.author;
-        if (typeof authorId !== "string") return false;
-        return actor.did === authorId;
+        return actor.did === post.author;
       },
     },
     User: {
@@ -131,7 +85,7 @@ export const AppSchema = createSchema({
         // For a create operation, we must check the input
         if (input) {
           if (input.postId) {
-            const post = await db.Post.find(input.postId);
+            const post = await db.find("Post", input.postId);
             return !!post && post.author === actor.did;
           }
           if (input.userId) {
@@ -142,11 +96,11 @@ export const AppSchema = createSchema({
         // For update/delete, we check the existing record
         if (record) {
           if (record.postId) {
-            const post = await record.post;
+            const post = await db.find("Post", record.postId);
             return !!post && post.author === actor.did;
           }
           if (record.userId) {
-            const user = await record.user;
+            const user = await db.find("User", record.userId);
             return !!user && user.id === actor.did;
           }
         }
@@ -165,7 +119,7 @@ export const AppSchema = createSchema({
       isPostAuthor: async ({ actor, record, input, db }) => {
         const postId = record?.postId || input?.postId;
         if (!postId) return false;
-        const post = await db.Post.find(postId);
+        const post = await db.find("Post", postId);
         if (!post) return false;
         return actor.did === post.author;
       },

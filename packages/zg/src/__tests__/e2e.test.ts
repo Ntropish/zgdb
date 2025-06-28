@@ -1,5 +1,5 @@
-import { run } from "../index.js";
-import { RawSchema } from "../parser/types.js";
+import { zg } from "../index.js";
+import { EntityDef } from "../parser/types.js";
 import { z } from "zod";
 import { promises as fs } from "fs";
 import path from "path";
@@ -41,7 +41,7 @@ describe("ZG End-to-End Test", () => {
   });
 
   it("should run the full pipeline and generate all contract files correctly", async () => {
-    const TestSchema: RawSchema = {
+    const TestSchema: EntityDef<any, any> = {
       name: "TestEntity",
       schema: z.object({
         id: z.string(),
@@ -49,7 +49,7 @@ describe("ZG End-to-End Test", () => {
       }),
     };
 
-    await run({
+    await zg({
       config: { entities: { TestEntity: TestSchema } },
       outputDir: TEST_OUTPUT_DIR,
     });
