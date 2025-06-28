@@ -9,7 +9,8 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "clean": "turbo run clean",
-    "dev": "pnpm turbo run dev --filter=@tsmk/zg --filter=@zg/client"
+    "dev": "pnpm turbo run dev --filter=@tsmk/zg --filter=@zg/client",
+    "zg:pg": "node ./packages/cli/dist/index.cjs build --schema packages/zg-playground/dist/index.js --output packages/zg-playground/zg/"
   },
   "keywords": [],
   "author": "",
