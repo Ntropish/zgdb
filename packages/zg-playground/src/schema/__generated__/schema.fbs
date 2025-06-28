@@ -1,0 +1,76 @@
+namespace MyGeneratedSchema;
+
+table User {
+  id: string;
+  publicKey: string;
+  displayName: string;
+  avatarUrl: string;
+}
+
+/// A post made by a user, which can have comments.
+table Post {
+  id: string;
+  title: string;
+  content: string;
+  author: string;
+  createdAt: long;
+}
+
+/// A comment on a post
+table Comment {
+  id: string;
+  content: string;
+  authorId: string;
+  postId: string;
+  createdAt: long;
+}
+
+/// A directional relationship indicating one user follows another.
+table Follow {
+  id: string;
+  followerId: string;
+  followingId: string;
+  createdAt: long;
+}
+
+/// Nested schema for metadata of Image
+table Image_Metadata {
+  width: long;
+  height: long;
+  format: string;
+  createdAt: long;
+}
+
+/// An image, which can be a user's profile picture or part of a post.
+table Image {
+  id: string;
+  url: string;
+  altText: string;
+  metadata: Image_Metadata;
+  postId: string;
+  userId: string;
+}
+
+/// A reaction from a user to a specific piece of content, like a post or a comment.
+table Reaction {
+  id: string;
+  type: string;
+  authorId: string;
+  targetId: string;
+  targetType: string;
+}
+
+/// A tag that can be applied to posts to categorize them.
+table Tag {
+  id: string;
+  name: string;
+}
+
+/// The join entity connecting a Post and a Tag.
+table PostTag {
+  id: string;
+  postId: string;
+  tagId: string;
+}
+
+root_type User;

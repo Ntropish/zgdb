@@ -1,6 +1,8 @@
 import { generate } from "@zgdb/generate";
 import path from "path";
+import { pathToFileURL } from "url";
 import { Plugin } from "vite";
+import { build } from "esbuild";
 
 export interface ZgVitePluginOptions {
   schema: string;
@@ -14,10 +16,23 @@ export function zgdb(options: ZgVitePluginOptions): Plugin {
   async function runGenerator() {
     try {
       console.log("Running ZGDB generator...");
+
+      const buildResult = await build({
+        entryPoints: [schema],
+        bundle: true,
+        write: false,
+        platform: "node",
+        format: "esm",
+      });
+
+      const [outputFile] = buildResult.outputFiles;
+      const dataUri = `data:text/javascript;base64,${Buffer.from(
+        outputFile.contents
+      ).toString("base64")}`;
+
       await generate({
         schema: {
-          // @ts-ignore
-          entities: (await import(schema)).entities,
+          entities: (await import(dataUri)).entities,
         },
         outputDir,
       });

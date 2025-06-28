@@ -18,8 +18,14 @@ export default defineConfig({
         "path",
         "child_process",
         "util",
+        "url",
+        "esbuild",
       ],
     },
+  },
+  define: {
+    __filename: JSON.stringify(import.meta.url),
+    __dirname: JSON.stringify("."),
   },
   plugins: [dts()],
 });

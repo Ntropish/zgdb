@@ -14,8 +14,9 @@
     "lint:fix": "eslint . --ext .ts --fix"
   },
   "dependencies": {
+    "@zgdb/generate": "workspace:*",
     "ejs": "^3.1.10",
-    "@zgdb/generate": "workspace:*"
+    "esbuild": "^0.25.5"
   },
   "peerDependencies": {
     "zod": "^3.0.0"

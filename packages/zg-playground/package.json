@@ -4,13 +4,14 @@
   "description": "A composable, event-driven builder tool using tsmk kernels.",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "vite build",
     "test": "vitest"
   },
   "dependencies": {
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@zgdb/vite-plugin": "workspace:*",
     "@zgdb/generate": "workspace:*",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.12.12",
