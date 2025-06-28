@@ -20,4 +20,7 @@ export default defineConfig({
     },
     manifest: false,
   },
+  test: {
+    // Vitest configuration options go here
+  },
 });
