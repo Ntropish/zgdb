@@ -17,19 +17,16 @@ export const CommentDef: EntityDef = {
   schema: CommentSchema,
   relationships: {
     author: {
-      type: "standard",
       entity: "User",
       field: "authorId",
       cardinality: "one",
     },
     post: {
-      type: "standard",
       entity: "Post",
       field: "postId",
       cardinality: "one",
     },
     reactions: {
-      type: "standard",
       entity: "Reaction",
       cardinality: "many",
       mappedBy: "target",

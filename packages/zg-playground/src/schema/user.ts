@@ -16,31 +16,26 @@ export const UserDef: EntityDef = {
 
   relationships: {
     posts: {
-      type: "standard",
       entity: "Post",
       cardinality: "many",
       mappedBy: "author",
     },
     comments: {
-      type: "standard",
       entity: "Comment",
       cardinality: "many",
       mappedBy: "author",
     },
     reactions: {
-      type: "standard",
       entity: "Reaction",
       cardinality: "many",
       mappedBy: "author",
     },
     following: {
-      type: "standard",
       entity: "Follow",
       cardinality: "many",
       mappedBy: "follower",
     },
     followers: {
-      type: "standard",
       entity: "Follow",
       cardinality: "many",
       mappedBy: "following",

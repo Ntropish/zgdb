@@ -15,7 +15,6 @@ export const PostDef: EntityDef = {
   schema: PostSchema,
   relationships: {
     author: {
-      type: "standard",
       entity: "User",
       field: "author",
       cardinality: "one",
@@ -23,7 +22,6 @@ export const PostDef: EntityDef = {
       required: true,
     },
     comments: {
-      type: "standard",
       entity: "Comment",
       cardinality: "many",
       description: "Comments on this post.",
@@ -34,14 +32,12 @@ export const PostDef: EntityDef = {
       mappedBy: "post",
     },
     images: {
-      type: "standard",
       entity: "Image",
       cardinality: "many",
       description: "Images included in this post.",
       mappedBy: "post",
     },
     reactions: {
-      type: "standard",
       entity: "Reaction",
       cardinality: "many",
       description: "Reactions on this post.",

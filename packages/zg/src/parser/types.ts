@@ -25,7 +25,7 @@ export type PolymorphicRelationshipDef = {
 };
 
 export type StandardRelationshipDef = {
-  type: "standard";
+  type?: "standard";
   entity: string;
   field?: string;
   cardinality: "one" | "many";

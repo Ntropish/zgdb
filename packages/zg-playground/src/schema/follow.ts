@@ -15,7 +15,6 @@ export const FollowDef: EntityDef = {
   schema: FollowSchema,
   relationships: {
     follower: {
-      type: "standard",
       entity: "User",
       field: "followerId",
       cardinality: "one",
@@ -23,7 +22,6 @@ export const FollowDef: EntityDef = {
       required: true,
     },
     following: {
-      type: "standard",
       entity: "User",
       field: "followingId",
       cardinality: "one",

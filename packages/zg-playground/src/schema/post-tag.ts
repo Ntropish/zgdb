@@ -13,14 +13,14 @@ export const PostTagDef: EntityDef = {
   schema: PostTagSchema,
   relationships: {
     post: {
-      type: "Post",
+      entity: "Post",
       field: "postId",
       cardinality: "one",
       description: "The post being tagged.",
       required: true,
     },
     tag: {
-      type: "Tag",
+      entity: "Tag",
       field: "tagId",
       cardinality: "one",
       description: "The tag being applied.",

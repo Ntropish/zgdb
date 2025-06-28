@@ -22,13 +22,13 @@ export const ImageDef: EntityDef = {
   schema: ImageSchema,
   relationships: {
     post: {
-      type: "Post",
+      entity: "Post",
       field: "postId",
       cardinality: "one",
       description: "The post this image is associated with, if any.",
     },
     user: {
-      type: "User",
+      entity: "User",
       field: "userId",
       cardinality: "one",
       description: "The user this image is a profile picture for, if any.",
