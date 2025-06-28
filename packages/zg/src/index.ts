@@ -26,12 +26,6 @@ export async function generate(options: GenerateOptions): Promise<void> {
   await generateFiles(normalizedSchemas, options.outputDir);
 }
 
-const zg = {
-  generate,
-  parseSchemas,
-  generateFbsFile,
-};
-
 export {
   parseSchemas,
   generateFbsFile,
@@ -44,5 +38,3 @@ export {
   Resolver,
   ResolverContext,
 };
-
-export default zg;

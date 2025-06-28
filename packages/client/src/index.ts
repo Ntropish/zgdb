@@ -2,17 +2,17 @@
 
 import { Table } from "flatbuffers";
 
-export type ZgAuthContext = {
-  actor: string;
+export type ZgAuthContext<TActor = any> = {
+  actor: TActor;
 };
 
 // This is the base class for all generated node types.
 // It provides the link to the low-level Flatbuffers object.
-export class ZgBaseNode<T extends Table> {
+export class ZgBaseNode<T extends Table, TActor = any> {
   constructor(
     protected db: ZgDatabase,
     public fbb: T,
-    protected authContext: ZgAuthContext | null
+    protected authContext: ZgAuthContext<TActor> | null
   ) {}
 }
 

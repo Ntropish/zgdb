@@ -25,7 +25,7 @@ export async function generateFbsFile(
   const builder = createFbsBuilder();
 
   // A real implementation might pull this from a global config
-  builder.namespace("MyGeneratedSchema");
+  builder.namespace("Schema");
 
   const sortedSchemas = topologicalSort(schemas);
 
@@ -80,7 +80,7 @@ export async function generate(
   // --- Step 2: Compile the .fbs file to TypeScript using flatc ---
   // The output of this will be `schema_generated.ts` in the output directory.
   const flatcPath = "flatc"; // Assumes flatc is in the system's PATH
-  const command = `${flatcPath} --ts --gen-mutable --gen-all -o ${outputDirectory} ${fbsFilePath}`;
+  const command = `${flatcPath} --ts --gen-mutable --gen-all --ts-main-module-file-name schema_generated -o ${outputDirectory} ${fbsFilePath}`;
 
   try {
     const { stdout, stderr } = await execAsync(command);
