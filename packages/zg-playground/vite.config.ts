@@ -16,7 +16,7 @@ export default defineConfig({
       formats: ["es"],
     },
     rollupOptions: {
-      external: ["zod", "@tsmk/zg"],
+      external: ["zod", "@zgdb/generate"],
     },
     manifest: false,
   },

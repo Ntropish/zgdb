@@ -1,5 +1,5 @@
 {
-  "name": "@tsmk/zg",
+  "name": "@zgdb/generate",
   "version": "1.0.0",
   "description": "",
   "main": "./dist/index.cjs",
@@ -23,7 +23,7 @@
     "lint:fix": "eslint . --ext .ts --fix"
   },
   "dependencies": {
-    "@tsmk/fbs-builder": "workspace:*",
+    "@zgdb/fbs-builder": "workspace:*",
     "ejs": "^3.1.10"
   },
   "peerDependencies": {

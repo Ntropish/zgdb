@@ -20,7 +20,7 @@ export default defineConfig({
         "util",
         "yargs/helpers",
         "yargs/yargs",
-        "@tsmk/zg",
+        "@zgdb/generate",
         "glob",
       ],
     },

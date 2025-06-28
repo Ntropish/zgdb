@@ -3,7 +3,7 @@ import {
   createFluentBuilder,
   FluentBuilder,
   CapabilityMap,
-} from "@tsmk/builder";
+} from "@zgdb/builder";
 import { sha512 } from "@noble/hashes/sha512";
 
 export interface Capability {

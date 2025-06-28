@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
-      name: "@tsmk/runtime",
+      name: "@zgdb/client",
       fileName: "index",
       formats: ["es", "cjs"],
     },

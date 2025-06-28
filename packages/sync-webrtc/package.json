@@ -1,5 +1,5 @@
 {
-  "name": "@zg/sync-webrtc",
+  "name": "@zgdb/sync-webrtc",
   "version": "0.1.0",
   "description": "A Hybrid Logical Clock implementation.",
   "type": "module",

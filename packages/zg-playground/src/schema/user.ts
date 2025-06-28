@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EntityDef } from "@tsmk/zg";
+import { EntityDef } from "@zgdb/generate";
 
 export const UserDef: EntityDef = {
   name: "User",

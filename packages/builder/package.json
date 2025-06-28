@@ -1,5 +1,5 @@
 {
-  "name": "@tsmk/builder",
+  "name": "@zgdb/builder",
   "version": "1.0.0",
   "description": "A composable, event-driven builder tool using tsmk kernels.",
   "type": "module",

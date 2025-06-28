@@ -7,7 +7,7 @@ import {
   createFbsBuilder,
   renderFbs,
   createInitialFbsFileState,
-} from "@tsmk/fbs-builder";
+} from "@zgdb/fbs-builder";
 import { NormalizedSchema } from "../parser/types.js";
 import { topologicalSort } from "./topological-sort.js";
 

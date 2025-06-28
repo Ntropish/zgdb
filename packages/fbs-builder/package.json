@@ -1,5 +1,5 @@
 {
-  "name": "@tsmk/fbs-builder",
+  "name": "@zgdb/fbs-builder",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
@@ -14,7 +14,7 @@
     "lint:fix": "eslint . --ext .ts --fix"
   },
   "devDependencies": {
-    "@tsmk/builder": "workspace:*",
+    "@zgdb/builder": "workspace:*",
     "@types/jest": "^29.5.12",
     "@types/jest-specific-snapshot": "^0.5.9",
     "@types/node": "^20.12.12",

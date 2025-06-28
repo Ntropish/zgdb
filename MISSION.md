@@ -27,7 +27,7 @@ This is the primary interface for the developer. They define their graph's data 
   - **Indexing:** Support for defining single or composite-key database indexes directly in the schema.
   - **Declarative Authorization:** A powerful `auth` property to define granular access control rules. These rules are compiled and enforced by the runtime.
 
-### 3.2. The Generator Pipeline (`@tsmk/zg`)
+### 3.2. The Generator Pipeline (`@zgdb/generate`)
 
 This is the engine that transforms the developer's schemas into a fully-functional database client. It follows a professional, multi-stage pipeline for maximum testability and separation of concerns.
 
@@ -41,10 +41,10 @@ This is the engine that transforms the developer's schemas into a fully-function
 
 This layer is composed of several specialized, independent packages that provide the underlying power for the generated database. They handle identity, authorization, data synchronization, and storage.
 
-- **`@zg/ucan`:** Implements **Decentralized Identity (DIDs)** and **User-Controlled Authorization Networks (UCANs)** for a robust, verifiable permissions system.
-- **`@zg/hlc`:** A **Hybrid Logical Clock** implementation used to correctly order events and data operations across a distributed network.
-- **`@zg/prolly-tree`:** A **Probabilistic B-Tree (Prolly Tree)** implementation. This advanced, content-addressed data structure is the core storage engine.
-- **`@zg/sync-webrtc`:** A transport layer that uses **WebRTC** to create direct peer-to-peer connections between clients for data synchronization.
+- **`@zgdb/ucan`:** Implements **Decentralized Identity (DIDs)** and **User-Controlled Authorization Networks (UCANs)** for a robust, verifiable permissions system.
+- **`@zgdb/hlc`:** A **Hybrid Logical Clock** implementation used to correctly order events and data operations across a distributed network.
+- **`@zgdb/prolly-tree`:** A **Probabilistic B-Tree (Prolly Tree)** implementation. This advanced, content-addressed data structure is the core storage engine.
+- **`@zgdb/sync-webrtc`:** A transport layer that uses **WebRTC** to create direct peer-to-peer connections between clients for data synchronization.
 
 ### 3.4. The ZG Client: A Synchronous, Proxy-Based API
 
@@ -60,6 +60,6 @@ The generated ZG client is the crown jewel of the developer experience. It is a 
 
 A developer starts by defining their application's data graph using the ZG `createSchema` factory in familiar TypeScript files. They run the `zg` command-line tool, which triggers our generator pipeline. The pipeline parses these files and generates a fully-typed TypeScript client for all database operations.
 
-This generated client, `zgdb`, is the developer's primary tool. When they create a post via `const post = zgdb.Post.create(...)`, the call returns **synchronously** with a proxy object. The UI can immediately render `post.title`. In the background, the ZG runtime takes this new data, signs it with the user's DID from `@zg/ucan`, timestamps it with `@zg/hlc`, and queues it for serialization into a Flatbuffer.
+This generated client, `zgdb`, is the developer's primary tool. When they create a post via `const post = zgdb.Post.create(...)`, the call returns **synchronously** with a proxy object. The UI can immediately render `post.title`. In the background, the ZG runtime takes this new data, signs it with the user's DID from `@zgdb/ucan`, timestamps it with `@zgdb/hlc`, and queues it for serialization into a Flatbuffer.
 
-Later, when displaying the post, accessing `post.author.name` is a seamless, synchronous property access. The client's unified lookup logic transparently checks its cache, then the main Prolly Tree storage, to resolve the relationship and return another proxy. When a user wants to share this post, they issue a UCAN token. A friend's client connects via `@zg/sync-webrtc`, verifies the token, and efficiently synchronizes the data by diffing their local Prolly Tree with the sender's. The result is a secure, decentralized, real-time graph database that "just works," abstracting away the immense complexity of distributed systems behind a simple, synchronous API.
+Later, when displaying the post, accessing `post.author.name` is a seamless, synchronous property access. The client's unified lookup logic transparently checks its cache, then the main Prolly Tree storage, to resolve the relationship and return another proxy. When a user wants to share this post, they issue a UCAN token. A friend's client connects via `@zgdb/sync-webrtc`, verifies the token, and efficiently synchronizes the data by diffing their local Prolly Tree with the sender's. The result is a secure, decentralized, real-time graph database that "just works," abstracting away the immense complexity of distributed systems behind a simple, synchronous API.

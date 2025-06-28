@@ -2,7 +2,7 @@ import {
   createFluentBuilder,
   FluentBuilder,
   CapabilityMap,
-} from "@tsmk/builder";
+} from "@zgdb/builder";
 import {
   FbsTableState,
   FbsFileState,

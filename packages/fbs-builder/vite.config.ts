@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
-      name: "@tsmk/fbs-builder",
+      name: "@zgdb/fbs-builder",
       fileName: "index",
       formats: ["es", "cjs"],
     },

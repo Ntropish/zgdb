@@ -1,5 +1,5 @@
 {
-  "name": "@tsmk/cli",
+  "name": "@zgdb/cli",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
@@ -17,7 +17,7 @@
     "lint:fix": "eslint . --ext .ts --fix"
   },
   "dependencies": {
-    "@tsmk/zg": "workspace:*",
+    "@zgdb/generate": "workspace:*",
     "@types/glob": "^8.1.0",
     "@types/yargs": "^17.0.33",
     "commander": "^12.1.0",

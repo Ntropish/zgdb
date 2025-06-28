@@ -1,5 +1,5 @@
 {
-  "name": "@zg/prolly-tree",
+  "name": "@zgdb/prolly-tree",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@noble/hashes": "^1.8.0",
-    "@tsmk/builder": "workspace:*",
+    "@zgdb/builder": "workspace:*",
     "@types/lodash-es": "^4.17.12",
     "fastcdc": "^1.0.1",
     "lodash-es": "^4.17.21",

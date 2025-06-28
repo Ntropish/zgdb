@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
-      name: "@zg/sync-webrtc",
+      name: "@zgdb/sync-webrtc",
       fileName: "index",
       formats: ["es", "cjs"],
     },

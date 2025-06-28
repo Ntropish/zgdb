@@ -35,15 +35,15 @@ importers:
 
   packages/cli:
     dependencies:
-      '@tsmk/zg':
-        specifier: workspace:*
-        version: link:../zg
       '@types/glob':
         specifier: ^8.1.0
         version: 8.1.0
       '@types/yargs':
         specifier: ^17.0.33
         version: 17.0.33
+      '@zgdb/generate':
+        specifier: workspace:*
+        version: link:../zg
       commander:
         specifier: ^12.1.0
         version: 12.1.0
@@ -124,9 +124,6 @@ importers:
 
   packages/fbs-builder:
     devDependencies:
-      '@tsmk/builder':
-        specifier: workspace:*
-        version: link:../builder
       '@types/jest':
         specifier: ^29.5.12
         version: 29.5.14
@@ -139,6 +136,9 @@ importers:
       '@vitest/ui':
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.4)
+      '@zgdb/builder':
+        specifier: workspace:*
+        version: link:../builder
       npm-run-all:
         specifier: ^4.1.5
         version: 4.1.5
@@ -178,12 +178,12 @@ importers:
       '@noble/hashes':
         specifier: ^1.8.0
         version: 1.8.0
-      '@tsmk/builder':
-        specifier: workspace:*
-        version: link:../builder
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
+      '@zgdb/builder':
+        specifier: workspace:*
+        version: link:../builder
       fastcdc:
         specifier: ^1.0.1
         version: 1.0.1
@@ -242,7 +242,7 @@ importers:
       '@noble/hashes':
         specifier: ^1.8.0
         version: 1.8.0
-      '@tsmk/builder':
+      '@zgdb/builder':
         specifier: workspace:*
         version: link:../builder
       multiformats:
@@ -325,7 +325,7 @@ importers:
 
   packages/zg:
     dependencies:
-      '@tsmk/fbs-builder':
+      '@zgdb/fbs-builder':
         specifier: workspace:*
         version: link:../fbs-builder
       ejs:
@@ -387,18 +387,18 @@ importers:
         specifier: ^3.25.67
         version: 3.25.67
     devDependencies:
-      '@tsmk/zg':
-        specifier: workspace:*
-        version: link:../zg
       '@types/jest':
         specifier: ^29.5.12
         version: 29.5.14
       '@types/node':
         specifier: ^20.12.12
         version: 20.19.1
-      '@zg/client':
+      '@zgdb/client':
         specifier: workspace:*
         version: link:../client
+      '@zgdb/generate':
+        specifier: workspace:*
+        version: link:../zg
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2

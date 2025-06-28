@@ -4,7 +4,7 @@ import path from "path";
 import { pathToFileURL } from "node:url";
 import { promises as fs } from "fs";
 import ora from "ora";
-import zg from "@tsmk/zg";
+import zg from "@zgdb/generate";
 
 export function parseArgs(argv: string[]) {
   program

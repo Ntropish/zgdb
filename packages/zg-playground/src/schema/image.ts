@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EntityDef } from "@tsmk/zg";
+import { EntityDef } from "@zgdb/generate";
 
 const ImageSchema = z.object({
   id: z.string(),

@@ -1,5 +1,5 @@
 {
-  "name": "@zg/ucan",
+  "name": "@zgdb/ucan",
   "version": "0.1.0",
   "description": "User-Controlled Authorization (UCAN) and DID implementation.",
   "main": "dist/index.js",
@@ -33,7 +33,7 @@
   "dependencies": {
     "@noble/ed25519": "^2.3.0",
     "@noble/hashes": "^1.8.0",
-    "@tsmk/builder": "workspace:*",
+    "@zgdb/builder": "workspace:*",
     "multiformats": "^13.3.7"
   }
 }

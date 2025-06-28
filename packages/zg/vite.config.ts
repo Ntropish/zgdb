@@ -8,7 +8,7 @@ export default defineConfig({
     ssr: true,
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
-      name: "@tsmk/zg",
+      name: "@zgdb/generate",
       fileName: "index",
     },
     rollupOptions: {

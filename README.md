@@ -71,15 +71,8 @@ flatc --version
 
 ### 2. Installation & Setup
 
-Clone the repository and install the dependencies using pnpm.
-
-```sh
-# Clone your repository
-git clone https://github.com/your-org/tk.git # <-- Replace with your repo URL
-cd tk
-
-# Install all monorepo dependencies
-pnpm install
+```
+// TODO
 ```
 
 ### 3. Define a Schema
@@ -90,7 +83,7 @@ Here is a simplified example:
 
 ```typescript
 // src/schema/index.ts
-import { createSchema, f } from "@tsmk/zg";
+import { createSchema, f } from "@zgdb/generate";
 
 export default createSchema({
   entities: {
@@ -133,7 +126,7 @@ You can now import and use the generated client in your application. The client 
 
 ```typescript
 import { createZgClient } from "../zg"; // <-- Import from the generated directory
-import { ZgDatabase } from "@tsmk/client";
+import { ZgDatabase } from "@zgdb/client";
 
 // The generated createZgClient gives you a typed version of the DB
 const db: ZgDatabase = createZgClient({});

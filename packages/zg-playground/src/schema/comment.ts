@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EntityDef } from "@tsmk/zg";
+import { EntityDef } from "@zgdb/generate";
 
 // Step 1: Define the Zod schema and its TypeScript type.
 const CommentSchema = z.object({
