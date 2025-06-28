@@ -1,17 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { parseSchemas } from "../index.js";
-import { RawSchema } from "../types.js";
+import { EntityDef, NormalizedSchema } from "../types.js";
 import { z } from "zod";
 
 describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
   it("should handle a schema with no fields", () => {
-    const rawNoFieldsSchema: RawSchema = {
+    const rawNoFieldsSchema: EntityDef = {
       name: "NoFields",
       description: "A schema with only an ID, no other fields.",
       schema: z.object({
         id: z.string(),
       }),
-      relationships: {},
     };
     // Let's remove the id to make it truly empty
     delete (rawNoFieldsSchema.schema as any).shape.id;
@@ -24,11 +23,10 @@ describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
   });
 
   it("should handle a schema with no relationships", () => {
-    const rawNoRelsSchema: RawSchema = {
+    const rawNoRelsSchema: EntityDef = {
       name: "NoRels",
       description: "A schema with fields but no relationships.",
       schema: z.object({ id: z.string(), name: z.string() }),
-      relationships: {},
     };
     const normalized = parseSchemas({ entities: { NoRels: rawNoRelsSchema } });
     expect(normalized).toHaveLength(1);
@@ -36,7 +34,7 @@ describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
   });
 
   it("should handle a schema with no indexes", () => {
-    const rawNoIndexesSchema: RawSchema = {
+    const rawNoIndexesSchema: EntityDef = {
       name: "NoIndexes",
       description: "A schema with no indexes defined.",
       schema: z.object({ id: z.string() }),
@@ -49,7 +47,7 @@ describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
   });
 
   it("should handle a completely empty schema definition", () => {
-    const rawEmptySchema: RawSchema = {
+    const rawEmptySchema: EntityDef = {
       name: "Empty",
       schema: z.object({}),
     };

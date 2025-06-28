@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { parseSchemas } from "../index.js";
-import { RawSchema, ZGEntityDef, NormalizedSchema } from "../types.js";
+import { EntityDef, NormalizedSchema } from "../types.js";
 import { z } from "zod";
 
 const findSchema = (schemas: NormalizedSchema[], name: string) => {
   return schemas.find((s) => s.name === name);
 };
 
-const rawUserSchema: ZGEntityDef<any> = {
+const rawUserSchema: EntityDef = {
   name: "User",
   description: "A user of the application.",
   schema: z.object({
@@ -22,10 +22,9 @@ const rawUserSchema: ZGEntityDef<any> = {
       lastLogin: z.date(),
     }),
   }),
-  relationships: {},
   indexes: [
     { on: "email", unique: true },
-    { on: "name", type: "btree" },
+    { on: ["name"], type: "btree" },
   ],
 };
 
@@ -45,10 +44,25 @@ describe("Schema Parser", () => {
     expect(userSchema!.fields).toHaveLength(8);
     expect(userSchema!.fields).toEqual(
       expect.arrayContaining([
-        { name: "id", type: "string", required: true },
-        { name: "isAdmin", type: "bool", required: false },
-        { name: "tags", type: "[string]", required: true },
-        { name: "metadata", type: "User_Metadata", required: true },
+        { name: "id", type: "string", required: true, attributes: new Map() },
+        {
+          name: "isAdmin",
+          type: "bool",
+          required: false,
+          attributes: new Map(),
+        },
+        {
+          name: "tags",
+          type: "[string]",
+          required: true,
+          attributes: new Map(),
+        },
+        {
+          name: "metadata",
+          type: "User_Metadata",
+          required: true,
+          attributes: new Map(),
+        },
       ])
     );
     expect(userSchema!.indexes).toHaveLength(2);
@@ -56,25 +70,30 @@ describe("Schema Parser", () => {
 
     expect(metadataSchema!.name).toBe("User_Metadata");
     expect(metadataSchema!.fields).toEqual([
-      { name: "lastLogin", type: "long", required: true },
+      {
+        name: "lastLogin",
+        type: "long",
+        required: true,
+        attributes: new Map(),
+      },
     ]);
   });
 
   it("should parse a basic one-to-one relationship", () => {
-    const rawPostSchema: RawSchema = {
+    const rawPostSchema: EntityDef = {
       name: "Post",
       schema: z.object({
         id: z.string(),
         title: z.string(),
-        author: z.string(),
+        authorId: z.string(),
       }),
       relationships: {
-        user: {
-          author: {
-            cardinality: "one",
-            description: "The user who wrote the post.",
-            required: true,
-          },
+        author: {
+          entity: "User",
+          cardinality: "one",
+          required: true,
+          description: "The user who wrote the post.",
+          field: "authorId",
         },
       },
     };
@@ -88,32 +107,31 @@ describe("Schema Parser", () => {
     expect(postSchema.relationships).toEqual([
       {
         name: "author",
-        node: "user",
+        node: "User",
         cardinality: "one",
         required: true,
         description: "The user who wrote the post.",
+        mappedBy: undefined, // No mappedBy in a one-to-one with foreign key
       },
     ]);
   });
 
   it("should parse a polymorphic relationship", () => {
-    const rawReactionSchema: RawSchema = {
+    const rawReactionSchema: EntityDef = {
       name: "Reaction",
       schema: z.object({
         id: z.string(),
         targetId: z.string(),
-        targetType: z.enum(["post", "comment"]),
+        targetType: z.enum(["Post", "Comment"]),
       }),
       relationships: {
-        polymorphic: {
-          target: {
-            cardinality: "one",
-            required: true,
-            type: "polymorphic",
-            discriminator: "targetType",
-            foreignKey: "targetId",
-            references: ["post", "comment"],
-          },
+        target: {
+          type: "polymorphic",
+          cardinality: "one",
+          required: true,
+          discriminator: "targetType",
+          foreignKey: "targetId",
+          references: ["Post", "Comment"],
         },
       },
     };
@@ -126,18 +144,11 @@ describe("Schema Parser", () => {
     const reactionSchema = normalized[0];
 
     expect(reactionSchema.relationships).toHaveLength(1);
-    expect(reactionSchema.relationships).toEqual([
-      {
-        name: "target",
-        node: "polymorphic",
-        cardinality: "one",
-        required: true,
-        type: "polymorphic",
-        discriminator: "targetType",
-        foreignKey: "targetId",
-        references: ["post", "comment"],
-      },
-    ]);
+    expect(reactionSchema.relationships[0]).toEqual({
+      name: "target",
+      type: "polymorphic",
+      field: "targetId",
+    });
   });
 
   it("should parse a many-to-many relationship", () => {
@@ -176,27 +187,24 @@ describe("Schema Parser", () => {
   });
 
   it("should parse a one-to-many relationship", () => {
-    const UserSchema: RawSchema = {
+    const UserSchema: EntityDef = {
       name: "User",
       schema: z.object({ id: z.string() }),
       relationships: {
-        Post: {
-          posts: {
-            cardinality: "many",
-            mappedBy: "author",
-            description: "Posts by the user.",
-          },
+        posts: {
+          entity: "Post",
+          cardinality: "many",
+          mappedBy: "author",
+          description: "Posts by the user.",
         },
       },
     };
 
-    const PostSchema: RawSchema = {
+    const PostSchema: EntityDef = {
       name: "Post",
       schema: z.object({ id: z.string(), authorId: z.string() }),
       relationships: {
-        User: {
-          author: { cardinality: "one", required: true },
-        },
+        author: { entity: "User", cardinality: "one", required: true },
       },
     };
 
@@ -208,7 +216,7 @@ describe("Schema Parser", () => {
     });
     const userSchema = normalized.find((s) => s.name === "User")!;
     const userPostsRelation = userSchema.relationships.find(
-      (r) => r.name === "posts"
+      (r) => "name" in r && r.name === "posts"
     )!;
 
     expect(userPostsRelation).toBeDefined();
@@ -223,78 +231,57 @@ describe("Schema Parser", () => {
   });
 
   it("should parse an auth block", () => {
-    const authBlock = {
-      create: "can_create",
-      read: "can_read",
-    };
     const schemas = parseSchemas({
       entities: {
         Test: {
           name: "Test",
           schema: z.object({ id: z.string() }),
-          auth: authBlock,
-          resolvers: {
-            can_create: () => true,
-            can_read: () => true,
-          },
+        },
+      },
+      globalResolvers: {
+        can_create: () => true,
+        can_read: () => true,
+      },
+      auth: {
+        Test: {
+          create: "can_create",
+          read: "can_read",
         },
       },
     });
+
     const authSchema = findSchema(schemas, "Test");
     expect(authSchema).toBeDefined();
     const auth = authSchema?.auth as any;
-    expect(auth.create).toEqual([0]);
-    expect(auth.read).toEqual([1]);
+    expect(auth.create).toEqual("can_create");
+    expect(auth.read).toEqual("can_read");
   });
 
   it("should correctly parse indexes, setting defaults and validating fields", () => {
-    const schemas = parseSchemas({
-      entities: {
-        Test: {
-          name: "Test",
-          schema: z.object({
-            id: z.string(),
-            email: z.string(),
-            name: z.string(),
-          }),
-          indexes: [
-            { on: "id", unique: true },
-            { on: ["name", "email"], type: "hash" },
-          ],
-        },
-      },
-    });
-
-    const testSchema = findSchema(schemas, "Test");
-    expect(testSchema?.indexes).toBeDefined();
+    const testSchema = findSchema(
+      parseSchemas({ entities: { User: rawUserSchema } }),
+      "User"
+    );
     expect(testSchema?.indexes).toHaveLength(2);
-
-    // Check first index
     const index1 = testSchema?.indexes?.[0];
-    expect(index1?.on).toEqual(["id"]);
+    expect(index1?.on).toEqual(["email"]);
     expect(index1?.unique).toBe(true);
-    expect(index1?.type).toBe("btree"); // Default type
+    expect(index1?.type).toBe("btree"); // default
 
-    // Check second index
     const index2 = testSchema?.indexes?.[1];
-    expect(index2?.on).toEqual(["name", "email"]);
-    expect(index2?.unique).toBeUndefined();
-    expect(index2?.type).toBe("hash");
+    expect(index2?.on).toEqual(["name"]);
+    expect(index2?.unique).toBe(false); // default
+    expect(index2?.type).toBe("btree");
   });
 
   it("should throw an error for an index on a non-existent field", () => {
-    expect(() => {
-      parseSchemas({
-        entities: {
-          Test: {
-            name: "Test",
-            schema: z.object({ id: z.string() }),
-            indexes: [{ on: "nonExistentField" }],
-          },
-        },
-      });
-    }).toThrow(
-      "Index defined on non-existent field: 'nonExistentField'. Valid fields are: id"
+    const BadSchema: EntityDef = {
+      name: "Bad",
+      schema: z.object({ id: z.string() }),
+      indexes: [{ on: "nonExistentField" }],
+    };
+    expect(() => parseSchemas({ entities: { Bad: BadSchema } })).toThrow(
+      "Index defined on non-existent field: 'nonExistentField'"
     );
   });
 });

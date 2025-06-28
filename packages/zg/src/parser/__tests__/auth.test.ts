@@ -15,18 +15,21 @@ describe("Schema Parser: Auth Block", () => {
       },
     });
     const authSchema = findSchema(schemas, "Test");
-    expect(authSchema?.auth).toBeDefined();
-    expect(authSchema?.auth.fields).toEqual({});
+    expect(authSchema?.auth).toBeUndefined();
   });
 
   it("should handle an empty auth block", () => {
     const schemas = parseSchemas({
       entities: {
-        Test: { name: "Test", schema: z.object({ f: z.string() }), auth: {} },
+        Test: { name: "Test", schema: z.object({ f: z.string() }) },
+      },
+      auth: {
+        Test: {},
       },
     });
     const authSchema = findSchema(schemas, "Test");
     expect(authSchema?.auth).toBeDefined();
+    expect(authSchema?.auth).toEqual({});
   });
 
   it("should handle an action with an empty array of rules", () => {
@@ -35,7 +38,11 @@ describe("Schema Parser: Auth Block", () => {
         Test: {
           name: "Test",
           schema: z.object({ f: z.string() }),
-          auth: { create: [] },
+        },
+      },
+      auth: {
+        Test: {
+          create: [],
         },
       },
     });
@@ -53,19 +60,16 @@ describe("Schema Parser: Auth Block", () => {
             content: z.string(),
             ownerId: z.string(),
           }),
-          auth: {
-            create: "isAuthor",
-            read: "isAuthor",
-            update: ["isAuthor", "isAdmin"],
-            fields: {
-              ownerId: {
-                create: "isAdmin",
-              },
-            },
-          },
           resolvers: {
             isAuthor: () => true,
           },
+        },
+      },
+      auth: {
+        Post: {
+          create: "isAuthor",
+          read: "isAuthor",
+          update: ["isAuthor", "isAdmin"],
         },
       },
       globalResolvers: {
@@ -76,8 +80,7 @@ describe("Schema Parser: Auth Block", () => {
     const postSchema = findSchema(schemas, "Post");
     expect(postSchema).toBeDefined();
     const auth = postSchema?.auth as any;
-    expect(auth.create).toEqual([0]); // local 'isAuthor'
-    expect(auth.update).toEqual([0, -1]); // local 'isAuthor', global 'isAdmin'
-    expect(auth.fields.ownerId.create).toEqual([-1]); // global 'isAdmin'
+    expect(auth.create).toEqual("isAuthor");
+    expect(auth.update).toEqual(["isAuthor", "isAdmin"]);
   });
 });

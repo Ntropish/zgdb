@@ -87,3 +87,5 @@ table Reaction {
   reactableId: string;
   reactableType: string;
 }
+
+root_type User_Profile_Settings_Notifications;

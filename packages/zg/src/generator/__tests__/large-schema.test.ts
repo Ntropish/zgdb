@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { parseSchemas } from "../../parser/index.js";
-import { RawSchema } from "../../parser/types.js";
-import { generateFbs } from "../generator.js";
+import { EntityDef } from "../../parser/types.js";
+import { generateFbsFile } from "../generator.js";
 import { promises as fs } from "fs";
 import path from "path";
 import { describe, it, expect } from "vitest";
@@ -32,7 +32,7 @@ async function expectToMatchSpecificSnapshot(
 
 describe("FBS Generator: Comprehensive Integration Test", () => {
   // --- Schema Definitions ---
-  const UserSchema: RawSchema = {
+  const UserSchema: EntityDef = {
     name: "User",
     description: "Represents a user of the social network.",
     schema: z.object({
@@ -53,25 +53,17 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
       }),
     }),
     relationships: {
-      Post: {
-        posts: { cardinality: "many", mappedBy: "author" },
+      posts: { entity: "Post", cardinality: "many", mappedBy: "author" },
+      comments: { entity: "Comment", cardinality: "many", mappedBy: "author" },
+      following: {
+        entity: "User",
+        cardinality: "many",
+        mappedBy: "follower",
       },
-      Comment: {
-        comments: { cardinality: "many", mappedBy: "author" },
-      },
-      "many-to-many": {
-        following: {
-          node: "User",
-          through: "Follow",
-          myKey: "followerId",
-          theirKey: "followingId",
-        },
-        followers: {
-          node: "User",
-          through: "Follow",
-          myKey: "followingId",
-          theirKey: "followerId",
-        },
+      followers: {
+        entity: "User",
+        cardinality: "many",
+        mappedBy: "following",
       },
     },
     indexes: [
@@ -80,7 +72,7 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
     ],
   };
 
-  const PostSchema: RawSchema = {
+  const PostSchema: EntityDef = {
     name: "Post",
     description: "A post made by a user.",
     schema: z.object({
@@ -90,31 +82,20 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
       authorId: z.string().uuid(),
     }),
     relationships: {
-      User: {
-        author: { cardinality: "one", required: true },
+      author: { entity: "User", cardinality: "one", required: true },
+      comments: { entity: "Comment", cardinality: "many", mappedBy: "post" },
+      reactions: {
+        entity: "Reaction",
+        cardinality: "many",
+        mappedBy: "reactable",
       },
-      Comment: {
-        comments: { cardinality: "many", mappedBy: "post" },
-      },
-      Reaction: {
-        reactions: { cardinality: "many", mappedBy: "reactable" },
-      },
-      Media: {
-        attachments: { cardinality: "many", mappedBy: "post" },
-      },
-      "many-to-many": {
-        tags: {
-          node: "Tag",
-          through: "PostTag",
-          myKey: "postId",
-          theirKey: "tagId",
-        },
-      },
+      attachments: { entity: "Media", cardinality: "many", mappedBy: "post" },
+      tags: { entity: "Tag", cardinality: "many", mappedBy: "posts" },
     },
     indexes: [{ on: "createdAt", type: "btree" }],
   };
 
-  const CommentSchema: RawSchema = {
+  const CommentSchema: EntityDef = {
     name: "Comment",
     description: "A comment on a post.",
     schema: z.object({
@@ -125,15 +106,17 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
       postId: z.string().uuid(),
     }),
     relationships: {
-      User: { author: { cardinality: "one", required: true } },
-      Post: { post: { cardinality: "one", required: true } },
-      Reaction: {
-        reactions: { cardinality: "many", mappedBy: "reactable" },
+      author: { entity: "User", cardinality: "one", required: true },
+      post: { entity: "Post", cardinality: "one", required: true },
+      reactions: {
+        entity: "Reaction",
+        cardinality: "many",
+        mappedBy: "reactable",
       },
     },
   };
 
-  const MediaSchema: RawSchema = {
+  const MediaSchema: EntityDef = {
     name: "Media",
     description: "An image or video attachment.",
     schema: z.object({
@@ -148,11 +131,11 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
       }),
     }),
     relationships: {
-      Post: { post: { cardinality: "one", required: true } },
+      post: { entity: "Post", cardinality: "one", required: true },
     },
   };
 
-  const TagSchema: RawSchema = {
+  const TagSchema: EntityDef = {
     name: "Tag",
     description: "A tag that can be applied to posts.",
     schema: z.object({
@@ -160,19 +143,12 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
       name: z.string(),
     }),
     relationships: {
-      "many-to-many": {
-        posts: {
-          node: "Post",
-          through: "PostTag",
-          myKey: "tagId",
-          theirKey: "postId",
-        },
-      },
+      posts: { entity: "Post", cardinality: "many", mappedBy: "tags" },
     },
     indexes: [{ on: "name", unique: true }],
   };
 
-  const PostTagSchema: RawSchema = {
+  const PostTagSchema: EntityDef = {
     name: "PostTag",
     description:
       "Join table for the many-to-many relationship between Posts and Tags.",
@@ -181,13 +157,13 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
       tagId: z.string().uuid(),
     }),
     relationships: {
-      Post: { post: { cardinality: "one", required: true } },
-      Tag: { tag: { cardinality: "one", required: true } },
+      post: { entity: "Post", cardinality: "one", required: true },
+      tag: { entity: "Tag", cardinality: "one", required: true },
     },
     indexes: [{ on: ["postId", "tagId"], unique: true }],
   };
 
-  const FollowSchema: RawSchema = {
+  const FollowSchema: EntityDef = {
     name: "Follow",
     description: "Represents a user following another user.",
     schema: z.object({
@@ -195,15 +171,13 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
       followingId: z.string().uuid(),
     }),
     relationships: {
-      User: {
-        follower: { cardinality: "one", required: true },
-        following: { cardinality: "one", required: true },
-      },
+      follower: { entity: "User", cardinality: "one", required: true },
+      following: { entity: "User", cardinality: "one", required: true },
     },
     indexes: [{ on: ["followerId", "followingId"], unique: true }],
   };
 
-  const ReactionSchema: RawSchema = {
+  const ReactionSchema: EntityDef = {
     name: "Reaction",
     description: "A reaction to a post or comment.",
     schema: z.object({
@@ -214,16 +188,14 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
       reactableType: z.enum(["Post", "Comment"]),
     }),
     relationships: {
-      User: { user: { cardinality: "one", required: true } },
-      polymorphic: {
-        reactable: {
-          type: "polymorphic",
-          cardinality: "one",
-          required: true,
-          discriminator: "reactableType",
-          foreignKey: "reactableId",
-          references: ["Post", "Comment"],
-        },
+      user: { entity: "User", cardinality: "one", required: true },
+      reactable: {
+        type: "polymorphic",
+        cardinality: "one",
+        required: true,
+        discriminator: "reactableType",
+        foreignKey: "reactableId",
+        references: ["Post", "Comment"],
       },
     },
   };
@@ -242,7 +214,7 @@ describe("FBS Generator: Comprehensive Integration Test", () => {
     };
 
     const normalized = parseSchemas({ entities: allRawSchemas });
-    const fbsContent = await generateFbs(normalized);
+    const fbsContent = await generateFbsFile(normalized);
 
     // --- Verification ---
     const snapshotPath = path.join(

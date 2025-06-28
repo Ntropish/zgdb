@@ -29,6 +29,12 @@ export async function generateFbsFile(
 
   const sortedSchemas = topologicalSort(schemas);
 
+  // Set the root type to the first non-join-table schema
+  const rootSchema = sortedSchemas.find((s) => !s.isJoinTable);
+  if (rootSchema) {
+    builder.root_type(rootSchema.name);
+  }
+
   for (const schema of sortedSchemas) {
     // We don't generate fbs for tables that are purely for joins
     if (schema.isJoinTable) {
