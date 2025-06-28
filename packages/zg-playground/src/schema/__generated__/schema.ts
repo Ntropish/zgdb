@@ -2,4 +2,12 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-export * as MyGeneratedSchema from './my-generated-schema.js';
+export { Comment } from './schema/comment.js';
+export { Follow } from './schema/follow.js';
+export { Image } from './schema/image.js';
+export { Image_Metadata } from './schema/image-metadata.js';
+export { Post } from './schema/post.js';
+export { PostTag } from './schema/post-tag.js';
+export { Reaction } from './schema/reaction.js';
+export { Tag } from './schema/tag.js';
+export { User } from './schema/user.js';

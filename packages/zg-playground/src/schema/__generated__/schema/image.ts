@@ -4,7 +4,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Image_Metadata } from '../my-generated-schema/image-metadata.js';
+import { Image_Metadata } from '../schema/image-metadata.js';
 
 
 /**

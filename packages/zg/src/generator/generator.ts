@@ -10,6 +10,7 @@ import {
 } from "@zgdb/fbs-builder";
 import { NormalizedSchema } from "../parser/types.js";
 import { topologicalSort } from "./topological-sort.js";
+import { GeneratorConfig } from "./types.js";
 
 const execAsync = promisify(exec);
 
@@ -64,10 +65,8 @@ export async function generateFbsFile(
   return renderFbs(finalState);
 }
 
-export async function generate(
-  schemas: NormalizedSchema[],
-  outputDirectory: string
-) {
+export async function generate(config: GeneratorConfig) {
+  const { schemas, outputDirectory, options = {} } = config;
   // Ensure the output directory exists
   await fs.mkdir(outputDirectory, { recursive: true });
 
@@ -80,7 +79,7 @@ export async function generate(
   // --- Step 2: Compile the .fbs file to TypeScript using flatc ---
   // The output of this will be `schema_generated.ts` in the output directory.
   const flatcPath = "flatc"; // Assumes flatc is in the system's PATH
-  const command = `${flatcPath} --ts --gen-mutable --gen-all --ts-main-module-file-name schema_generated -o ${outputDirectory} ${fbsFilePath}`;
+  const command = `${flatcPath} --ts --gen-mutable --gen-all -o ${outputDirectory} ${fbsFilePath}`;
 
   try {
     const { stdout, stderr } = await execAsync(command);
@@ -99,7 +98,7 @@ export async function generate(
   }
 
   // --- Step 3: Generate the schema.zg.ts file ---
-  const tsContent = generateZgFile(schemas);
+  const tsContent = generateZgFile(schemas, options);
   const tsFilePath = path.join(outputDirectory, "createDB.ts");
   await fs.writeFile(tsFilePath, tsContent);
   console.log(`Generated ZG schema at ${tsFilePath}`);

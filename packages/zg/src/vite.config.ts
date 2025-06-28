@@ -4,30 +4,14 @@ import dts from "vite-plugin-dts";
 
 export default defineConfig({
   build: {
-    ssr: true,
+    target: "node18",
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
       fileName: "index",
       formats: ["es", "cjs"],
     },
     rollupOptions: {
-      external: [
-        "fs",
-        "path",
-        "util",
-        "child_process",
-        "esbuild",
-        "flatbuffers",
-        "glob",
-      ],
-      output: {
-        globals: {
-          fs: "fs",
-          path: "path",
-          util: "util",
-          child_process: "child_process",
-        },
-      },
+      external: ["esbuild", "flatbuffers", "glob"],
     },
   },
   plugins: [dts()],

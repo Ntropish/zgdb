@@ -11,10 +11,12 @@ import type {
   Resolver,
   ResolverContext,
 } from "./parser/types.js";
+import type { GeneratorConfig } from "./generator/types.js";
 
 type GenerateOptions = {
   schema: SchemaConfig;
   outputDir: string;
+  options?: GeneratorConfig["options"];
 };
 
 /**
@@ -23,7 +25,11 @@ type GenerateOptions = {
  */
 export async function generate(options: GenerateOptions): Promise<void> {
   const normalizedSchemas = parseSchemas(options.schema);
-  await generateFiles(normalizedSchemas, options.outputDir);
+  await generateFiles({
+    schemas: normalizedSchemas,
+    outputDirectory: options.outputDir,
+    options: options.options ?? {},
+  });
 }
 
 export {

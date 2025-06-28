@@ -36,11 +36,12 @@ export function zgdb(options: ZgVitePluginOptions): Plugin {
         outputFile.contents
       ).toString("base64")}`;
 
+      const { entities } = await import(dataUri);
+
       await generate({
-        schema: {
-          entities: (await import(dataUri)).entities,
-        },
-        outputDir,
+        schema: { entities },
+        outputDir: outputDir,
+        options: { importExtension: ".js" },
       });
       console.log("ZGDB generator finished.");
     } catch (error) {

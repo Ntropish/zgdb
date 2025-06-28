@@ -1,4 +1,4 @@
-namespace MyGeneratedSchema;
+namespace Schema;
 
 table User {
   id: string;
