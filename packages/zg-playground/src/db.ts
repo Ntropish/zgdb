@@ -1,18 +1,4 @@
-/**
- * This file is the single source of truth for the entire application schema.
- */
-import { createSchemaFactory } from "@zgdb/generate";
-// import { ZgClient } from "../../zg/schema.zg.js";
-
-// Import all schema definitions
-import { UserDef } from "./user.js";
-import { PostDef } from "./post.js";
-import { CommentDef } from "./comment.js";
-import { FollowDef } from "./follow.js";
-import { ImageDef } from "./image.js";
-import { PostTagDef } from "./post-tag.js";
-import { ReactionDef } from "./reaction.js";
-import { TagDef } from "./tag.js";
+import createDB from "./schema/__generated__/createDB.js";
 
 // The project-specific Actor type.
 export interface MyAppActor {
@@ -29,21 +15,9 @@ export const globalResolvers = {
   never: () => false,
 };
 
-const createMyAppSchema = createSchemaFactory<ZgClient, MyAppActor>();
-
-export const AppSchema = createMyAppSchema({
+export const db = createDB<MyAppActor>({
   globalResolvers,
-  entities: {
-    User: UserDef,
-    Post: PostDef,
-    Comment: CommentDef,
-    Follow: FollowDef,
-    Image: ImageDef,
-    PostTag: PostTagDef,
-    Reaction: ReactionDef,
-    Tag: TagDef,
-  },
-  resolvers: {
+  entityResolvers: {
     Comment: {
       isAuthor: ({ actor, record, input }) => {
         const authorId = record?.authorId || input?.authorId;
@@ -177,4 +151,4 @@ export const AppSchema = createMyAppSchema({
   },
 });
 
-export default AppSchema;
+export default db;
