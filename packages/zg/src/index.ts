@@ -1,6 +1,6 @@
 import { generate as generateFiles } from "./generator/generator.js";
 import { generateFbsFile } from "./generator/generator.js";
-import { parseSchemas, createSchemaFactory } from "./parser/index.js";
+import { parseSchemas } from "./parser/index.js";
 import type {
   SchemaConfig,
   EntityDef,
@@ -30,13 +30,11 @@ const zg = {
   generate,
   parseSchemas,
   generateFbsFile,
-  createSchemaFactory,
 };
 
 export {
   parseSchemas,
   generateFbsFile,
-  createSchemaFactory,
   SchemaConfig,
   EntityDef,
   RelationshipDef,

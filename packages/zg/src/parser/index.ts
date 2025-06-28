@@ -163,15 +163,9 @@ function parseRelationships(
  */
 export function parseSchemas(config: SchemaConfig): NormalizedSchema[] {
   const allSchemas: NormalizedSchema[] = [];
-  const {
-    entities,
-    globalResolvers = {},
-    resolvers: entityResolvers = {},
-    auth: rootAuth = {},
-  } = config;
+  const { entities } = config;
 
-  for (const entityName in entities) {
-    const schemaDef = entities[entityName];
+  for (const schemaDef of entities) {
     const zodSchema = schemaDef.schema as ZodObject<any>;
     const fields = parseZodSchema(zodSchema, schemaDef.name, allSchemas);
     const fieldNames = new Set(fields.map((f) => f.name));
@@ -179,16 +173,10 @@ export function parseSchemas(config: SchemaConfig): NormalizedSchema[] {
     const standardRelationships = parseRelationships(schemaDef.relationships);
     const manyToManyRelationships = parseManyToMany(schemaDef.manyToMany);
 
-    const localResolvers = {
-      ...(schemaDef.resolvers || {}),
-      ...((entityResolvers as any)[entityName] || {}),
-    };
-
-    const auth: AuthBlock | undefined = (rootAuth as any)[entityName];
     const indexes = parseIndexes(schemaDef.indexes, fieldNames);
 
     const isJoinTable = manyToManyRelationships.some(
-      (rel) => rel.through === entityName
+      (rel) => rel.through === schemaDef.name
     );
 
     const normalizedSchema: NormalizedSchema = {
@@ -197,10 +185,7 @@ export function parseSchemas(config: SchemaConfig): NormalizedSchema[] {
       fields,
       relationships: standardRelationships,
       manyToMany: manyToManyRelationships,
-      auth,
       indexes,
-      localResolvers: localResolvers as Record<string, Function>,
-      globalResolvers: globalResolvers as Record<string, Function>,
       isJoinTable,
     };
     allSchemas.push(normalizedSchema);
@@ -208,12 +193,4 @@ export function parseSchemas(config: SchemaConfig): NormalizedSchema[] {
 
   // A final pass could be done here to validate relationships, e.g., mappedBy
   return allSchemas;
-}
-
-export function createSchemaFactory<TClient, TActor>() {
-  return function createSchema<
-    const TEntities extends Record<string, EntityDef>
-  >(config: SchemaConfig<TClient, TActor, TEntities>) {
-    return config;
-  };
 }

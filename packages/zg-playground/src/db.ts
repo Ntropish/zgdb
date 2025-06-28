@@ -4,6 +4,7 @@ import createDB from "./schema/__generated__/createDB.js";
 export interface MyAppActor {
   did: string;
   roles: ("admin" | "moderator" | "user")[];
+  never: () => false;
 }
 
 // Define the global policies and their implementations.
@@ -15,16 +16,26 @@ export const globalResolvers = {
   never: () => false,
 };
 
-export const db = createDB<MyAppActor>({
+// --- Temporary type definitions until the new API is published ---
+type ZgClient<TActor> = any;
+type ResolverContext<TClient, TActor, TRecord> = any;
+const createDB: (config: any) => any = (config) => config;
+// ---
+
+type Db = ZgClient<MyAppActor>;
+
+type MyResolverContext<TRecord> = ResolverContext<Db, MyAppActor, TRecord>;
+
+export const db = createDB({
   globalResolvers,
   entityResolvers: {
     Comment: {
-      isAuthor: ({ actor, record, input }) => {
+      isAuthor: ({ actor, record, input }: any) => {
         const authorId = record?.authorId || input?.authorId;
         if (typeof authorId !== "string") return false;
         return actor.did === authorId;
       },
-      isPostAuthor: async ({ actor, record, db }) => {
+      isPostAuthor: async ({ actor, record, db }: any) => {
         if (!record) return false;
         const post = await db.posts.get(record.postId);
         if (!post) return false;
@@ -32,30 +43,30 @@ export const db = createDB<MyAppActor>({
       },
     },
     User: {
-      isOwner: ({ actor, input }) => {
+      isOwner: ({ actor, input }: any) => {
         return actor.did === input?.ownerDid;
       },
-      isSelf: ({ actor, record }) => {
+      isSelf: ({ actor, record }: any) => {
         if (!record) return false;
         return actor.did === record.id;
       },
     },
     Post: {
-      isAuthor: ({ actor, record, input }) => {
+      isAuthor: ({ actor, record, input }: any) => {
         if (record) return actor.did === record.author;
         if (input) return actor.did === input.author;
         return false;
       },
     },
     Follow: {
-      isFollower: ({ actor, record, input }) => {
+      isFollower: ({ actor, record, input }: any) => {
         if (record) return actor.did === record.followerId;
         if (input) return actor.did === input.followerId;
         return false;
       },
     },
     Image: {
-      isOwner: async ({ actor, record, input, db }) => {
+      isOwner: async ({ actor, record, input, db }: any) => {
         // For a create operation, we must check the input
         if (input) {
           if (input.postId) {
@@ -82,7 +93,7 @@ export const db = createDB<MyAppActor>({
       },
     },
     Reaction: {
-      isAuthor: ({ actor, record, input }) => {
+      isAuthor: ({ actor, record, input }: any) => {
         if (record) return actor.did === record.author;
         if (input) return actor.did === input.author;
         return false;
@@ -90,7 +101,7 @@ export const db = createDB<MyAppActor>({
     },
     Tag: {},
     PostTag: {
-      isPostAuthor: async ({ actor, record, input, db }) => {
+      isPostAuthor: async ({ actor, record, input, db }: any) => {
         const postId = record?.postId || input?.postId;
         if (!postId) return false;
         const post = await db.posts.get(postId);
@@ -104,7 +115,7 @@ export const db = createDB<MyAppActor>({
       create: "isOwner",
       read: "isPublic",
       update: "isSelf",
-      delete: "hasAdminRights",
+      delete: "isPostAuthor",
     },
     Post: {
       create: "isAuthenticated",

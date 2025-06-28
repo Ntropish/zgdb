@@ -97,17 +97,8 @@ export type AuthBlock = {
   delete?: string | string[];
 };
 
-export type SchemaConfig<
-  TClient = any,
-  TActor = any,
-  TEntities extends Record<string, EntityDef> = any
-> = {
-  entities: TEntities;
-  globalResolvers?: Record<string, Resolver<TClient, TActor, any>>;
-  resolvers?: InferredResolvers<TClient, TActor, TEntities>;
-  auth?: {
-    [entityName: string]: AuthBlock;
-  };
+export type SchemaConfig = {
+  entities: EntityDef[];
 };
 
 // --- Internal, Normalized Types ---
@@ -157,9 +148,6 @@ export type NormalizedSchema = {
   fields: Field[];
   isJoinTable?: boolean;
   indexes: Index[];
-  auth?: AuthBlock;
-  localResolvers?: Record<string, Function>;
-  globalResolvers?: Record<string, Function>;
   relationships: (Relationship | PolymorphicRelationship)[];
   manyToMany: ManyToManyRelationship[];
 };
