@@ -8,7 +8,8 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
-    "clean": "turbo run clean"
+    "clean": "turbo run clean",
+    "dev": "pnpm turbo run dev --filter=@tsmk/zg --filter=@zg/client"
   },
   "keywords": [],
   "author": "",

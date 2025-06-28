@@ -2,10 +2,11 @@
   "name": "@tsmk/zg",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "type": "module",
   "scripts": {
+    "dev": "vite build --watch",
     "build": "vite build",
     "test": "vitest run --open=false",
     "test:watch": "vitest",
