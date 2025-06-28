@@ -1,89 +1,93 @@
 #!/usr/bin/env node
-import yargs from "yargs/yargs";
-import { hideBin } from "yargs/helpers";
-import { run } from "@tsmk/zg";
+import { program } from "commander";
 import path from "path";
 import { pathToFileURL } from "node:url";
 import { promises as fs } from "fs";
+import ora from "ora";
+import { buildSchema } from "@tsmk/zg";
 
 export function parseArgs(argv: string[]) {
-  return yargs(argv)
-    .option("schema", {
-      alias: "s",
-      type: "string",
-      description: "Path to the schema configuration file.",
-      demandOption: true,
-    })
-    .option("output", {
-      alias: "o",
-      type: "string",
-      description: "Directory to write the generated files.",
-      demandOption: true,
-    })
-    .option("flatc", {
-      type: "string",
-      description:
-        "Path to the flatc compiler. Defaults to searching the system PATH.",
-    })
-    .help()
-    .parse();
-}
+  program
+    .name("zg")
+    .description("The ZG Command Line Interface")
+    .version("1.0.0");
 
-export async function main() {
-  const argv = await parseArgs(hideBin(process.argv));
+  program
+    .command("build")
+    .description("Builds the ZG schema and generates the client.")
+    .option(
+      "-s, --schema <path>",
+      "Path to the ZG schema entry file.",
+      "./src/index.ts"
+    )
+    .option(
+      "-o, --output <path>",
+      "Path to the output directory.",
+      "./zg-output"
+    )
+    .option("--flatc <path>", "Optional path to the flatc compiler.")
+    .action(
+      async (options: { schema: string; output: string; flatc?: string }) => {
+        console.log("🚀 Starting ZG build process...");
 
-  try {
-    const outputDir = path.resolve(process.cwd(), argv.output);
-    const schemaConfigFile = path.resolve(process.cwd(), argv.schema);
+        try {
+          const schemaPath = path.resolve(process.cwd(), options.schema);
+          const outputDir = path.resolve(process.cwd(), options.output);
 
-    try {
-      await fs.access(schemaConfigFile);
-    } catch {
-      console.error(`❌ Schema config file not found at: ${schemaConfigFile}`);
-      process.exit(1);
-    }
+          const loadingSpinner = ora(
+            `Loading schema from ${schemaPath}...`
+          ).start();
 
-    console.log(`🔎 Loading schema config from ${schemaConfigFile}...`);
+          let schemaConfig;
+          try {
+            // Check if the file exists before trying to import it.
+            await fs.access(schemaPath);
+            const schemaPathWithProtocol = pathToFileURL(schemaPath).toString();
+            const module = await import(schemaPathWithProtocol);
+            schemaConfig = module.default;
+            if (!schemaConfig || !schemaConfig.entities) {
+              throw new Error(
+                "Schema file loaded, but it does not have a valid default export."
+              );
+            }
+            loadingSpinner.succeed("Schema loaded successfully.");
+          } catch (e: any) {
+            loadingSpinner.fail("Failed to load schema.");
+            console.error(e.message);
+            process.exit(1);
+          }
 
-    // On Windows, dynamic import needs a file:// URL.
-    const fileUrl = pathToFileURL(schemaConfigFile).href;
-    const module = await import(fileUrl);
+          const buildSpinner = ora("Building schema and client...").start();
+          try {
+            await buildSchema({
+              config: schemaConfig,
+              outputDir,
+              logger: {
+                log: (msg) => (buildSpinner.text = msg),
+                error: (msg) => buildSpinner.fail(msg),
+              },
+              flatcPath: options.flatc,
+            });
+            buildSpinner.succeed("Build complete!");
+          } catch (e: any) {
+            // The logger inside buildSchema should have already failed the spinner.
+            if (buildSpinner.isSpinning) {
+              buildSpinner.fail("Build failed.");
+            }
+            console.error(e.message);
+            process.exit(1);
+          }
+        } catch (e: any) {
+          console.error(`❌ An unexpected error occurred: ${e.message}`);
+          process.exit(1);
+        }
+      }
+    );
 
-    if (!module.default) {
-      console.error(
-        `❌ No default export found in ${schemaConfigFile}. Please export your schema configuration as the default export.`
-      );
-      process.exit(1);
-    }
-
-    const schemaConfig = module.default;
-
-    console.log(`Schema config loaded successfully.`);
-
-    const logger = {
-      log: console.log,
-      error: console.error,
-    };
-
-    await run({
-      config: schemaConfig,
-      outputDir,
-      logger,
-      flatcPath: argv.flatc,
-    });
-  } catch (error) {
-    console.error("❌ An unexpected error occurred:");
-    if (error instanceof Error) {
-      console.error(error.message);
-      console.error(error.stack);
-    } else {
-      console.error(error);
-    }
-    process.exit(1);
-  }
+  program.parse(argv);
 }
 
 // This allows the script to be run directly and also be imported for testing.
 if (process.env.VITEST === undefined) {
-  main();
+  parseArgs(process.argv);
 }
