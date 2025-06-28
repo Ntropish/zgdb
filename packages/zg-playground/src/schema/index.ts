@@ -7,6 +7,7 @@ import { ReactionDef } from "./reaction.js";
 import { TagDef } from "./tag.js";
 import { PostTagDef } from "./post-tag.js";
 
+// test
 export const entities = [
   UserDef,
   PostDef,

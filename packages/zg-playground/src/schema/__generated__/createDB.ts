@@ -43,6 +43,7 @@ export interface IImage_Metadata {
 export interface IImage {
   id: string;
   url: string;
+  fartCount: number;
   altText: string;
   metadata: any;
   postId: string;
@@ -195,6 +196,10 @@ export class ImageNode extends ZgBaseNode<LowLevel.Image> {
 
   get url(): string {
     return this.fbb.url();
+  }
+
+  get fartCount(): number {
+    return this.fbb.fartCount();
   }
 
   get altText(): string {

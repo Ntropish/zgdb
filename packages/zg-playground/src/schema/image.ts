@@ -4,6 +4,7 @@ import { EntityDef } from "@zgdb/generate";
 const ImageSchema = z.object({
   id: z.string(),
   url: z.string().url(),
+  fartCount: z.number().default(0),
   altText: z.string().optional(),
   metadata: z.object({
     width: z.number(),

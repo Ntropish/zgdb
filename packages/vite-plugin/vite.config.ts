@@ -4,6 +4,7 @@ import dts from "vite-plugin-dts";
 
 export default defineConfig({
   build: {
+    ssr: true,
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
       name: "@zgdb/vite-plugin",
@@ -20,6 +21,7 @@ export default defineConfig({
         "util",
         "url",
         "esbuild",
+        "fsevents",
       ],
     },
   },

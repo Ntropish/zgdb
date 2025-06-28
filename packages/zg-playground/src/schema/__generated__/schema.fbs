@@ -45,6 +45,7 @@ table Image_Metadata {
 table Image {
   id: string;
   url: string;
+  fartCount: long;
   altText: string;
   metadata: Image_Metadata;
   postId: string;
