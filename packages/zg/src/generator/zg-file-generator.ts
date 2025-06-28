@@ -27,16 +27,29 @@ function generateInterface(schema: NormalizedSchema): string {
 
 function generateNodeClass(schema: NormalizedSchema): string {
   const fields = schema.fields
-    .map(
-      (f) => `  get ${f.name}(): ${mapTsType(f.type)} {
+    .map((f) => {
+      let tsType = mapTsType(f.type);
+      // Flatbuffers returns null for string fields that are not set.
+      if (f.type === "string") {
+        tsType = "string | null";
+      }
+      return `  get ${f.name}(): ${tsType} {
     return this.fbb.${f.name}();
-  }`
-    )
+  }`;
+    })
     .join("\n\n");
 
   // TODO: Add relationship accessors
 
   return `export class ${schema.name}Node<TActor> extends ZgBaseNode<LowLevel.${schema.name}, TActor> {
+  constructor(
+    db: ZgDatabase,
+    fbb: LowLevel.${schema.name},
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(db, fbb, authContext);
+  }
+
   // --- Fields ---
 ${fields}
 

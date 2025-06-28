@@ -71,20 +71,28 @@ export interface IPostTag {
 
 // --- Node Classes ---
 export class UserNode<TActor> extends ZgBaseNode<LowLevel.User, TActor> {
+  constructor(
+    db: ZgDatabase,
+    fbb: LowLevel.User,
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(db, fbb, authContext);
+  }
+
   // --- Fields ---
-  get id(): string {
+  get id(): string | null {
     return this.fbb.id();
   }
 
-  get publicKey(): string {
+  get publicKey(): string | null {
     return this.fbb.publicKey();
   }
 
-  get displayName(): string {
+  get displayName(): string | null {
     return this.fbb.displayName();
   }
 
-  get avatarUrl(): string {
+  get avatarUrl(): string | null {
     return this.fbb.avatarUrl();
   }
 
@@ -93,20 +101,28 @@ export class UserNode<TActor> extends ZgBaseNode<LowLevel.User, TActor> {
 }
 
 export class PostNode<TActor> extends ZgBaseNode<LowLevel.Post, TActor> {
+  constructor(
+    db: ZgDatabase,
+    fbb: LowLevel.Post,
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(db, fbb, authContext);
+  }
+
   // --- Fields ---
-  get id(): string {
+  get id(): string | null {
     return this.fbb.id();
   }
 
-  get title(): string {
+  get title(): string | null {
     return this.fbb.title();
   }
 
-  get content(): string {
+  get content(): string | null {
     return this.fbb.content();
   }
 
-  get author(): string {
+  get author(): string | null {
     return this.fbb.author();
   }
 
@@ -119,20 +135,28 @@ export class PostNode<TActor> extends ZgBaseNode<LowLevel.Post, TActor> {
 }
 
 export class CommentNode<TActor> extends ZgBaseNode<LowLevel.Comment, TActor> {
+  constructor(
+    db: ZgDatabase,
+    fbb: LowLevel.Comment,
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(db, fbb, authContext);
+  }
+
   // --- Fields ---
-  get id(): string {
+  get id(): string | null {
     return this.fbb.id();
   }
 
-  get content(): string {
+  get content(): string | null {
     return this.fbb.content();
   }
 
-  get authorId(): string {
+  get authorId(): string | null {
     return this.fbb.authorId();
   }
 
-  get postId(): string {
+  get postId(): string | null {
     return this.fbb.postId();
   }
 
@@ -145,16 +169,24 @@ export class CommentNode<TActor> extends ZgBaseNode<LowLevel.Comment, TActor> {
 }
 
 export class FollowNode<TActor> extends ZgBaseNode<LowLevel.Follow, TActor> {
+  constructor(
+    db: ZgDatabase,
+    fbb: LowLevel.Follow,
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(db, fbb, authContext);
+  }
+
   // --- Fields ---
-  get id(): string {
+  get id(): string | null {
     return this.fbb.id();
   }
 
-  get followerId(): string {
+  get followerId(): string | null {
     return this.fbb.followerId();
   }
 
-  get followingId(): string {
+  get followingId(): string | null {
     return this.fbb.followingId();
   }
 
@@ -167,6 +199,14 @@ export class FollowNode<TActor> extends ZgBaseNode<LowLevel.Follow, TActor> {
 }
 
 export class Image_MetadataNode<TActor> extends ZgBaseNode<LowLevel.Image_Metadata, TActor> {
+  constructor(
+    db: ZgDatabase,
+    fbb: LowLevel.Image_Metadata,
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(db, fbb, authContext);
+  }
+
   // --- Fields ---
   get width(): number {
     return this.fbb.width();
@@ -176,7 +216,7 @@ export class Image_MetadataNode<TActor> extends ZgBaseNode<LowLevel.Image_Metada
     return this.fbb.height();
   }
 
-  get format(): string {
+  get format(): string | null {
     return this.fbb.format();
   }
 
@@ -189,12 +229,20 @@ export class Image_MetadataNode<TActor> extends ZgBaseNode<LowLevel.Image_Metada
 }
 
 export class ImageNode<TActor> extends ZgBaseNode<LowLevel.Image, TActor> {
+  constructor(
+    db: ZgDatabase,
+    fbb: LowLevel.Image,
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(db, fbb, authContext);
+  }
+
   // --- Fields ---
-  get id(): string {
+  get id(): string | null {
     return this.fbb.id();
   }
 
-  get url(): string {
+  get url(): string | null {
     return this.fbb.url();
   }
 
@@ -202,7 +250,7 @@ export class ImageNode<TActor> extends ZgBaseNode<LowLevel.Image, TActor> {
     return this.fbb.fartCount();
   }
 
-  get altText(): string {
+  get altText(): string | null {
     return this.fbb.altText();
   }
 
@@ -210,11 +258,11 @@ export class ImageNode<TActor> extends ZgBaseNode<LowLevel.Image, TActor> {
     return this.fbb.metadata();
   }
 
-  get postId(): string {
+  get postId(): string | null {
     return this.fbb.postId();
   }
 
-  get userId(): string {
+  get userId(): string | null {
     return this.fbb.userId();
   }
 
@@ -223,24 +271,32 @@ export class ImageNode<TActor> extends ZgBaseNode<LowLevel.Image, TActor> {
 }
 
 export class ReactionNode<TActor> extends ZgBaseNode<LowLevel.Reaction, TActor> {
+  constructor(
+    db: ZgDatabase,
+    fbb: LowLevel.Reaction,
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(db, fbb, authContext);
+  }
+
   // --- Fields ---
-  get id(): string {
+  get id(): string | null {
     return this.fbb.id();
   }
 
-  get type(): string {
+  get type(): string | null {
     return this.fbb.type();
   }
 
-  get authorId(): string {
+  get authorId(): string | null {
     return this.fbb.authorId();
   }
 
-  get targetId(): string {
+  get targetId(): string | null {
     return this.fbb.targetId();
   }
 
-  get targetType(): string {
+  get targetType(): string | null {
     return this.fbb.targetType();
   }
 
@@ -249,12 +305,20 @@ export class ReactionNode<TActor> extends ZgBaseNode<LowLevel.Reaction, TActor> 
 }
 
 export class TagNode<TActor> extends ZgBaseNode<LowLevel.Tag, TActor> {
+  constructor(
+    db: ZgDatabase,
+    fbb: LowLevel.Tag,
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(db, fbb, authContext);
+  }
+
   // --- Fields ---
-  get id(): string {
+  get id(): string | null {
     return this.fbb.id();
   }
 
-  get name(): string {
+  get name(): string | null {
     return this.fbb.name();
   }
 
@@ -263,16 +327,24 @@ export class TagNode<TActor> extends ZgBaseNode<LowLevel.Tag, TActor> {
 }
 
 export class PostTagNode<TActor> extends ZgBaseNode<LowLevel.PostTag, TActor> {
+  constructor(
+    db: ZgDatabase,
+    fbb: LowLevel.PostTag,
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(db, fbb, authContext);
+  }
+
   // --- Fields ---
-  get id(): string {
+  get id(): string | null {
     return this.fbb.id();
   }
 
-  get postId(): string {
+  get postId(): string | null {
     return this.fbb.postId();
   }
 
-  get tagId(): string {
+  get tagId(): string | null {
     return this.fbb.tagId();
   }
 
