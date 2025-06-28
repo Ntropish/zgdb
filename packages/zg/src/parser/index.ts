@@ -345,7 +345,6 @@ export function parseSchemas(
       manyToMany: manyToManyRelationships,
       auth,
       indexes,
-      policies: [...localPolicyMap.keys(), ...globalResolvers.keys()],
       localResolvers: localResolvers as Record<string, Function>,
       globalResolvers: globalResolvers as Record<string, Function>,
     };

@@ -129,7 +129,6 @@ export interface NormalizedSchema {
   manyToMany: ManyToManyRelationship[];
   indexes?: Index[];
   auth: NormalizedAuthBlock;
-  policies?: string[];
   localResolvers?: Record<string, Function>;
   globalResolvers?: Record<string, Function>;
 }

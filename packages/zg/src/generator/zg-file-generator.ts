@@ -46,7 +46,7 @@ ${fields}
 function generateDbAccessors(schema: NormalizedSchema): string {
   const schemaNameLower =
     schema.name.charAt(0).toLowerCase() + schema.name.slice(1);
-  const { auth, policies, localResolvers } = schema;
+  const { auth, localResolvers, globalResolvers } = schema;
 
   const generateAuthCheck = (
     action: "create" | "read" | "update" | "delete",
@@ -70,7 +70,7 @@ function generateDbAccessors(schema: NormalizedSchema): string {
       .map((ruleIndex: number) => {
         const isGlobal = ruleIndex < 0;
         const policyName = isGlobal
-          ? policies![(ruleIndex + 1) * -1]
+          ? Object.keys(globalResolvers!)[(ruleIndex + 1) * -1]
           : Object.keys(localResolvers!)[ruleIndex];
 
         const resolverAccess = isGlobal
