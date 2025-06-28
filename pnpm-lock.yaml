@@ -270,6 +270,9 @@ importers:
 
   packages/vite-plugin:
     dependencies:
+      '@zgdb/generate':
+        specifier: workspace:*
+        version: link:../zg
       ejs:
         specifier: ^3.1.10
         version: 3.1.10

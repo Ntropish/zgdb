@@ -10,6 +10,16 @@ export default defineConfig({
       fileName: "index",
       formats: ["es", "cjs"],
     },
+    rollupOptions: {
+      external: [
+        "zod",
+        "@zgdb/generate",
+        "fs",
+        "path",
+        "child_process",
+        "util",
+      ],
+    },
   },
   plugins: [dts()],
 });
