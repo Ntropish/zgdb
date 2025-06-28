@@ -161,15 +161,6 @@ export interface SchemaConfig<
   entities: TEntities;
   resolvers?: TResolvers;
   auth?: {
-    [K in keyof TEntities]?: AuthBlock<
-      | keyof TGlobalResolvers
-      | keyof Exclude<TEntities[K]["resolvers"], undefined>
-      | keyof TResolvers[K]
-      | (
-          | keyof TGlobalResolvers
-          | keyof Exclude<TEntities[K]["resolvers"], undefined>
-          | keyof TResolvers[K]
-        )[]
-    >;
+    [K in keyof TEntities]?: AuthBlock<string | string[]>;
   };
 }

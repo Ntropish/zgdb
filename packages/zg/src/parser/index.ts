@@ -26,8 +26,8 @@ const asArray = <T>(value: T | T[]): T[] => {
  * @param auth - The raw `auth` block from the user's schema file.
  * @param fieldNames - The set of field names in the schema.
  * @param relationshipNames - The set of relationship names in the schema.
- * @param localPolicyMap - The map of policies for the schema.
- * @param globalResolverMap - The map of policies for the schema.
+ * @param localPolicyMap - The local policy map for the entity.
+ * @param globalResolverMap - The global resolver map for the entity.
  * @returns A normalized AuthBlock object.
  */
 function parseAuthBlock(
@@ -295,6 +295,13 @@ export function parseSchemas(
   for (const entityName in entities) {
     const schemaDef = entities[entityName];
 
+    // Merge all possible resolvers for this entity into one set
+    const allPolicyNames = new Set<string>([
+      ...Object.keys(globalResolvers),
+      ...Object.keys(schemaDef.resolvers || {}),
+      ...Object.keys((entityResolvers as any)[entityName] || {}),
+    ]);
+
     const standardRelationships = parseAllRelationships(
       schemaDef.relationships
     );
@@ -338,7 +345,7 @@ export function parseSchemas(
       manyToMany: manyToManyRelationships,
       auth,
       indexes,
-      policies: [...localPolicyMap.keys(), ...globalResolverMap.keys()],
+      policies: [...localPolicyMap.keys(), ...globalResolvers.keys()],
       localResolvers: localResolvers as Record<string, Function>,
       globalResolvers: globalResolvers as Record<string, Function>,
     };
