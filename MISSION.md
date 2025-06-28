@@ -23,6 +23,7 @@ This is the primary interface for the developer. They define their graph's data 
 - **Key Features:**
   - **Entity Definition:** Simple object-based schemas using an `EntityDef` interface.
   - **Rich Relationships:** First-class support for `one-to-one`, `one-to-many`, and abstract `many-to-many` relationships.
+  - **Global Resolvers:** Define cross-cutting logic and computed fields available to all entities in the schema.
   - **Indexing:** Support for defining single or composite-key database indexes directly in the schema.
   - **Declarative Authorization:** A powerful `auth` property to define granular access control rules. These rules are compiled and enforced by the runtime.
 
