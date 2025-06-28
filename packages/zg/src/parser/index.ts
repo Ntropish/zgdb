@@ -11,6 +11,8 @@ import {
   Index,
   PolymorphicRelationshipDef,
   StandardRelationshipDef,
+  Resolver,
+  InferredResolvers,
 } from "./types.js";
 import { ZodTypeAny, ZodObject } from "zod";
 import { mapZodToFlatBufferType } from "./type-map.js";
@@ -206,4 +208,12 @@ export function parseSchemas(config: SchemaConfig): NormalizedSchema[] {
 
   // A final pass could be done here to validate relationships, e.g., mappedBy
   return allSchemas;
+}
+
+export function createSchemaFactory<TClient, TActor>() {
+  return function createSchema<
+    const TEntities extends Record<string, EntityDef>
+  >(config: SchemaConfig<TClient, TActor, TEntities>) {
+    return config;
+  };
 }

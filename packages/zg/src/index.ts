@@ -5,3 +5,7 @@ import { generate } from "./generator/generator.js";
 export { parseSchemas, generate };
 
 export type { SchemaConfig, EntityDef, Resolver, Policy };
+
+export * from "./parser/index.js";
+export * from "./parser/types.js";
+export { createSchemaFactory } from "./parser/index.js";

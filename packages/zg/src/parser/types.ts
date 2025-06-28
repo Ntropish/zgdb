@@ -53,28 +53,41 @@ export type EntityDef = {
   relationships?: Record<string, RelationshipDef>;
   manyToMany?: Record<string, ManyToManyDef>;
   indexes?: IndexDef[];
-  resolvers?: Record<string, Resolver<any>>;
 };
 
-export type ResolverContext<TClient = any, TActor = any> = {
+export type ResolverContext<
+  TClient = any,
+  TActor = any,
+  TRecord extends z.ZodObject<any> = z.ZodObject<any>
+> = {
   actor: TActor;
   db: TClient;
-  input?: Record<string, any>;
-  record?: Record<string, any>;
+  input?: Partial<z.infer<TRecord>>;
+  record?: z.infer<TRecord>;
 };
 
-export type Resolver<TClient = any, TActor = any> = (
-  context: ResolverContext<TClient, TActor>
+export type Resolver<
+  TClient = any,
+  TActor = any,
+  TRecord extends z.ZodObject<any> = z.ZodObject<any>
+> = (
+  context: ResolverContext<TClient, TActor, TRecord>
 ) => Promise<boolean> | boolean;
 
-export type Policy<TClient = any, TActor = any> = Resolver<TClient, TActor>;
+export type Policy<
+  TClient = any,
+  TActor = any,
+  TRecord extends z.ZodObject<any> = z.ZodObject<any>
+> = Resolver<TClient, TActor, TRecord>;
 
 export type InferredResolvers<
   TClient,
   TActor,
   TEntities extends Record<string, EntityDef>
 > = {
-  [K in keyof TEntities]?: Record<string, Resolver<TClient, TActor>>;
+  [K in keyof TEntities]?: {
+    [resolverName: string]: Resolver<TClient, TActor, TEntities[K]["schema"]>;
+  };
 };
 
 export type AuthBlock = {
@@ -87,13 +100,11 @@ export type AuthBlock = {
 export type SchemaConfig<
   TClient = any,
   TActor = any,
-  TEntities extends Record<string, EntityDef> = any,
-  TGlobalResolvers extends Record<string, Resolver<TClient, TActor>> = any,
-  TResolvers extends InferredResolvers<TClient, TActor, TEntities> = any
+  TEntities extends Record<string, EntityDef> = any
 > = {
   entities: TEntities;
-  globalResolvers?: TGlobalResolvers;
-  resolvers?: TResolvers;
+  globalResolvers?: Record<string, Resolver<TClient, TActor, any>>;
+  resolvers?: InferredResolvers<TClient, TActor, TEntities>;
   auth?: {
     [entityName: string]: AuthBlock;
   };
