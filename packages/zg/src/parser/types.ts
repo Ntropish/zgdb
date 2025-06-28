@@ -106,23 +106,16 @@ export type ZGAuthBlock<TAuthPolicy> = AuthBlock<TAuthPolicy | TAuthPolicy[]>;
 
 /**
  * The developer-facing definition for a single entity.
+ * It is now a simple interface, as the `auth` block has been moved to the root.
  */
-export interface EntityDef<
-  TResolvers extends Record<string, Resolver<any, any>>,
-  TGlobalPolicies extends Record<string, Policy<any>>
-> {
+export interface EntityDef {
   name: string;
   description?: string;
   schema: z.ZodObject<any>;
   relationships?: any;
   indexes?: any;
-  auth?: AuthBlock<
-    | keyof TResolvers
-    | keyof TGlobalPolicies
-    | (keyof TResolvers | keyof TGlobalPolicies)[]
-  >;
   manyToMany?: any;
-  resolvers?: TResolvers;
+  resolvers?: Record<string, Resolver<any, any>>;
 }
 
 /**
@@ -145,7 +138,7 @@ export interface NormalizedSchema {
 export type InferredResolvers<
   TActor,
   TClient,
-  TEntities extends Record<string, EntityDef<any, any>>
+  TEntities extends Record<string, EntityDef>
 > = {
   [K in keyof TEntities]?: {
     [key: string]: (
@@ -160,10 +153,23 @@ export type InferredResolvers<
 export interface SchemaConfig<
   TActor,
   TClient,
-  TEntities extends Record<string, EntityDef<any, any>>,
-  TGlobalResolvers extends Record<string, Function>
+  TEntities extends Record<string, EntityDef>,
+  TGlobalResolvers extends Record<string, Function>,
+  TResolvers extends InferredResolvers<TActor, TClient, TEntities>
 > {
   globalResolvers?: TGlobalResolvers;
   entities: TEntities;
-  resolvers?: InferredResolvers<TActor, TClient, TEntities>;
+  resolvers?: TResolvers;
+  auth?: {
+    [K in keyof TEntities]?: AuthBlock<
+      | keyof TGlobalResolvers
+      | keyof Exclude<TEntities[K]["resolvers"], undefined>
+      | keyof TResolvers[K]
+      | (
+          | keyof TGlobalResolvers
+          | keyof Exclude<TEntities[K]["resolvers"], undefined>
+          | keyof TResolvers[K]
+        )[]
+    >;
+  };
 }

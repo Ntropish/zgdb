@@ -157,7 +157,7 @@ function parseIndexes(
  * @returns An array of normalized ManyToManyRelationship objects.
  */
 function parseManyToMany(
-  manyToMany: EntityDef<any, any>["manyToMany"]
+  manyToMany: EntityDef["manyToMany"]
 ): ManyToManyRelationship[] {
   const relationships: ManyToManyRelationship[] = [];
   if (!manyToMany) {
@@ -229,7 +229,7 @@ export function parseZodSchema(
  * @returns An array of normalized standard and polymorphic relationships.
  */
 function parseAllRelationships(
-  relationships: EntityDef<any, any>["relationships"]
+  relationships: EntityDef["relationships"]
 ): (Relationship | PolymorphicRelationship)[] {
   const standard: (Relationship | PolymorphicRelationship)[] = [];
 
@@ -248,16 +248,15 @@ function parseAllRelationships(
           node: "polymorphic", // nodeName is 'polymorphic' here
           type: "polymorphic",
           cardinality: relDef.cardinality,
-          required: relDef.required,
-          description: relDef.description,
           discriminator: relDef.discriminator,
           foreignKey: relDef.foreignKey,
           references: relDef.references,
+          description: relDef.description,
         });
       } else {
         standard.push({
           name: relName,
-          node: nodeName, // e.g., 'user', 'post'
+          node: nodeName,
           cardinality: relDef.cardinality,
           required: relDef.required,
           description: relDef.description,
@@ -266,7 +265,6 @@ function parseAllRelationships(
       }
     }
   }
-
   return standard;
 }
 
@@ -278,13 +276,14 @@ function parseAllRelationships(
  * @returns An array of all normalized schema objects, including nested ones.
  */
 export function parseSchemas(
-  config: SchemaConfig<any, any, any, any>
+  config: SchemaConfig<any, any, any, any, any>
 ): NormalizedSchema[] {
   const allSchemas: NormalizedSchema[] = [];
   const {
     entities,
     globalResolvers = {},
     resolvers: entityResolvers = {},
+    auth: rootAuth = {},
   } = config;
 
   // Pre-process to build the global policy map
@@ -322,7 +321,7 @@ export function parseSchemas(
 
     const auth = parseAuthBlock(
       schemaDef.name,
-      schemaDef.auth,
+      (rootAuth as any)[entityName],
       fieldNames,
       relationshipNames,
       localPolicyMap,

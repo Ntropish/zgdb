@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { EntityDef, Policy } from "@tsmk/zg";
 
 // Step 1: Define the Zod schema and its TypeScript type.
 const CommentSchema = z.object({
@@ -9,16 +8,9 @@ const CommentSchema = z.object({
   postId: z.string(),
   createdAt: z.date(),
 });
-type Comment = z.infer<typeof CommentSchema>;
-
-// Step 2: Define the interface for the resolver fields on this entity.
-export type ICommentResolvers = {
-  isAuthor: Policy;
-  isPostAuthor: Policy;
-};
 
 // Step 3: Define the entity, parameterized by its local and global resolvers.
-export const CommentDef: EntityDef<ICommentResolvers, any> = {
+export const CommentDef = {
   name: "Comment",
   description: "A comment on a post",
   schema: CommentSchema,
@@ -50,17 +42,4 @@ export const CommentDef: EntityDef<ICommentResolvers, any> = {
       description: "Index to efficiently query a user's comments.",
     },
   ],
-  auth: {
-    create: "isAuthor",
-    read: "isPublic",
-    update: "isAuthor",
-    delete: ["isAuthor", "isPostAuthor"],
-    fields: {
-      reactions: {
-        read: "isPublic",
-        add: "never",
-        remove: "never",
-      },
-    },
-  },
-};
+} as const;

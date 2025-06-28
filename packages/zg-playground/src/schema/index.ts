@@ -1,7 +1,7 @@
 /**
  * This file is the single source of truth for the entire application schema.
  */
-import { createSchema, EntityDef } from "@tsmk/zg";
+import { createSchemaFactory } from "@tsmk/zg";
 import { ZgClient } from "../../../../temp-output/schema.zg.js";
 
 // Import all schema definitions
@@ -29,20 +29,20 @@ export const globalResolvers = {
   never: () => false,
 };
 
-const entities = {
-  User: UserDef,
-  Post: PostDef,
-  Comment: CommentDef,
-  Follow: FollowDef,
-  Image: ImageDef,
-  PostTag: PostTagDef,
-  Reaction: ReactionDef,
-  Tag: TagDef,
-};
+const createMyAppSchema = createSchemaFactory<MyAppActor, ZgClient>();
 
-export const AppSchema = createSchema<MyAppActor, ZgClient>({
+export const AppSchema = createMyAppSchema({
   globalResolvers,
-  entities,
+  entities: {
+    User: UserDef,
+    Post: PostDef,
+    Comment: CommentDef,
+    Follow: FollowDef,
+    Image: ImageDef,
+    PostTag: PostTagDef,
+    Reaction: ReactionDef,
+    Tag: TagDef,
+  },
   resolvers: {
     Comment: {
       isAuthor: ({ actor, record, input }) => {
@@ -52,7 +52,7 @@ export const AppSchema = createSchema<MyAppActor, ZgClient>({
       },
       isPostAuthor: async ({ actor, record, db }) => {
         if (!record) return false;
-        const post = await db.find("Post", record.postId);
+        const post = await db.posts.get(record.postId);
         if (!post) return false;
         return actor.did === post.author;
       },
@@ -85,7 +85,7 @@ export const AppSchema = createSchema<MyAppActor, ZgClient>({
         // For a create operation, we must check the input
         if (input) {
           if (input.postId) {
-            const post = await db.find("Post", input.postId);
+            const post = await db.posts.get(input.postId);
             return !!post && post.author === actor.did;
           }
           if (input.userId) {
@@ -96,11 +96,11 @@ export const AppSchema = createSchema<MyAppActor, ZgClient>({
         // For update/delete, we check the existing record
         if (record) {
           if (record.postId) {
-            const post = await db.find("Post", record.postId);
+            const post = await db.posts.get(record.postId);
             return !!post && post.author === actor.did;
           }
           if (record.userId) {
-            const user = await db.find("User", record.userId);
+            const user = await db.users.get(record.userId);
             return !!user && user.id === actor.did;
           }
         }
@@ -119,10 +119,60 @@ export const AppSchema = createSchema<MyAppActor, ZgClient>({
       isPostAuthor: async ({ actor, record, input, db }) => {
         const postId = record?.postId || input?.postId;
         if (!postId) return false;
-        const post = await db.find("Post", postId);
+        const post = await db.posts.get(postId);
         if (!post) return false;
         return actor.did === post.author;
       },
+    },
+  },
+  auth: {
+    User: {
+      create: "isOwner",
+      read: "isPublic",
+      update: "isSelf",
+      delete: "hasAdminRights",
+    },
+    Post: {
+      create: "isAuthenticated",
+      read: "isPublic",
+      update: "isAuthor",
+      delete: "isAuthor",
+    },
+    Comment: {
+      create: "isAuthenticated",
+      read: "isPublic",
+      update: "isAuthor",
+      delete: ["isAuthor", "isPostAuthor"],
+    },
+    Follow: {
+      create: "isFollower",
+      read: "isPublic",
+      update: "never",
+      delete: "isFollower",
+    },
+    Image: {
+      create: "isOwner",
+      read: "isPublic",
+      update: "isOwner",
+      delete: "isOwner",
+    },
+    Reaction: {
+      create: "isAuthor",
+      read: "isPublic",
+      update: "never",
+      delete: "isAuthor",
+    },
+    Tag: {
+      create: "hasAdminRights",
+      read: "isPublic",
+      update: "hasAdminRights",
+      delete: "hasAdminRights",
+    },
+    PostTag: {
+      create: "isPostAuthor",
+      read: "isPublic",
+      update: "isPostAuthor",
+      delete: "isPostAuthor",
     },
   },
 });

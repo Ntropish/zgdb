@@ -8,6 +8,7 @@ import {
   Resolver,
   Policy,
   NormalizedSchema,
+  InferredResolvers,
 } from "./parser/types.js";
 import { parseSchemas } from "./parser/index.js";
 import { generateFbs } from "./generator/generator.js";
@@ -18,19 +19,26 @@ const execPromise = promisify(exec);
 export type { SchemaConfig, EntityDef, Resolver, Policy };
 
 /**
- * The main factory function for creating a ZG schema configuration.
- * It provides type inference and a structured way to define all entities,
- * global resolvers, and local resolvers.
- *
- * @returns The configuration object, which will be consumed by the ZG build process.
+ * A factory function that creates a schema builder with a specific
+ * Actor and Client type. This allows for a fully type-safe,
+ * self-documenting schema definition experience.
  */
-export function createSchema<
-  TActor,
-  TClient,
-  const TEntities extends Record<string, EntityDef<any, any>>,
-  const TGlobalResolvers extends Record<string, Function>
->(config: SchemaConfig<TActor, TClient, TEntities, TGlobalResolvers>) {
-  return config;
+export function createSchemaFactory<TActor, TClient>() {
+  return function createSchema<
+    const TEntities extends Record<string, EntityDef>,
+    const TGlobalResolvers extends Record<string, Function>,
+    const TResolvers extends InferredResolvers<TActor, TClient, TEntities>
+  >(
+    config: SchemaConfig<
+      TActor,
+      TClient,
+      TEntities,
+      TGlobalResolvers,
+      TResolvers
+    >
+  ) {
+    return config;
+  };
 }
 
 export interface ZgRunLogger {
@@ -40,7 +48,7 @@ export interface ZgRunLogger {
 
 export interface ZgRunOptions {
   /** The schema configuration object from createSchema. */
-  config: SchemaConfig<any, any, any, any>;
+  config: SchemaConfig<any, any, any, any, any>;
   /** The absolute path to the output directory. */
   outputDir: string;
   /** An optional logger for capturing build output. */
@@ -55,7 +63,7 @@ export interface ZgRunOptions {
  *
  * @param options - The configuration options for the run.
  */
-export async function zg(options: ZgRunOptions) {
+export async function buildSchema(options: ZgRunOptions) {
   const {
     config,
     outputDir,

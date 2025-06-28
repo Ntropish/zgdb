@@ -1,11 +1,4 @@
 import { z } from "zod";
-import { EntityDef } from "@tsmk/zg";
-import { AppContext, AppGlobalResolvers } from "./index.js";
-import { ZgClient, PostNode } from "../../../../temp-output/schema.zg.js";
-import { Policy } from "@tsmk/zg/dist/parser/types.js";
-
-// Infer the schema type for type safety in the resolver
-type Post = z.infer<typeof PostSchema>;
 
 const PostSchema = z.object({
   id: z.string(),
@@ -15,11 +8,7 @@ const PostSchema = z.object({
   createdAt: z.date(),
 });
 
-export type IPostResolvers = {
-  isAuthor: Policy;
-};
-
-export const PostDef: EntityDef<IPostResolvers, AppGlobalResolvers> = {
+export const PostDef = {
   name: "Post",
   description: "A post made by a user, which can have comments.",
   schema: PostSchema,
@@ -66,29 +55,4 @@ export const PostDef: EntityDef<IPostResolvers, AppGlobalResolvers> = {
       description: "Enable full-text search on post content.",
     },
   ],
-  auth: {
-    // Anyone can create a post, as long as they are the author.
-    create: "isAuthor",
-    // All posts are public.
-    read: "isPublic",
-    // Only the author can update their own post.
-    update: "isAuthor",
-    // Only the author can delete their own post.
-    delete: "isAuthor",
-
-    fields: {
-      comments: {
-        // Anyone can read comments on a post.
-        read: "isPublic",
-        // Adding/removing comments is handled by the Comment's auth rules.
-        add: "never",
-        remove: "never",
-      },
-      images: {
-        // Only the author can add or remove images from their post.
-        add: "isAuthor",
-        remove: "isAuthor",
-      },
-    },
-  },
-};
+} as const;

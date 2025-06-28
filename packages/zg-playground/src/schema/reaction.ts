@@ -1,8 +1,4 @@
 import { z } from "zod";
-import { EntityDef } from "@tsmk/zg";
-import { AppContext, AppGlobalResolvers } from "./index.js";
-import { ZgClient, ReactionNode } from "../../../../temp-output/schema.zg.js";
-import { Policy } from "@tsmk/zg/dist/parser/types.js";
 
 const ReactionSchema = z.object({
   id: z.string(),
@@ -11,13 +7,8 @@ const ReactionSchema = z.object({
   targetId: z.string(),
   targetType: z.enum(["post", "comment"]),
 });
-type Reaction = z.infer<typeof ReactionSchema>;
 
-export type IReactionResolvers = {
-  isAuthor: Policy;
-};
-
-export const ReactionDef: EntityDef<IReactionResolvers, AppGlobalResolvers> = {
+export const ReactionDef = {
   name: "Reaction",
   description:
     "A reaction from a user to a specific piece of content, like a post or a comment.",
@@ -40,14 +31,4 @@ export const ReactionDef: EntityDef<IReactionResolvers, AppGlobalResolvers> = {
       references: ["Post", "Comment"],
     },
   },
-  auth: {
-    // A user must be the author to create the reaction.
-    create: "isAuthor",
-    // All reactions are public.
-    read: "isPublic",
-    // Reactions are immutable; they cannot be changed.
-    update: "never",
-    // Only the author can delete (i.e., undo) their reaction.
-    delete: "isAuthor",
-  },
-};
+} as const;
