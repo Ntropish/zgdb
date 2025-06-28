@@ -1,18 +1,50 @@
-import { SchemaConfig } from "./parser/types.js";
-import { parseSchemas } from "./parser/index.js";
-import { generate } from "./generator/generator.js";
+import { generate as generateFiles } from "./generator/generator.js";
+import { generateFbsFile } from "./generator/generator.js";
+import { parseSchemas, createSchemaFactory } from "./parser/index.js";
+import type {
+  SchemaConfig,
+  EntityDef,
+  RelationshipDef,
+  StandardRelationshipDef,
+  PolymorphicRelationshipDef,
+  IndexDef,
+  Resolver,
+  ResolverContext,
+} from "./parser/types.js";
 
-export interface GenerateOptions {
-  config: SchemaConfig;
+type GenerateOptions = {
+  schema: SchemaConfig;
   outputDir: string;
+};
+
+/**
+ * The main entry point for the ZG code generator.
+ * @param options - The generation options.
+ */
+export async function generate(options: GenerateOptions): Promise<void> {
+  const normalizedSchemas = parseSchemas(options.schema);
+  await generateFiles(normalizedSchemas, options.outputDir);
 }
 
-export async function zg(options: GenerateOptions) {
-  const schemas = parseSchemas(options.config);
-  await generate(schemas, options.outputDir);
-}
+const zg = {
+  generate,
+  parseSchemas,
+  generateFbsFile,
+  createSchemaFactory,
+};
 
-export { createSchemaFactory, parseSchemas } from "./parser/index.js";
-export * from "./parser/types.js";
+export {
+  parseSchemas,
+  generateFbsFile,
+  createSchemaFactory,
+  SchemaConfig,
+  EntityDef,
+  RelationshipDef,
+  StandardRelationshipDef,
+  PolymorphicRelationshipDef,
+  IndexDef,
+  Resolver,
+  ResolverContext,
+};
 
 export default zg;

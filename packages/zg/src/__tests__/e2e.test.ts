@@ -49,8 +49,8 @@ describe("ZG End-to-End Test", () => {
       }),
     };
 
-    await zg({
-      config: { entities: { TestEntity: TestSchema } },
+    await zg.generate({
+      schema: { entities: { TestEntity: TestSchema } },
       outputDir: TEST_OUTPUT_DIR,
     });
 
