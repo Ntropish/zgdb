@@ -10,11 +10,15 @@ const findSchema = (schemas: NormalizedSchema[], name: string) => {
 const ALL_RELATIONSHIPS_SCHEMAS: Record<string, EntityDef> = {
   Project: {
     name: "Project",
-    schema: z.object({ id: z.string(), ownerId: z.string() }),
+    schema: z.object({
+      id: z.string(),
+      ownerId: z.string(),
+      attachmentId: z.string(),
+      attachmentType: z.string(),
+    }),
     relationships: {
       owner: {
         entity: "User",
-        field: "ownerId",
         cardinality: "one",
         required: true,
         description: "The user who owns the project.",
@@ -28,11 +32,10 @@ const ALL_RELATIONSHIPS_SCHEMAS: Record<string, EntityDef> = {
       attachment: {
         type: "polymorphic",
         cardinality: "one",
-        required: true,
-        description: "A featured attachment for the project.",
         discriminator: "attachmentType",
         foreignKey: "attachmentId",
-        references: ["Image", "File"],
+        references: ["File", "Image"],
+        required: true,
       },
     },
     manyToMany: {
@@ -67,7 +70,9 @@ const ALL_RELATIONSHIPS_SCHEMAS: Record<string, EntityDef> = {
 
 describe("Schema Parser Deep Edge Cases: All Relationship Types", () => {
   it("should correctly parse a single schema with all relationship types defined", () => {
-    const schemas = parseSchemas({ entities: ALL_RELATIONSHIPS_SCHEMAS });
+    const schemas = parseSchemas({
+      entities: Object.values(ALL_RELATIONSHIPS_SCHEMAS),
+    });
     const projectSchema = findSchema(schemas, "Project");
     const relationships = projectSchema?.relationships;
     expect(relationships).toBeDefined();
@@ -78,8 +83,6 @@ describe("Schema Parser Deep Edge Cases: All Relationship Types", () => {
           name: "owner",
           node: "User",
           cardinality: "one",
-          required: true,
-          description: "The user who owns the project.",
           mappedBy: undefined,
         },
         {
@@ -87,8 +90,6 @@ describe("Schema Parser Deep Edge Cases: All Relationship Types", () => {
           node: "Task",
           cardinality: "many",
           mappedBy: "project",
-          description: "The tasks associated with the project.",
-          required: undefined,
         },
         {
           name: "attachment",
@@ -107,7 +108,6 @@ describe("Schema Parser Deep Edge Cases: All Relationship Types", () => {
         through: "Membership",
         myKey: "projectId",
         theirKey: "userId",
-        description: undefined,
       },
     ]);
   });

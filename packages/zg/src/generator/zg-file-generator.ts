@@ -3,6 +3,7 @@ import { ImportGenerator } from "./generators/import-generator.js";
 import { InterfaceGenerator } from "./generators/interface-generator.js";
 import { CreateInputTypeGenerator } from "./generators/create-input-type-generator.js";
 import { NodeClassGenerator } from "./generators/node-class-generator.js";
+import { CollectionClassGenerator } from "./generators/collection-class-generator.js";
 import { ClientGenerator } from "./generators/client-generator.js";
 import { NormalizedSchema } from "../parser/types.js";
 
@@ -20,6 +21,7 @@ export class ZgFileGenerator implements IGenerator {
       new InterfaceGenerator(),
       new CreateInputTypeGenerator(),
       new NodeClassGenerator(),
+      new CollectionClassGenerator(),
       new ClientGenerator(),
     ];
   }

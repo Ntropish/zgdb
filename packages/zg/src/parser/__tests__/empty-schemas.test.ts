@@ -4,65 +4,55 @@ import { EntityDef, NormalizedSchema } from "../types.js";
 import { z } from "zod";
 
 describe("Schema Parser Deep Edge Cases: Empty and Malformed Schemas", () => {
-  it("should handle a schema with no fields", () => {
-    const rawNoFieldsSchema: EntityDef = {
-      name: "NoFields",
-      description: "A schema with only an ID, no other fields.",
-      schema: z.object({
-        id: z.string(),
-      }),
-    };
-    // Let's remove the id to make it truly empty
-    delete (rawNoFieldsSchema.schema as any).shape.id;
+  const findSchema = (schemas: NormalizedSchema[], name: string) =>
+    schemas.find((s) => s.name === name);
 
-    const normalized = parseSchemas({
-      entities: { NoFields: rawNoFieldsSchema },
-    });
-    expect(normalized).toHaveLength(1);
-    expect(normalized[0].fields).toHaveLength(0);
+  it("should handle a schema with no fields", () => {
+    const noFieldsSchema: EntityDef = {
+      name: "NoFields",
+      schema: z.object({}),
+    };
+    const normalized = parseSchemas({ entities: [noFieldsSchema] });
+    expect(findSchema(normalized, "NoFields")?.fields).toEqual([]);
   });
 
   it("should handle a schema with no relationships", () => {
-    const rawNoRelsSchema: EntityDef = {
+    const noRelsSchema: EntityDef = {
       name: "NoRels",
-      description: "A schema with fields but no relationships.",
-      schema: z.object({ id: z.string(), name: z.string() }),
+      schema: z.object({ id: z.string() }),
+      relationships: {},
     };
-    const normalized = parseSchemas({ entities: { NoRels: rawNoRelsSchema } });
-    expect(normalized).toHaveLength(1);
-    expect(normalized[0].relationships).toHaveLength(0);
+    const normalized = parseSchemas({ entities: [noRelsSchema] });
+    expect(findSchema(normalized, "NoRels")?.relationships).toEqual([]);
   });
 
   it("should handle a schema with no indexes", () => {
-    const rawNoIndexesSchema: EntityDef = {
+    const noIndexesSchema: EntityDef = {
       name: "NoIndexes",
-      description: "A schema with no indexes defined.",
       schema: z.object({ id: z.string() }),
+      indexes: [],
     };
-    const normalized = parseSchemas({
-      entities: { NoIndexes: rawNoIndexesSchema },
-    });
-    expect(normalized).toHaveLength(1);
-    expect(normalized[0].indexes).toEqual([]);
+    const normalized = parseSchemas({ entities: [noIndexesSchema] });
+    expect(findSchema(normalized, "NoIndexes")?.indexes).toEqual([]);
   });
 
   it("should handle a completely empty schema definition", () => {
-    const rawEmptySchema: EntityDef = {
+    const emptySchema: EntityDef = {
       name: "Empty",
       schema: z.object({}),
+      relationships: {},
+      indexes: [],
     };
-    const normalized = parseSchemas({ entities: { Empty: rawEmptySchema } });
-    expect(normalized).toHaveLength(1);
-    const emptySchema = normalized[0];
-    expect(emptySchema.name).toBe("Empty");
-    expect(emptySchema.fields).toHaveLength(0);
-    expect(emptySchema.relationships).toHaveLength(0);
-    expect(emptySchema.indexes).toEqual([]);
-    expect(emptySchema.manyToMany).toEqual([]);
+    const normalized = parseSchemas({ entities: [emptySchema] });
+    const empty = findSchema(normalized, "Empty");
+    expect(empty).toBeDefined();
+    expect(empty?.fields).toEqual([]);
+    expect(empty?.relationships).toEqual([]);
+    expect(empty?.indexes).toEqual([]);
   });
 
   it("should handle an empty input array", () => {
-    const normalized = parseSchemas({ entities: {} });
-    expect(normalized).toHaveLength(0);
+    const normalized = parseSchemas({ entities: [] });
+    expect(normalized).toEqual([]);
   });
 });

@@ -1,0 +1,34 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CollectionClassGenerator > should generate correct collection classes 1`] = `
+"// --- Collection Classes ---
+
+export class UserCollection<TActor> extends EntityCollection<UserNode<TActor>> {
+
+  create(data: UserCreateInput): UserNode<TActor> {
+    const builder = new Builder(1024);
+    
+    const displayNameOffset = data.displayName ? builder.createString(data.displayName) : 0;
+    const idOffset = data.id ? builder.createString(data.id) : 0;
+    
+    const entityOffset = UserFB.User.createUser(builder, BigInt(data.createdAt ?? 0), displayNameOffset, idOffset);
+    builder.finish(entityOffset);
+    
+    const buffer = builder.asUint8Array();
+    
+    if (!data.id || typeof data.id !== 'string') {
+      throw new Error("The 'id' field is required and must be a string to create an entity.");
+    }
+
+    return this.db.create(
+      'User',
+      data.id,
+      buffer,
+      this.nodeFactory,
+      this.getRootAs,
+      this.authContext,
+    );
+  }
+}
+"
+`;

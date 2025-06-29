@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
-import { generateZgFile } from "./zg-file-generator.js";
+import { ZgFileGenerator } from "./zg-file-generator.js";
 import {
   createFbsBuilder,
   renderFbs,
@@ -100,9 +100,10 @@ export async function generate(config: GeneratorConfig) {
     // Decide if we should stop here or continue
   }
 
-  // --- Step 3: Generate the schema.zg.ts file ---
-  const tsContent = generateZgFile(schemas, options);
-  const tsFilePath = path.join(outputDirectory, "createDB.ts");
+  // --- Step 3: Generate the schema.ts file ---
+  const fileGenerator = new ZgFileGenerator();
+  const tsContent = fileGenerator.generate(schemas);
+  const tsFilePath = path.join(outputDirectory, "schema.ts");
   await fs.writeFile(tsFilePath, tsContent);
   console.log(`Generated ZG schema at ${tsFilePath}`);
 }

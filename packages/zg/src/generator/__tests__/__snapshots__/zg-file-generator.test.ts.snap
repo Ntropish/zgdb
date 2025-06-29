@@ -179,30 +179,80 @@ export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
   }
 }
 
+// --- Collection Classes ---
+
+export class UserCollection<TActor> extends EntityCollection<UserNode<TActor>> {
+
+  create(data: UserCreateInput): UserNode<TActor> {
+    const builder = new Builder(1024);
+    
+    const nameOffset = data.name ? builder.createString(data.name) : 0;
+    
+    const entityOffset = UserFB.User.createUser(builder, data.id, nameOffset);
+    builder.finish(entityOffset);
+    
+    const buffer = builder.asUint8Array();
+    
+    if (!data.id || typeof data.id !== 'string') {
+      throw new Error("The 'id' field is required and must be a string to create an entity.");
+    }
+
+    return this.db.create(
+      'User',
+      data.id,
+      buffer,
+      this.nodeFactory,
+      this.getRootAs,
+      this.authContext,
+    );
+  }
+}
+
+
+
+export class PostCollection<TActor> extends EntityCollection<PostNode<TActor>> {
+
+  create(data: PostCreateInput): PostNode<TActor> {
+    const builder = new Builder(1024);
+    
+    const titleOffset = data.title ? builder.createString(data.title) : 0;
+    
+    const entityOffset = PostFB.Post.createPost(builder, data.authorId, data.id, titleOffset);
+    builder.finish(entityOffset);
+    
+    const buffer = builder.asUint8Array();
+    
+    if (!data.id || typeof data.id !== 'string') {
+      throw new Error("The 'id' field is required and must be a string to create an entity.");
+    }
+
+    return this.db.create(
+      'Post',
+      data.id,
+      buffer,
+      this.nodeFactory,
+      this.getRootAs,
+      this.authContext,
+    );
+  }
+}
+
+
 export class ZgClient<TActor> extends ZgDatabase {
+  public readonly users: UserCollection<TActor>;
+  public readonly posts: PostCollection<TActor>;
   constructor(
     prollyTree: ProllyTree,
-    config: ZgConfig<TActor> = { entityResolvers: {}, globalResolvers: {} }
+    config: ZgConfig<TActor> = { entityResolvers: {}, globalResolvers: {} },
+    authContext: ZgAuthContext<TActor> | null = null,
   ) {
-    super(prollyTree, config);
+    super(prollyTree, config, authContext);
+    this.users = new UserCollection<TActor>(this, this.authContext);
+    this.posts = new PostCollection<TActor>(this, this.authContext);
   }
 
-  get users(): EntityCollection<UserNode<TActor>> {
-    return new EntityCollection<UserNode<TActor>>(
-      this,
-      'User',
-      (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
-      (bb) => UserFB.User.getRootAsUser(bb)
-    );
-  }
-
-  get posts(): EntityCollection<PostNode<TActor>> {
-    return new EntityCollection<PostNode<TActor>>(
-      this,
-      'Post',
-      (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
-      (bb) => PostFB.Post.getRootAsPost(bb)
-    );
+  public with<TActor>(actor: TActor): ZgClient<TActor> {
+    return new ZgClient<TActor>(this.prollyTree, this.config, { actor });
   }
 }"
 `;

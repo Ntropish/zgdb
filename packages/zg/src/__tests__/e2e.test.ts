@@ -1,4 +1,4 @@
-import zg from "../index.js";
+import { generate } from "../index.js";
 import { EntityDef } from "../parser/types.js";
 import { z } from "zod";
 import { promises as fs } from "fs";
@@ -49,19 +49,21 @@ describe("ZG End-to-End Test", () => {
       }),
     };
 
-    await zg.generate({
-      schema: { entities: { TestEntity: TestSchema } },
+    await generate({
+      schema: { entities: [TestSchema] },
       outputDir: TEST_OUTPUT_DIR,
     });
 
     // 1. Check that all files were created
     const files = await fs.readdir(TEST_OUTPUT_DIR);
+    const schemaDir = await fs.readdir(path.join(TEST_OUTPUT_DIR, "schema"));
+
     expect(files).toContain("schema.fbs");
-    expect(files).toContain("schema.zg.ts");
     expect(files).toContain("schema.ts");
+    expect(schemaDir.length).toBeGreaterThan(0);
 
     // 2. Check the content of the high-level client file
-    const zgTsPath = path.join(TEST_OUTPUT_DIR, "schema.zg.ts");
+    const zgTsPath = path.join(TEST_OUTPUT_DIR, "schema.ts");
     const zgFileContent = await fs.readFile(zgTsPath, "utf-8");
     const snapshotPath = path.join(
       __dirname,
