@@ -123,9 +123,9 @@ export type Relationship = {
   name: string;
   node: string;
   cardinality: "one" | "many";
-  required?: boolean;
-  description?: string;
   mappedBy?: string;
+  foreignKey?: string;
+  type?: "polymorphic" | undefined;
 };
 
 export type ManyToManyRelationship = {

@@ -25,11 +25,20 @@ static getSizePrefixedRootAsFollow(bb:flatbuffers.ByteBuffer, obj?:Follow):Follo
   return (obj || new Follow()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-id():string|null
-id(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-id(optionalEncoding?:any):string|Uint8Array|null {
+createdAt():bigint {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+}
+
+mutate_createdAt(value:bigint):boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 4);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeInt64(this.bb_pos + offset, value);
+  return true;
 }
 
 followerId():string|null
@@ -46,28 +55,19 @@ followingId(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-createdAt():bigint {
+id():string|null
+id(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+id(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 10);
-  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
-}
-
-mutate_createdAt(value:bigint):boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
-
-  if (offset === 0) {
-    return false;
-  }
-
-  this.bb!.writeInt64(this.bb_pos + offset, value);
-  return true;
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
 static startFollow(builder:flatbuffers.Builder) {
   builder.startObject(4);
 }
 
-static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, idOffset, 0);
+static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
+  builder.addFieldInt64(0, createdAt, BigInt('0'));
 }
 
 static addFollowerId(builder:flatbuffers.Builder, followerIdOffset:flatbuffers.Offset) {
@@ -78,8 +78,8 @@ static addFollowingId(builder:flatbuffers.Builder, followingIdOffset:flatbuffers
   builder.addFieldOffset(2, followingIdOffset, 0);
 }
 
-static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(3, createdAt, BigInt('0'));
+static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, idOffset, 0);
 }
 
 static endFollow(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -87,12 +87,12 @@ static endFollow(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createFollow(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, followerIdOffset:flatbuffers.Offset, followingIdOffset:flatbuffers.Offset, createdAt:bigint):flatbuffers.Offset {
+static createFollow(builder:flatbuffers.Builder, createdAt:bigint, followerIdOffset:flatbuffers.Offset, followingIdOffset:flatbuffers.Offset, idOffset:flatbuffers.Offset):flatbuffers.Offset {
   Follow.startFollow(builder);
-  Follow.addId(builder, idOffset);
+  Follow.addCreatedAt(builder, createdAt);
   Follow.addFollowerId(builder, followerIdOffset);
   Follow.addFollowingId(builder, followingIdOffset);
-  Follow.addCreatedAt(builder, createdAt);
+  Follow.addId(builder, idOffset);
   return Follow.endFollow(builder);
 }
 }

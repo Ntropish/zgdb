@@ -25,37 +25,37 @@ static getSizePrefixedRootAsReaction(bb:flatbuffers.ByteBuffer, obj?:Reaction):R
   return (obj || new Reaction()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-id():string|null
-id(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-id(optionalEncoding?:any):string|Uint8Array|null {
+authorId():string|null
+authorId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+authorId(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-type():string|null
-type(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-type(optionalEncoding?:any):string|Uint8Array|null {
+id():string|null
+id(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+id(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-}
-
-authorId():string|null
-authorId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-authorId(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
 targetId():string|null
 targetId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
 targetId(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
 targetType():string|null
 targetType(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
 targetType(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+type():string|null
+type(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+type(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
@@ -64,24 +64,24 @@ static startReaction(builder:flatbuffers.Builder) {
   builder.startObject(5);
 }
 
-static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, idOffset, 0);
-}
-
-static addType(builder:flatbuffers.Builder, typeOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, typeOffset, 0);
-}
-
 static addAuthorId(builder:flatbuffers.Builder, authorIdOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, authorIdOffset, 0);
+  builder.addFieldOffset(0, authorIdOffset, 0);
+}
+
+static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, idOffset, 0);
 }
 
 static addTargetId(builder:flatbuffers.Builder, targetIdOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, targetIdOffset, 0);
+  builder.addFieldOffset(2, targetIdOffset, 0);
 }
 
 static addTargetType(builder:flatbuffers.Builder, targetTypeOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, targetTypeOffset, 0);
+  builder.addFieldOffset(3, targetTypeOffset, 0);
+}
+
+static addType(builder:flatbuffers.Builder, typeOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(4, typeOffset, 0);
 }
 
 static endReaction(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -89,13 +89,13 @@ static endReaction(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createReaction(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, typeOffset:flatbuffers.Offset, authorIdOffset:flatbuffers.Offset, targetIdOffset:flatbuffers.Offset, targetTypeOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createReaction(builder:flatbuffers.Builder, authorIdOffset:flatbuffers.Offset, idOffset:flatbuffers.Offset, targetIdOffset:flatbuffers.Offset, targetTypeOffset:flatbuffers.Offset, typeOffset:flatbuffers.Offset):flatbuffers.Offset {
   Reaction.startReaction(builder);
-  Reaction.addId(builder, idOffset);
-  Reaction.addType(builder, typeOffset);
   Reaction.addAuthorId(builder, authorIdOffset);
+  Reaction.addId(builder, idOffset);
   Reaction.addTargetId(builder, targetIdOffset);
   Reaction.addTargetType(builder, targetTypeOffset);
+  Reaction.addType(builder, typeOffset);
   return Reaction.endReaction(builder);
 }
 }

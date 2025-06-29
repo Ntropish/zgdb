@@ -47,7 +47,10 @@ export async function generateFbsFile(
       tableBuilder.docs(schema.description);
     }
 
-    for (const field of schema.fields) {
+    const sortedFields = [...schema.fields].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+    for (const field of sortedFields) {
       tableBuilder.field(field.name, field.type as any);
     }
 

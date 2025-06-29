@@ -25,29 +25,13 @@ static getSizePrefixedRootAsImage_Metadata(bb:flatbuffers.ByteBuffer, obj?:Image
   return (obj || new Image_Metadata()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-width():bigint {
+createdAt():bigint {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
-mutate_width(value:bigint):boolean {
+mutate_createdAt(value:bigint):boolean {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-
-  if (offset === 0) {
-    return false;
-  }
-
-  this.bb!.writeInt64(this.bb_pos + offset, value);
-  return true;
-}
-
-height():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
-}
-
-mutate_height(value:bigint):boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
 
   if (offset === 0) {
     return false;
@@ -60,16 +44,32 @@ mutate_height(value:bigint):boolean {
 format():string|null
 format(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
 format(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
+  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-createdAt():bigint {
+height():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
+}
+
+mutate_height(value:bigint):boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeInt64(this.bb_pos + offset, value);
+  return true;
+}
+
+width():bigint {
   const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
-mutate_createdAt(value:bigint):boolean {
+mutate_width(value:bigint):boolean {
   const offset = this.bb!.__offset(this.bb_pos, 10);
 
   if (offset === 0) {
@@ -84,20 +84,20 @@ static startImage_Metadata(builder:flatbuffers.Builder) {
   builder.startObject(4);
 }
 
-static addWidth(builder:flatbuffers.Builder, width:bigint) {
-  builder.addFieldInt64(0, width, BigInt('0'));
-}
-
-static addHeight(builder:flatbuffers.Builder, height:bigint) {
-  builder.addFieldInt64(1, height, BigInt('0'));
+static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
+  builder.addFieldInt64(0, createdAt, BigInt('0'));
 }
 
 static addFormat(builder:flatbuffers.Builder, formatOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, formatOffset, 0);
+  builder.addFieldOffset(1, formatOffset, 0);
 }
 
-static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(3, createdAt, BigInt('0'));
+static addHeight(builder:flatbuffers.Builder, height:bigint) {
+  builder.addFieldInt64(2, height, BigInt('0'));
+}
+
+static addWidth(builder:flatbuffers.Builder, width:bigint) {
+  builder.addFieldInt64(3, width, BigInt('0'));
 }
 
 static endImage_Metadata(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -105,12 +105,12 @@ static endImage_Metadata(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createImage_Metadata(builder:flatbuffers.Builder, width:bigint, height:bigint, formatOffset:flatbuffers.Offset, createdAt:bigint):flatbuffers.Offset {
+static createImage_Metadata(builder:flatbuffers.Builder, createdAt:bigint, formatOffset:flatbuffers.Offset, height:bigint, width:bigint):flatbuffers.Offset {
   Image_Metadata.startImage_Metadata(builder);
-  Image_Metadata.addWidth(builder, width);
-  Image_Metadata.addHeight(builder, height);
-  Image_Metadata.addFormat(builder, formatOffset);
   Image_Metadata.addCreatedAt(builder, createdAt);
+  Image_Metadata.addFormat(builder, formatOffset);
+  Image_Metadata.addHeight(builder, height);
+  Image_Metadata.addWidth(builder, width);
   return Image_Metadata.endImage_Metadata(builder);
 }
 }

@@ -24,12 +24,50 @@ export class ZgBaseNode<T extends Table & { id(): string }, TActor = any> {
   }
 }
 
+export class EntityCollection<
+  T extends Table & { id(): string },
+  TNode extends ZgBaseNode<T>
+> {
+  constructor(
+    private db: ZgDatabase,
+    private entityName: string,
+    private nodeFactory: (
+      db: ZgDatabase,
+      fbb: T,
+      ac: ZgAuthContext<any> | null
+    ) => TNode,
+    private getRootAs: (byteBuffer: ByteBuffer) => T,
+    private authContext: ZgAuthContext | null
+  ) {}
+
+  get(id: string): TNode | null {
+    return this.db.get(
+      this.entityName,
+      id,
+      this.nodeFactory,
+      this.getRootAs,
+      this.authContext
+    );
+  }
+
+  *[Symbol.iterator](): Generator<TNode> {
+    const startKey = ZgDatabase.textToKey(this.entityName + ":");
+    const endKey = ZgDatabase.textToKey(this.entityName + ";"); // ':' is right before ';' in ASCII
+
+    for (const [key, value] of this.db.scan(startKey, endKey)) {
+      const byteBuffer = new ByteBuffer(value);
+      const table = this.getRootAs(byteBuffer);
+      yield this.nodeFactory(this.db, table, this.authContext);
+    }
+  }
+}
+
 // The ZgDatabase class is the storage engine.
 export class ZgDatabase {
   private tree: ProllyTree;
   private config: any;
 
-  private static textToKey(text: string): Uint8Array {
+  public static textToKey(text: string): Uint8Array {
     return encoder.encode(text);
   }
 
@@ -94,6 +132,13 @@ export class ZgDatabase {
     const key = ZgDatabase.textToKey(`${entityName}:${id}`);
     const { tree: newTree } = this.tree.putSync(key, data);
     this.tree = newTree;
+  }
+
+  scan(
+    startKey: Uint8Array,
+    endKey: Uint8Array
+  ): Generator<[Uint8Array, Uint8Array]> {
+    return this.tree.scanSync(startKey, endKey);
   }
 }
 

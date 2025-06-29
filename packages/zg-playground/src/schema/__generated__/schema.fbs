@@ -1,64 +1,64 @@
 namespace Schema;
 
 table User {
+  avatarUrl: string;
+  displayName: string;
   id: string;
   publicKey: string;
-  displayName: string;
-  avatarUrl: string;
 }
 
 /// A post made by a user, which can have comments.
 table Post {
+  authorId: string;
+  content: string;
+  createdAt: long;
   id: string;
   title: string;
-  content: string;
-  authorId: string;
-  createdAt: long;
 }
 
 /// A comment on a post
 table Comment {
-  id: string;
-  content: string;
   authorId: string;
-  postId: string;
+  content: string;
   createdAt: long;
+  id: string;
+  postId: string;
 }
 
 /// A directional relationship indicating one user follows another.
 table Follow {
-  id: string;
+  createdAt: long;
   followerId: string;
   followingId: string;
-  createdAt: long;
+  id: string;
 }
 
 /// Nested schema for metadata of Image
 table Image_Metadata {
-  width: long;
-  height: long;
-  format: string;
   createdAt: long;
+  format: string;
+  height: long;
+  width: long;
 }
 
 /// An image, which can be a user's profile picture or part of a post.
 table Image {
-  id: string;
-  url: string;
-  fartCount: long;
   altText: string;
+  fartCount: long;
+  id: string;
   metadata: Image_Metadata;
   postId: string;
+  url: string;
   userId: string;
 }
 
 /// A reaction from a user to a specific piece of content, like a post or a comment.
 table Reaction {
-  id: string;
-  type: string;
   authorId: string;
+  id: string;
   targetId: string;
   targetType: string;
+  type: string;
 }
 
 /// A tag that can be applied to posts to categorize them.

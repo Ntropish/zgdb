@@ -116,6 +116,9 @@ export function parseZodSchema(
     });
   }
 
+  // Sort fields alphabetically by name to ensure consistent order
+  fields.sort((a, b) => a.name.localeCompare(b.name));
+
   return fields;
 }
 
@@ -145,8 +148,6 @@ function parseRelationships(
         name: relName,
         node: relDef.entity,
         cardinality: relDef.cardinality,
-        required: relDef.required,
-        description: relDef.description,
         mappedBy: relDef.mappedBy,
       });
     }

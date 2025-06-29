@@ -29,7 +29,7 @@ beforeEach(() => {
 
 describe("ZG Client: Relationships", () => {
   it("should create related nodes and allow synchronous traversal", () => {
-    const systemClient = db.createClient({ id: "system-admin" });
+    const systemClient = db.with({ id: "system-admin" });
 
     // 1. Create the related nodes
     systemClient.users.create({
@@ -53,7 +53,7 @@ describe("ZG Client: Relationships", () => {
     });
 
     // 2. Fetch the node from the "database" using a client
-    const clientForUserA = db.createClient({ id: "user-A" });
+    const clientForUserA = db.with({ id: "user-A" });
     const foundPost = clientForUserA.posts.get("post-1");
     expect(foundPost).toBeDefined();
 
@@ -62,18 +62,17 @@ describe("ZG Client: Relationships", () => {
     expect(author).toBeDefined();
     expect(author!.displayName).toBe("User A");
 
-    // 4. Test the other side of the relationship (many-to-one)
+    // 4. Test the other side of the a relationship (many-to-one)
     const foundUser = clientForUserA.users.get("user-A");
     expect(foundUser).toBeDefined();
 
-    // TODO: Implement 'many' relationship traversal
-    // const posts = foundUser!.posts;
-    // expect(posts).toHaveLength(1);
-    // expect(posts[0].title).toBe("Post by A");
+    const posts = foundUser!.posts;
+    expect(posts).toHaveLength(1);
+    expect(posts[0].title).toBe("Post by A");
   });
 
   it("should update a node via direct property assignment", () => {
-    const client = db.createClient({ id: "system" });
+    const client = db.with({ id: "system" });
 
     // 1. Create a post
     const originalPost = client.posts.create({
@@ -100,7 +99,7 @@ describe("ZG Client: Relationships", () => {
 
 describe("ZG Client: Resolvers", () => {
   it("should resolve a computed field on an entity", () => {
-    const client = db.createClient({ id: "user-A" });
+    const client = db.with({ id: "user-A" });
     const post = client.posts.create({
       id: "post-1",
       title: "A very long post title",
@@ -115,7 +114,7 @@ describe("ZG Client: Resolvers", () => {
   });
 
   it("should resolve a value from the global resolvers", () => {
-    const client = db.createClient({ id: "user-A" });
+    const client = db.with({ id: "user-A" });
     const post = client.posts.create({
       id: "post-1",
       title: "A post",

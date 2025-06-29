@@ -24,30 +24,30 @@ static getSizePrefixedRootAsUser(bb:flatbuffers.ByteBuffer, obj?:User):User {
   return (obj || new User()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-id():string|null
-id(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-id(optionalEncoding?:any):string|Uint8Array|null {
+avatarUrl():string|null
+avatarUrl(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+avatarUrl(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-}
-
-publicKey():string|null
-publicKey(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-publicKey(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
 displayName():string|null
 displayName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
 displayName(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+id():string|null
+id(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+id(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-avatarUrl():string|null
-avatarUrl(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-avatarUrl(optionalEncoding?:any):string|Uint8Array|null {
+publicKey():string|null
+publicKey(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+publicKey(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
@@ -56,20 +56,20 @@ static startUser(builder:flatbuffers.Builder) {
   builder.startObject(4);
 }
 
-static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, idOffset, 0);
-}
-
-static addPublicKey(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, publicKeyOffset, 0);
+static addAvatarUrl(builder:flatbuffers.Builder, avatarUrlOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, avatarUrlOffset, 0);
 }
 
 static addDisplayName(builder:flatbuffers.Builder, displayNameOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, displayNameOffset, 0);
+  builder.addFieldOffset(1, displayNameOffset, 0);
 }
 
-static addAvatarUrl(builder:flatbuffers.Builder, avatarUrlOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, avatarUrlOffset, 0);
+static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, idOffset, 0);
+}
+
+static addPublicKey(builder:flatbuffers.Builder, publicKeyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, publicKeyOffset, 0);
 }
 
 static endUser(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -85,12 +85,12 @@ static finishSizePrefixedUserBuffer(builder:flatbuffers.Builder, offset:flatbuff
   builder.finish(offset, undefined, true);
 }
 
-static createUser(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, publicKeyOffset:flatbuffers.Offset, displayNameOffset:flatbuffers.Offset, avatarUrlOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createUser(builder:flatbuffers.Builder, avatarUrlOffset:flatbuffers.Offset, displayNameOffset:flatbuffers.Offset, idOffset:flatbuffers.Offset, publicKeyOffset:flatbuffers.Offset):flatbuffers.Offset {
   User.startUser(builder);
+  User.addAvatarUrl(builder, avatarUrlOffset);
+  User.addDisplayName(builder, displayNameOffset);
   User.addId(builder, idOffset);
   User.addPublicKey(builder, publicKeyOffset);
-  User.addDisplayName(builder, displayNameOffset);
-  User.addAvatarUrl(builder, avatarUrlOffset);
   return User.endUser(builder);
 }
 }

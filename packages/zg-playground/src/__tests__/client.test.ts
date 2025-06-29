@@ -1,22 +1,27 @@
-import { describe, it, expect } from "vitest";
-import { createDB, IUser } from "../schema/__generated__/createDB.js";
+import { describe, it, expect, beforeEach } from "vitest";
+import { createDB } from "../schema/__generated__/createDB.js";
 
 describe("ZG Playground Client", () => {
-  it("should be able to import the generated client", () => {
-    expect(createDB).toBeDefined();
-  });
+  let db: any;
 
-  it("should create a new user and return a proxy object", () => {
-    const db = createDB({
-      globalResolvers: { isOwner: () => true },
+  beforeEach(() => {
+    db = createDB({
+      globalResolvers: {},
       entityResolvers: {},
       auth: {},
     });
-    const client = db.createClient({ id: "test-user" });
+  });
+
+  it("should be able to import the generated client", () => {
+    expect(db).toBeDefined();
+  });
+
+  it("should create a new user and return a proxy object", () => {
+    const client = db.with({ id: "test-user" });
 
     const newUser = client.users.create({
       id: "user-1",
-      publicKey: "key-123",
+      publicKey: "key-1",
       displayName: "Test User",
       avatarUrl: "http://example.com/avatar.png",
     });
@@ -26,28 +31,19 @@ describe("ZG Playground Client", () => {
     expect(newUser.displayName).toBe("Test User");
   });
 
-  it("should find a created user by id", async () => {
-    const db = createDB({
-      globalResolvers: {
-        isOwner: () => true,
-        isPublic: () => true,
-      },
-      entityResolvers: {},
-      auth: {},
-    });
-    const client = db.createClient({ id: "test-user" });
+  it("should find a created user by id", () => {
+    const client = db.with({ id: "test-user" });
 
     client.users.create({
-      id: "user-to-find",
-      publicKey: "key-456",
-      displayName: "Findable User",
-      avatarUrl: "http://example.com/avatar.png",
+      id: "user-2",
+      publicKey: "key-2",
+      displayName: "Another User",
+      avatarUrl: "http://example.com/avatar2.png",
     });
 
-    const foundUser = await client.users.get("user-to-find");
-
+    const foundUser = client.users.get("user-2");
     expect(foundUser).toBeDefined();
-    expect(foundUser!.id).toBe("user-to-find");
-    expect(foundUser!.displayName).toBe("Findable User");
+    expect(foundUser.id).toBe("user-2");
+    expect(foundUser.displayName).toBe("Another User");
   });
 });

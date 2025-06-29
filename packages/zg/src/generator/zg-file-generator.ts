@@ -34,7 +34,10 @@ function generateInterface(schema: NormalizedSchema): string {
   return `export interface I${schema.name} {\n${fields}\n}`;
 }
 
-function generateNodeClass(schema: NormalizedSchema): string {
+function generateNodeClass(
+  schema: NormalizedSchema,
+  schemas: NormalizedSchema[]
+): string {
   const fields = schema.fields
     .map((f) => {
       let tsType = mapTsType(f.type);
@@ -48,15 +51,57 @@ function generateNodeClass(schema: NormalizedSchema): string {
     .join("\n\n");
 
   const relationships = (schema.relationships ?? [])
-    .filter(
-      (rel): rel is Relationship =>
-        !("type" in rel && rel.type === "polymorphic")
-    )
-    .map((rel) => {
+    .flatMap((rel) => {
+      if (rel.type === "polymorphic") {
+        return [];
+      }
       const relSchemaName = rel.node;
       const relNodeName = `${relSchemaName}Node<TActor>`;
-      const foreignKeyField = `${rel.name}Id`;
-      const resolvedNodeType = `${relNodeName}`; // Simplified
+      const foreignKeyField = rel.foreignKey ?? `${rel.name}Id`;
+      const resolvedNodeType = `${relNodeName}`;
+
+      if (rel.cardinality === "many") {
+        // Find the foreign key on the 'many' side of the relationship
+        const remoteSchema = schemas.find((s) => s.name === rel.node);
+        if (!remoteSchema)
+          throw new Error(`Schema not found for relationship: ${rel.node}`);
+
+        // Find the reverse relationship definition
+        const remoteRel = remoteSchema.relationships?.find(
+          (r) => r.name === rel.mappedBy
+        );
+        if (!remoteRel)
+          throw new Error(
+            `Could not find reverse relationship for ${schema.name}.${rel.name}`
+          );
+
+        let remoteFk: string | undefined;
+        if (remoteRel.type === "polymorphic") {
+          remoteFk = remoteRel.foreignKey;
+        } else {
+          remoteFk = remoteRel.foreignKey ?? `${remoteRel.name}Id`;
+        }
+
+        if (!remoteFk) {
+          throw new Error(
+            `Could not determine foreign key for reverse relationship ${remoteSchema.name}.${remoteRel.name}`
+          );
+        }
+
+        return `  get ${rel.name}(): ${relNodeName}[] {
+    // This is a placeholder implementation. A real implementation would use an index.
+    const allNodes = Array.from(this.db.${
+      rel.node.charAt(0).toLowerCase() + rel.node.slice(1)
+    }s);
+    // TODO: This is inefficient. We should use an index.
+    return allNodes.filter(n => {
+      const remoteNode = n as any; // ZgBaseNode<any, TActor>
+      const fkValue = remoteNode.fbb.${remoteFk}();
+      return fkValue === this.id;
+    });
+  }`;
+      }
+
       return `  get ${rel.name}(): ${resolvedNodeType} | null {
     const id = this.fbb.${foreignKeyField}();
     if (!id) return null;
@@ -152,29 +197,25 @@ ${relationships}
 }`;
 }
 
-function generateDbAccessors(schema: NormalizedSchema): string {
-  const schemaNameLower =
-    schema.name.charAt(0).toLowerCase() + schema.name.slice(1);
+function generateCollectionClass(schema: NormalizedSchema): string {
+  if (schema.isJoinTable) return "";
   const nodeName = `${schema.name}Node<TActor>`;
+  const createInputType = `${schema.name}CreateInput`;
 
-  // Helper type for this specific accessor
-  const resolvedNodeType = `ResolvedNode<${nodeName}, TEntityResolvers["${schema.name}"], TGlobalResolvers>`;
+  // Ensure fields are sorted alphabetically to match the FBS file order
+  const sortedFields = [...schema.fields].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
 
-  const createArgs = schema.fields
-    .map((f) => `${f.name}: ${mapTsType(f.type)}`)
-    .join(", ");
-  const createInputType = `{ ${createArgs} }`;
-
-  const stringFields = schema.fields.filter((f) => f.type === "string");
-  const otherFields = schema.fields.filter((f) => f.type !== "string");
-
-  const createStrings = stringFields
+  const createStrings = sortedFields
+    .filter((f) => f.type === "string")
     .map(
       (f) =>
         `    const ${f.name}Offset = data.${f.name} ? builder.createString(data.${f.name}) : 0;`
     )
     .join("\n");
-  const createParams = schema.fields
+
+  const createParams = sortedFields
     .map((f) => {
       if (f.type === "string") {
         return `${f.name}Offset`;
@@ -184,48 +225,45 @@ function generateDbAccessors(schema: NormalizedSchema): string {
     .join(", ");
 
   return `
-  get ${schemaNameLower}s() {
-    return {
-      get: (id: string): ${resolvedNodeType} | null => {
-        return this.db.get<${schema.name}FB.${schema.name}, ${nodeName}>(
-          '${schema.name}',
-          id,
-          (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
-          (bb) => ${schema.name}FB.${schema.name}.getRootAs${schema.name}(bb),
-          this.authContext,
-        ) as ${resolvedNodeType} | null;
-      },
-      create: (data: ${createInputType}): ${resolvedNodeType} => {
-        const builder = new Builder(1024);
-        
-${createStrings}
-        
-        const entityOffset = ${schema.name}FB.${schema.name}.create${schema.name}(builder, ${createParams});
-        builder.finish(entityOffset);
-        
-        const buffer = builder.asUint8Array();
-        
-        if (!data.id || typeof data.id !== 'string') {
-          throw new Error("The 'id' field is required and must be a string to create an entity.");
-        }
+export class ${schema.name}Collection<TActor> extends EntityCollection<${schema.name}FB.${schema.name}, ${nodeName}> {
+  constructor(
+    db: ZgDatabase,
+    authContext: ZgAuthContext<TActor> | null
+  ) {
+    super(
+      db,
+      '${schema.name}',
+      (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
+      (bb) => ${schema.name}FB.${schema.name}.getRootAs${schema.name}(bb),
+      authContext
+    );
+  }
 
-        return this.db.create<${schema.name}FB.${schema.name}, ${nodeName}>(
-          '${schema.name}',
-          data.id,
-          buffer,
-          (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
-          (bb) => ${schema.name}FB.${schema.name}.getRootAs${schema.name}(bb),
-          this.authContext,
-        ) as ${resolvedNodeType};
-      },
-      update: (id: string, data: Partial<${createInputType}>): ${resolvedNodeType} => {
-        // Update is more complex: it requires getting the old buffer,
-        // parsing it, creating a new buffer with the merged data,
-        // and then writing it back. This is a placeholder.
-        throw new Error("Update is not implemented yet.");
-      },
-    };
-  }`;
+  create(data: ${createInputType}): ${nodeName} {
+    const builder = new Builder(1024);
+    
+${createStrings}
+    
+    const entityOffset = ${schema.name}FB.${schema.name}.create${schema.name}(builder, ${createParams});
+    builder.finish(entityOffset);
+    
+    const buffer = builder.asUint8Array();
+    
+    if (!data.id || typeof data.id !== 'string') {
+      throw new Error("The 'id' field is required and must be a string to create an entity.");
+    }
+
+    return this.db.create<${schema.name}FB.${schema.name}, ${nodeName}>(
+      '${schema.name}',
+      data.id,
+      buffer,
+      this.nodeFactory,
+      this.getRootAs,
+      this.authContext,
+    );
+  }
+}
+`;
 }
 
 export function generateZgFile(
@@ -237,44 +275,78 @@ export function generateZgFile(
 
   const schemaImports = sortedSchemas
     .map((s) => {
+      // Don't generate imports for join tables
+      if (s.isJoinTable) {
+        return null;
+      }
       return `import * as ${s.name}FB from './schema/${toKebabCase(
         s.name
       )}${importExt}';`;
     })
+    .filter(Boolean)
     .join("\n");
 
   const allTypes = sortedSchemas
     .map((s) => `${s.name}FB.${s.name}`)
     .join(" | ");
 
-  const interfaces = sortedSchemas.map(generateInterface).join("\n\n");
-  const nodeClasses = sortedSchemas.map(generateNodeClass).join("\n\n");
-  const dbAccessors = sortedSchemas.map(generateDbAccessors).join("\n");
+  const interfaces = sortedSchemas
+    .map((s) => (s.isJoinTable ? "" : generateInterface(s)))
+    .join("\n\n");
+  const nodeClasses = sortedSchemas
+    .map((s) => (s.isJoinTable ? "" : generateNodeClass(s, sortedSchemas)))
+    .join("\n\n");
 
-  return `// Generated by ZG. Do not edit.
-import { ZgDatabase, ZgBaseNode, ZgAuthContext } from '@zgdb/client';
-${schemaImports}
-import { Builder, ByteBuffer } from 'flatbuffers';
+  const collectionClasses = sortedSchemas
+    .map(generateCollectionClass)
+    .join("\n\n");
 
-// This is a hack. The generated schema.ts file exports all root functions,
-// but we need a single entry point to look them up dynamically.
-const getRootAs = (bb: ByteBuffer, identifier: string) => {
-  const funcName = \`getRootAs\${identifier}\`;
-  if (funcName in LowLevel) {
-    return (LowLevel as any)[funcName](bb);
-  }
-  throw new Error(\`Invalid identifier for getRootAs: \${identifier}\`);
-}
+  const createInputTypes = sortedSchemas
+    .map((s) => {
+      if (s.isJoinTable) return "";
+      const createArgs = s.fields
+        .map((f) => `${f.name}: ${mapTsType(f.type)}`)
+        .join(", ");
+      return `export type ${s.name}CreateInput = { ${createArgs} };`;
+    })
+    .join("\n");
 
-// --- Helper Types ---
-type AnyZgNode = ${allTypes};
-type ResolverFn = (context: any) => any;
-type ResolverMap = Record<string, ResolverFn>;
-type ResolvedNode<TNode, TEntityResolvers extends ResolverMap, TGlobalResolvers extends ResolverMap> = TNode & {
-  [K in keyof TEntityResolvers]: ReturnType<TEntityResolvers[K]>;
-} & {
-  [K in keyof TGlobalResolvers]: ReturnType<TGlobalResolvers[K]>;
+  const resolverTypes = `
+export type TEntityResolvers = {
+${sortedSchemas
+  .map(
+    (s) => `  ${s.name}?: any; // Define your entity-specific resolvers here`
+  )
+  .join("\n")}
 };
+export type TGlobalResolvers = any; // Define your global resolvers here
+`;
+
+  const clientProperties = sortedSchemas
+    .map((s) => {
+      if (s.isJoinTable) return "";
+      const schemaNameLower = s.name.charAt(0).toLowerCase() + s.name.slice(1);
+      return `  public readonly ${schemaNameLower}s: ${s.name}Collection<TActor>;`;
+    })
+    .join("\n");
+
+  const clientConstructorAssignments = sortedSchemas
+    .map((s) => {
+      if (s.isJoinTable) return "";
+      const schemaNameLower = s.name.charAt(0).toLowerCase() + s.name.slice(1);
+      return `    this.${schemaNameLower}s = new ${s.name}Collection<TActor>(this.db, this.authContext);`;
+    })
+    .join("\n");
+
+  const fullFile = `// @ts-nocheck
+// This file is generated by @zgdb/zg. Do not edit it manually.
+// TODO: Generate based on the user's config
+import { ZgDatabase, ZgBaseNode, ZgAuthContext, EntityCollection } from '@zgdb/client';
+import { Builder, ByteBuffer } from 'flatbuffers';
+${schemaImports}
+
+// --- Create Input Types ---
+${createInputTypes}
 
 // --- Interfaces ---
 ${interfaces}
@@ -282,54 +354,51 @@ ${interfaces}
 // --- Node Classes ---
 ${nodeClasses}
 
-// --- Database Class ---
-export class ZgClient<
-  TActor,
-  TGlobalResolvers extends ResolverMap,
-  TEntityResolvers extends Record<string, ResolverMap>
-> {
-  private db: ZgDatabase;
-  private authContext: ZgAuthContext<TActor>;
+// --- Collection Classes ---
+${collectionClasses}
 
-  constructor(db: ZgDatabase, authContext: ZgAuthContext<TActor>) {
-    this.db = db;
-    this.authContext = authContext;
+// --- Resolver Types ---
+${resolverTypes}
+
+// --- Client Class ---
+export class ZgClient<TActor = any, TEntityResolvers extends TEntityResolvers = {}, TGlobalResolvers extends TGlobalResolvers = {}> {
+  public db: ZgDatabase;
+  private authContext: ZgAuthContext<TActor> | null = null;
+  public config: any;
+
+  ${clientProperties}
+
+  constructor(options?: any, db?: ZgDatabase) {
+    this.config = options ?? {};
+    this.db = db || new ZgDatabase(this.config);
+
+${clientConstructorAssignments}
   }
-${dbAccessors}
+
+  public with(actor: TActor): ZgClient<TActor, TEntityResolvers, TGlobalResolvers> {
+    const newClient = new ZgClient<TActor, TEntityResolvers, TGlobalResolvers>(this.config, this.db);
+    newClient.authContext = { actor };
+    // Re-initialize collections with the new auth context
+${sortedSchemas
+  .map((s) => {
+    if (s.isJoinTable) return "";
+    const schemaNameLower = s.name.charAt(0).toLowerCase() + s.name.slice(1);
+    return `    newClient.${schemaNameLower}s = new ${s.name}Collection<TActor>(
+      newClient.db,
+      newClient.authContext,
+    );`;
+  })
+  .join("\n")}
+    return newClient;
+  }
 }
 
-// The main database instance, created once
-class Database<
-  TGlobalResolvers extends ResolverMap,
-  TEntityResolvers extends Record<string, ResolverMap>
-> {
-  private db: ZgDatabase;
-
-  constructor(config: {
-    globalResolvers: TGlobalResolvers;
-    entityResolvers: TEntityResolvers;
-    auth: Record<string, any>;
-  }) {
-    this.db = new ZgDatabase(config);
-  }
-
-  createClient<TActor>(actor: TActor): ZgClient<TActor, TGlobalResolvers, TEntityResolvers> {
-    return new ZgClient(this.db, { actor });
-  }
-}
-
-export function createDB<
-  TActor,
-  const TGlobalResolvers extends ResolverMap,
-  const TEntityResolvers extends Record<string, ResolverMap>
->(config: {
-  globalResolvers: TGlobalResolvers;
-  entityResolvers: TEntityResolvers;
-  auth: Record<string, any>;
-}): Database<TGlobalResolvers, TEntityResolvers> {
-  return new Database(config);
+// --- createDB ---
+export function createDB<TActor = any, TEntityResolvers extends TEntityResolvers = {}, TGlobalResolvers extends TGlobalResolvers = {}>(options?: any): ZgClient<TActor, TEntityResolvers, TGlobalResolvers> {
+  return new ZgClient<TActor, TEntityResolvers, TGlobalResolvers>(options);
 }
 `;
+  return fullFile;
 }
 
 export function generateZgFileFromFlatc(

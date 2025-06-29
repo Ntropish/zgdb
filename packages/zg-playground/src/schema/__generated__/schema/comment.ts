@@ -25,9 +25,9 @@ static getSizePrefixedRootAsComment(bb:flatbuffers.ByteBuffer, obj?:Comment):Com
   return (obj || new Comment()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-id():string|null
-id(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-id(optionalEncoding?:any):string|Uint8Array|null {
+authorId():string|null
+authorId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+authorId(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
@@ -39,27 +39,13 @@ content(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-authorId():string|null
-authorId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-authorId(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-}
-
-postId():string|null
-postId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-postId(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-}
-
 createdAt():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
 mutate_createdAt(value:bigint):boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
 
   if (offset === 0) {
     return false;
@@ -69,28 +55,42 @@ mutate_createdAt(value:bigint):boolean {
   return true;
 }
 
+id():string|null
+id(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+id(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+postId():string|null
+postId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+postId(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
 static startComment(builder:flatbuffers.Builder) {
   builder.startObject(5);
 }
 
-static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, idOffset, 0);
+static addAuthorId(builder:flatbuffers.Builder, authorIdOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, authorIdOffset, 0);
 }
 
 static addContent(builder:flatbuffers.Builder, contentOffset:flatbuffers.Offset) {
   builder.addFieldOffset(1, contentOffset, 0);
 }
 
-static addAuthorId(builder:flatbuffers.Builder, authorIdOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, authorIdOffset, 0);
+static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
+  builder.addFieldInt64(2, createdAt, BigInt('0'));
+}
+
+static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, idOffset, 0);
 }
 
 static addPostId(builder:flatbuffers.Builder, postIdOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, postIdOffset, 0);
-}
-
-static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
-  builder.addFieldInt64(4, createdAt, BigInt('0'));
+  builder.addFieldOffset(4, postIdOffset, 0);
 }
 
 static endComment(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -98,13 +98,13 @@ static endComment(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createComment(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, contentOffset:flatbuffers.Offset, authorIdOffset:flatbuffers.Offset, postIdOffset:flatbuffers.Offset, createdAt:bigint):flatbuffers.Offset {
+static createComment(builder:flatbuffers.Builder, authorIdOffset:flatbuffers.Offset, contentOffset:flatbuffers.Offset, createdAt:bigint, idOffset:flatbuffers.Offset, postIdOffset:flatbuffers.Offset):flatbuffers.Offset {
   Comment.startComment(builder);
-  Comment.addId(builder, idOffset);
-  Comment.addContent(builder, contentOffset);
   Comment.addAuthorId(builder, authorIdOffset);
-  Comment.addPostId(builder, postIdOffset);
+  Comment.addContent(builder, contentOffset);
   Comment.addCreatedAt(builder, createdAt);
+  Comment.addId(builder, idOffset);
+  Comment.addPostId(builder, postIdOffset);
   return Comment.endComment(builder);
 }
 }
