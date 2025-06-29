@@ -1,25 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { createZgClient, IUser } from "../../zg/schema.zg.js";
+import { createDB, IUser } from "../schema/__generated__/createDB.js";
 
 describe("ZG Playground Client", () => {
   it("should be able to import the generated client", () => {
-    expect(createZgClient).toBeDefined();
+    expect(createDB).toBeDefined();
   });
 
   it("should create a new user and return a proxy object", async () => {
-    const client = createZgClient({
-      db: {
-        get: async () => undefined,
-        put: async () => {},
-      },
-      resolvers: { global: { isOwner: () => true }, local: {} },
+    const client = createDB({
+      globalResolvers: { isOwner: () => true },
+      entityResolvers: {},
+      auth: {},
     });
-    client.setAuthContext({ id: "test-user" });
+    client.setAuthContext({ actor: { id: "test-user" } });
 
     const newUser = await client.users.create({
       id: "user-1",
       publicKey: "key-123",
       displayName: "Test User",
+      avatarUrl: "http://example.com/avatar.png",
     });
 
     expect(newUser).toBeDefined();
@@ -28,29 +27,21 @@ describe("ZG Playground Client", () => {
   });
 
   it("should find a created user by id", async () => {
-    // Use a map to simulate a persistent block store.
-    const store = new Map<string, Uint8Array>();
-    const client = createZgClient({
-      db: {
-        get: async (cid: any) => store.get(cid.toString()),
-        put: async (cid: any, block: any) => {
-          store.set(cid.toString(), block);
-        },
+    const client = createDB({
+      globalResolvers: {
+        isOwner: () => true,
+        isPublic: () => true,
       },
-      resolvers: {
-        global: {
-          isOwner: () => true,
-          isPublic: () => true,
-        },
-        local: {},
-      },
+      entityResolvers: {},
+      auth: {},
     });
-    client.setAuthContext({ id: "test-user" });
+    client.setAuthContext({ actor: { id: "test-user" } });
 
     await client.users.create({
       id: "user-to-find",
       publicKey: "key-456",
       displayName: "Findable User",
+      avatarUrl: "http://example.com/avatar.png",
     });
 
     const foundUser = await client.users.get("user-to-find");

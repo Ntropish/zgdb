@@ -15,7 +15,7 @@ export interface IPost {
   title: string;
   content: string;
   author: string;
-  createdAt: number;
+  createdAt: bigint;
 }
 
 export interface IComment {
@@ -23,27 +23,27 @@ export interface IComment {
   content: string;
   authorId: string;
   postId: string;
-  createdAt: number;
+  createdAt: bigint;
 }
 
 export interface IFollow {
   id: string;
   followerId: string;
   followingId: string;
-  createdAt: number;
+  createdAt: bigint;
 }
 
 export interface IImage_Metadata {
-  width: number;
-  height: number;
+  width: bigint;
+  height: bigint;
   format: string;
-  createdAt: number;
+  createdAt: bigint;
 }
 
 export interface IImage {
   id: string;
   url: string;
-  fartCount: number;
+  fartCount: bigint;
   altText: string;
   metadata: any;
   postId: string;
@@ -126,7 +126,7 @@ export class PostNode<TActor> extends ZgBaseNode<LowLevel.Post, TActor> {
     return this.fbb.author();
   }
 
-  get createdAt(): number {
+  get createdAt(): bigint {
     return this.fbb.createdAt();
   }
 
@@ -160,7 +160,7 @@ export class CommentNode<TActor> extends ZgBaseNode<LowLevel.Comment, TActor> {
     return this.fbb.postId();
   }
 
-  get createdAt(): number {
+  get createdAt(): bigint {
     return this.fbb.createdAt();
   }
 
@@ -190,7 +190,7 @@ export class FollowNode<TActor> extends ZgBaseNode<LowLevel.Follow, TActor> {
     return this.fbb.followingId();
   }
 
-  get createdAt(): number {
+  get createdAt(): bigint {
     return this.fbb.createdAt();
   }
 
@@ -208,11 +208,11 @@ export class Image_MetadataNode<TActor> extends ZgBaseNode<LowLevel.Image_Metada
   }
 
   // --- Fields ---
-  get width(): number {
+  get width(): bigint {
     return this.fbb.width();
   }
 
-  get height(): number {
+  get height(): bigint {
     return this.fbb.height();
   }
 
@@ -220,7 +220,7 @@ export class Image_MetadataNode<TActor> extends ZgBaseNode<LowLevel.Image_Metada
     return this.fbb.format();
   }
 
-  get createdAt(): number {
+  get createdAt(): bigint {
     return this.fbb.createdAt();
   }
 
@@ -246,7 +246,7 @@ export class ImageNode<TActor> extends ZgBaseNode<LowLevel.Image, TActor> {
     return this.fbb.url();
   }
 
-  get fartCount(): number {
+  get fartCount(): bigint {
     return this.fbb.fartCount();
   }
 

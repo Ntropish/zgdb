@@ -19,6 +19,8 @@ export class ZgBaseNode<T extends Table, TActor = any> {
 // The ZgDatabase class is a placeholder for the actual storage engine.
 // In a real application, this would interact with a database like Prolly Trees.
 export class ZgDatabase {
+  private store = new Map<string, any>();
+
   constructor(options?: any) {
     // In the future, options could contain storage paths, etc.
   }
@@ -29,13 +31,19 @@ export class ZgDatabase {
     nodeFactory: (db: ZgDatabase, fbb: T, ac: ZgAuthContext | null) => TNode
   ): Promise<TNode | null> {
     console.log(`Getting ${entityName} with id ${id}`);
-    // Mock implementation
-    return null;
+    const data = this.store.get(`${entityName}:${id}`);
+    if (!data) {
+      return null;
+    }
+    const mockFbb = new Proxy({} as any, {
+      get: (_, prop: string) => () => data[prop],
+    }) as T;
+    return nodeFactory(this, mockFbb, null);
   }
 
   async getRaw(entityName: string, id: string): Promise<any | null> {
     console.log(`Getting raw ${entityName} with id ${id}`);
-    return null;
+    return this.store.get(`${entityName}:${id}`) ?? null;
   }
 
   async create<T extends Table, TNode extends ZgBaseNode<T>>(
@@ -44,8 +52,11 @@ export class ZgDatabase {
     nodeFactory: (db: ZgDatabase, fbb: T, ac: ZgAuthContext | null) => TNode
   ): Promise<TNode> {
     console.log(`Creating ${entityName} with data`, data);
-    // Mock implementation
-    const mockFbb = {} as T; // This is not a real flatbuffer object
+    if (!data.id) throw new Error("Mock DB requires data to have an id");
+    this.store.set(`${entityName}:${data.id}`, data);
+    const mockFbb = new Proxy({} as any, {
+      get: (_, prop: string) => () => data[prop],
+    }) as T;
     return nodeFactory(this, mockFbb, null);
   }
 
@@ -56,14 +67,20 @@ export class ZgDatabase {
     nodeFactory: (db: ZgDatabase, fbb: T, ac: ZgAuthContext | null) => TNode
   ): Promise<TNode> {
     console.log(`Updating ${entityName} with id ${id} and data`, data);
-    // Mock implementation
-    const mockFbb = {} as T; // This is not a real flatbuffer object
+    const key = `${entityName}:${id}`;
+    const existing = this.store.get(key);
+    if (!existing) throw new Error(`Record not found for update: ${key}`);
+    const updated = { ...existing, ...data };
+    this.store.set(key, updated);
+    const mockFbb = new Proxy({} as any, {
+      get: (_, prop: string) => () => updated[prop],
+    }) as T;
     return nodeFactory(this, mockFbb, null);
   }
 
   async delete(entityName: string, id: string): Promise<void> {
     console.log(`Deleting ${entityName} with id ${id}`);
-    // Mock implementation
+    this.store.delete(`${entityName}:${id}`);
   }
 }
 

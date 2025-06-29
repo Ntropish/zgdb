@@ -10,7 +10,7 @@ const asArray = <T>(value: T | T[]): T[] => {
 function mapTsType(fbsType: string): string {
   const typeMap: Record<string, string> = {
     string: "string",
-    long: "number",
+    long: "bigint",
     bool: "boolean",
   };
   return typeMap[fbsType] || "any"; // Default for nested tables etc.
