@@ -1,19 +1,17 @@
 import { ByteBuffer, Builder } from "flatbuffers";
-import { compare } from "uint8arrays/compare";
-import { toString } from "uint8arrays/to-string";
 import {
   Node as FlatbufferNode,
   LeafNode as FlatbufferLeafNode,
   InternalNode as FlatbufferInternalNode,
-  Key,
-  Value,
-  Address as FlatbufferAddress,
+  KeyValuePair as FlatbufferKeyValuePair,
+  Branch as FlatbufferBranch,
   NodeBody,
 } from "./generated/zgdb/prolly-tree.js";
 import type { NodeManager } from "./node-manager.js";
 
 export type Address = Uint8Array;
 export type KeyValuePair = { key: Uint8Array; value: Uint8Array };
+export type Branch = { key: Uint8Array; address: Address };
 
 /**
  * A proxy class for accessing FlatBuffer-based node data in a type-safe manner.
@@ -33,129 +31,48 @@ export abstract class NodeProxy {
     return this.node.level();
   }
 
-  isLeaf(): this is LeafNodeProxy {
-    return this.level === 0;
-  }
-
-  isInternal(): this is InternalNodeProxy {
-    return this.level > 0;
-  }
-
   get entryCount(): number {
     return this.node.entryCount();
   }
 
   get bytes(): Uint8Array {
-    if (!this.node.bb) {
-      throw new Error("ByteBuffer not available");
-    }
-    return this.node.bb.bytes();
+    return this.node.bb!.bytes();
   }
 
-  abstract getFirstKey(): Promise<Uint8Array | undefined>;
-  abstract getFirstKeySync(): Uint8Array | undefined;
-
-  asLeaf(): LeafNodeProxy {
-    if (this.isLeaf()) {
-      // The `this` is already a LeafNodeProxy, but TypeScript doesn't know that
-      // without a type assertion. We can avoid creating a new instance.
-      return this as unknown as LeafNodeProxy;
-    }
-    throw new Error("Cannot cast to LeafNodeProxy: Node is an internal node.");
-  }
-
-  asInternal(): InternalNodeProxy {
-    if (this.isInternal()) {
-      return this as unknown as InternalNodeProxy;
-    }
-    throw new Error("Cannot cast to InternalNodeProxy: Node is a leaf node.");
+  isLeaf(): this is LeafNodeProxy {
+    return this.node.bodyType() === NodeBody.LeafNode;
   }
 }
 
 export class LeafNodeProxy extends NodeProxy {
-  public readonly leaf: FlatbufferLeafNode;
+  private readonly leaf: FlatbufferLeafNode;
 
   constructor(bytes: Uint8Array, nodeManager: NodeManager) {
     super(bytes, nodeManager);
-    const body = this.node.body(new FlatbufferLeafNode());
-    if (!body) {
-      throw new Error("Failed to access LeafNode body");
-    }
-    this.leaf = body;
+    this.leaf = this.node.body(new FlatbufferLeafNode())! as FlatbufferLeafNode;
   }
 
-  get keysLength(): number {
-    return this.leaf.keysLength();
-  }
-
-  getKey(index: number): Uint8Array | null {
-    return this.leaf.keys(index)?.keyArray() ?? null;
-  }
-
-  getValue(index: number): Uint8Array | null {
-    return this.leaf.values(index)?.valueArray() ?? null;
+  get length(): number {
+    return this.leaf.pairsLength();
   }
 
   getPair(index: number): KeyValuePair {
-    const key = this.getKey(index);
-    const value = this.getValue(index);
-    if (!key || !value) {
-      throw new Error(`Entry at index ${index} not found.`);
-    }
-    return { key, value };
+    const pair = this.leaf.pairs(index)!;
+    return { key: pair.keyArray()!, value: pair.valueArray()! };
   }
 
-  async getFirstKey(): Promise<Uint8Array | undefined> {
-    return this.getFirstKeySync();
-  }
-
-  getFirstKeySync(): Uint8Array | undefined {
-    if (this.keysLength === 0) {
-      return undefined;
-    }
-    return this.getKey(0) ?? undefined;
-  }
-
-  /**
-   * Performs a binary search to find the index of a key.
-   * @returns The index of the key if found, otherwise the bitwise complement of the insertion point.
-   */
   findKeyIndex(key: Uint8Array): { found: boolean; index: number } {
     let low = 0;
-    let high = this.keysLength - 1;
-    let mid = 0;
-
+    let high = this.length - 1;
     while (low <= high) {
-      mid = low + Math.floor((high - low) / 2);
-      const midKey = this.getKey(mid);
-      if (midKey === null) {
-        // This indicates a sparse array or an issue with the data.
-        // Depending on the expected structure, you might want to handle this differently.
-        // For a dense array of keys, this case might be an error.
-        // Let's assume keys are dense and this is an error condition or end of search.
-        high = mid - 1; // Or handle as an error
-        continue;
-      }
+      const mid = low + Math.floor((high - low) / 2);
+      const midKey = this.getPair(mid).key;
       const cmp = this.nodeManager.config.comparator(key, midKey);
-
-      if (cmp > 0) {
-        low = mid + 1;
-      } else if (cmp < 0) {
-        high = mid - 1;
-      } else {
-        return { found: true, index: mid };
-      }
+      if (cmp > 0) low = mid + 1;
+      else if (cmp < 0) high = mid - 1;
+      else return { found: true, index: mid };
     }
-
     return { found: false, index: low };
-  }
-
-  getAllPairs(): KeyValuePair[] {
-    const pairs: KeyValuePair[] = [];
-    for (let i = 0; i < this.keysLength; i++) {
-      pairs.push(this.getPair(i));
-    }
-    return pairs;
   }
 }
 
@@ -164,90 +81,38 @@ export class InternalNodeProxy extends NodeProxy {
 
   constructor(bytes: Uint8Array, nodeManager: NodeManager) {
     super(bytes, nodeManager);
-    const body = this.node.body(new FlatbufferInternalNode());
-    if (!body) {
-      throw new Error("Failed to access InternalNode body");
-    }
-    this.internal = body;
+    this.internal = this.node.body(
+      new FlatbufferInternalNode()
+    )! as FlatbufferInternalNode;
   }
 
-  get keysLength(): number {
-    return this.internal.keysLength();
+  get length(): number {
+    return this.internal.branchesLength();
   }
 
-  get addressesLength(): number {
-    return this.internal.addressesLength();
+  getBranch(index: number): Branch {
+    const branch = this.internal.branches(index)!;
+    return { key: branch.keyArray()!, address: branch.addressArray()! };
   }
 
-  async getFirstKey(): Promise<Uint8Array | undefined> {
-    // The first key in the subtree of an internal node is the first key of its leftmost child.
-    // This requires recursively descending to the first leaf.
-    let childAddress = this.getAddress(0);
-    if (!childAddress) return undefined;
-
-    let childNode = await this.nodeManager.getNode(childAddress);
-    if (!childNode) return undefined;
-
-    return childNode.getFirstKey();
-  }
-
-  getFirstKeySync(): Uint8Array | undefined {
-    // The first key in the subtree of an internal node is the first key of its leftmost child.
-    // This requires recursively descending to the first leaf.
-    let childAddress = this.getAddress(0);
-    if (!childAddress) return undefined;
-
-    let childNode = this.nodeManager.getNodeSync(childAddress);
-    if (!childNode) return undefined; // Child not in cache
-
-    return childNode.getFirstKeySync();
-  }
-
-  getKey(index: number): Uint8Array | null {
-    return this.internal.keys(index)?.keyArray() ?? null;
-  }
-
-  getAddress(index: number): Address | null {
-    return this.internal.addresses(index)?.addressArray() ?? null;
-  }
-
-  /**
-   * Finds the index of the child pointer for the given key.
-   * In an internal node, there are `k` keys and `k+1` child pointers.
-   * The keys act as separators.
-   *
-   * Child 0: keys < key[0]
-   * Child i: key[i-1] <= keys < key[i]
-   * Child k: keys >= key[k-1]
-   */
   findChildIndex(key: Uint8Array): number {
-    // Correctly performs a binary search.
     let low = 0;
-    let high = this.keysLength - 1;
-    let result = this.keysLength; // Default to the rightmost child
-
+    let high = this.length - 1;
+    let result = this.length;
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
-      const midKey = this.getKey(mid);
-
-      if (!midKey) {
-        // This case should not happen in a correctly formed node
-        // but as a safeguard, we treat it as if we've gone past the end.
-        high = mid - 1;
-        continue;
-      }
-
+      const midKey = this.getBranch(mid).key;
       const cmp = this.nodeManager.config.comparator(key, midKey);
-
       if (cmp < 0) {
-        result = mid; // This might be the correct child index
+        result = mid;
         high = mid - 1;
-      } else {
-        // key >= midKey
+      } else if (cmp > 0) {
         low = mid + 1;
+      } else {
+        // cmp === 0, exact match
+        return mid;
       }
     }
-
     return result;
   }
 }
@@ -259,15 +124,16 @@ export function createNodeProxy(
   bytes: Uint8Array,
   nodeManager: NodeManager
 ): LeafNodeProxy | InternalNodeProxy {
-  // Directly parse the buffer to check the level without full proxy instantiation.
   const buf = new ByteBuffer(bytes);
   const node = FlatbufferNode.getRootAsNode(buf);
-  const level = node.level();
+  const bodyType = node.bodyType();
 
-  if (level === 0) {
+  if (bodyType === NodeBody.LeafNode) {
     return new LeafNodeProxy(bytes, nodeManager);
-  } else {
+  } else if (bodyType === NodeBody.InternalNode) {
     return new InternalNodeProxy(bytes, nodeManager);
+  } else {
+    throw new Error("Invalid node type");
   }
 }
 
@@ -280,41 +146,32 @@ export function isLeafNodeProxy(proxy: NodeProxy): proxy is LeafNodeProxy {
 
 // #region Node Creation Utilities
 
-export type BranchPair = { key: Uint8Array; address: Uint8Array };
-
 export function createLeafNodeBuffer(
   pairs: KeyValuePair[],
-  level: number
+  level: number,
+  entryCount: number
 ): Uint8Array {
   const builder = new Builder(1024);
-
-  const keyOffsets = pairs.map((pair) => {
-    const keyVec = Key.createKeyVector(builder, pair.key);
-    Key.startKey(builder);
-    Key.addKey(builder, keyVec);
-    return Key.endKey(builder);
-  });
-  const valueOffsets = pairs.map((pair) => {
-    const valVec = Value.createValueVector(builder, pair.value);
-    Value.startValue(builder);
-    Value.addValue(builder, valVec);
-    return Value.endValue(builder);
+  const pairOffsets = pairs.map((p) => {
+    const key = builder.createSharedString(p.key);
+    const value = builder.createSharedString(p.value);
+    FlatbufferKeyValuePair.startKeyValuePair(builder);
+    FlatbufferKeyValuePair.addKey(builder, key);
+    FlatbufferKeyValuePair.addValue(builder, value);
+    return FlatbufferKeyValuePair.endKeyValuePair(builder);
   });
 
-  const keysVector = FlatbufferLeafNode.createKeysVector(builder, keyOffsets);
-  const valuesVector = FlatbufferLeafNode.createValuesVector(
+  const pairsVector = FlatbufferLeafNode.createPairsVector(
     builder,
-    valueOffsets
+    pairOffsets
   );
-
   FlatbufferLeafNode.startLeafNode(builder);
-  FlatbufferLeafNode.addKeys(builder, keysVector);
-  FlatbufferLeafNode.addValues(builder, valuesVector);
+  FlatbufferLeafNode.addPairs(builder, pairsVector);
   const leafNodeOffset = FlatbufferLeafNode.endLeafNode(builder);
 
   FlatbufferNode.startNode(builder);
-  FlatbufferNode.addEntryCount(builder, pairs.length);
   FlatbufferNode.addLevel(builder, level);
+  FlatbufferNode.addEntryCount(builder, entryCount);
   FlatbufferNode.addBodyType(builder, NodeBody.LeafNode);
   FlatbufferNode.addBody(builder, leafNodeOffset);
   const nodeOffset = FlatbufferNode.endNode(builder);
@@ -324,48 +181,31 @@ export function createLeafNodeBuffer(
 }
 
 export function createInternalNodeBuffer(
-  branches: BranchPair[],
-  totalSubtreeEntries: number,
-  level: number
+  branches: Branch[],
+  level: number,
+  entryCount: number
 ): Uint8Array {
   const builder = new Builder(1024);
-
-  const keyOffsets = branches
-    .filter((branch) => branch.key.length > 0)
-    .map((branch) => {
-      const keyVec = Key.createKeyVector(builder, branch.key);
-      Key.startKey(builder);
-      Key.addKey(builder, keyVec);
-      return Key.endKey(builder);
-    });
-
-  const addressOffsets = branches.map((branch) => {
-    const addrVec = FlatbufferAddress.createAddressVector(
-      builder,
-      branch.address
-    );
-    FlatbufferAddress.startAddress(builder);
-    FlatbufferAddress.addAddress(builder, addrVec);
-    return FlatbufferAddress.endAddress(builder);
+  const branchOffsets = branches.map((b) => {
+    const key = builder.createSharedString(b.key);
+    const address = builder.createSharedString(b.address);
+    FlatbufferBranch.startBranch(builder);
+    FlatbufferBranch.addKey(builder, key);
+    FlatbufferBranch.addAddress(builder, address);
+    return FlatbufferBranch.endBranch(builder);
   });
 
-  const keysVector = FlatbufferInternalNode.createKeysVector(
+  const branchesVector = FlatbufferInternalNode.createBranchesVector(
     builder,
-    keyOffsets
+    branchOffsets
   );
-  const addressesVector = FlatbufferInternalNode.createAddressesVector(
-    builder,
-    addressOffsets
-  );
-
   FlatbufferInternalNode.startInternalNode(builder);
-  FlatbufferInternalNode.addKeys(builder, keysVector);
-  FlatbufferInternalNode.addAddresses(builder, addressesVector);
+  FlatbufferInternalNode.addBranches(builder, branchesVector);
   const internalNodeOffset = FlatbufferInternalNode.endInternalNode(builder);
 
   FlatbufferNode.startNode(builder);
-  FlatbufferNode.addEntryCount(builder, totalSubtreeEntries);
   FlatbufferNode.addLevel(builder, level);
+  FlatbufferNode.addEntryCount(builder, entryCount);
   FlatbufferNode.addBodyType(builder, NodeBody.InternalNode);
   FlatbufferNode.addBody(builder, internalNodeOffset);
   const nodeOffset = FlatbufferNode.endNode(builder);

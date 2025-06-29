@@ -4,22 +4,22 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-export class Branch {
+export class KeyValuePair {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):Branch {
+  __init(i:number, bb:flatbuffers.ByteBuffer):KeyValuePair {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsBranch(bb:flatbuffers.ByteBuffer, obj?:Branch):Branch {
-  return (obj || new Branch()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsKeyValuePair(bb:flatbuffers.ByteBuffer, obj?:KeyValuePair):KeyValuePair {
+  return (obj || new KeyValuePair()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsBranch(bb:flatbuffers.ByteBuffer, obj?:Branch):Branch {
+static getSizePrefixedRootAsKeyValuePair(bb:flatbuffers.ByteBuffer, obj?:KeyValuePair):KeyValuePair {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new Branch()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new KeyValuePair()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 key(index: number):number|null {
@@ -37,22 +37,22 @@ keyArray():Uint8Array|null {
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-address(index: number):number|null {
+value(index: number):number|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.readUint8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
 }
 
-addressLength():number {
+valueLength():number {
   const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-addressArray():Uint8Array|null {
+valueArray():Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? new Uint8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-static startBranch(builder:flatbuffers.Builder) {
+static startKeyValuePair(builder:flatbuffers.Builder) {
   builder.startObject(2);
 }
 
@@ -72,11 +72,11 @@ static startKeyVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static addAddress(builder:flatbuffers.Builder, addressOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, addressOffset, 0);
+static addValue(builder:flatbuffers.Builder, valueOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, valueOffset, 0);
 }
 
-static createAddressVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
+static createValueVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset {
   builder.startVector(1, data.length, 1);
   for (let i = data.length - 1; i >= 0; i--) {
     builder.addInt8(data[i]!);
@@ -84,21 +84,21 @@ static createAddressVector(builder:flatbuffers.Builder, data:number[]|Uint8Array
   return builder.endVector();
 }
 
-static startAddressVector(builder:flatbuffers.Builder, numElems:number) {
+static startValueVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(1, numElems, 1);
 }
 
-static endBranch(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endKeyValuePair(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   builder.requiredField(offset, 4) // key
-  builder.requiredField(offset, 6) // address
+  builder.requiredField(offset, 6) // value
   return offset;
 }
 
-static createBranch(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset, addressOffset:flatbuffers.Offset):flatbuffers.Offset {
-  Branch.startBranch(builder);
-  Branch.addKey(builder, keyOffset);
-  Branch.addAddress(builder, addressOffset);
-  return Branch.endBranch(builder);
+static createKeyValuePair(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset, valueOffset:flatbuffers.Offset):flatbuffers.Offset {
+  KeyValuePair.startKeyValuePair(builder);
+  KeyValuePair.addKey(builder, keyOffset);
+  KeyValuePair.addValue(builder, valueOffset);
+  return KeyValuePair.endKeyValuePair(builder);
 }
 }

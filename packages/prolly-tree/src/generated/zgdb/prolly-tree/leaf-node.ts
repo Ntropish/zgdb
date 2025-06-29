@@ -4,8 +4,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Key } from '../../zgdb/prolly-tree/key.js';
-import { Value } from '../../zgdb/prolly-tree/value.js';
+import { KeyValuePair } from '../../zgdb/prolly-tree/key-value-pair.js';
 
 
 export class LeafNode {
@@ -26,35 +25,25 @@ static getSizePrefixedRootAsLeafNode(bb:flatbuffers.ByteBuffer, obj?:LeafNode):L
   return (obj || new LeafNode()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-keys(index: number, obj?:Key):Key|null {
+pairs(index: number, obj?:KeyValuePair):KeyValuePair|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? (obj || new Key()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
+  return offset ? (obj || new KeyValuePair()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
 }
 
-keysLength():number {
+pairsLength():number {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-values(index: number, obj?:Value):Value|null {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? (obj || new Value()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
-}
-
-valuesLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 static startLeafNode(builder:flatbuffers.Builder) {
-  builder.startObject(2);
+  builder.startObject(1);
 }
 
-static addKeys(builder:flatbuffers.Builder, keysOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, keysOffset, 0);
+static addPairs(builder:flatbuffers.Builder, pairsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, pairsOffset, 0);
 }
 
-static createKeysVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+static createPairsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
   builder.startVector(4, data.length, 4);
   for (let i = data.length - 1; i >= 0; i--) {
     builder.addOffset(data[i]!);
@@ -62,35 +51,19 @@ static createKeysVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):
   return builder.endVector();
 }
 
-static startKeysVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(4, numElems, 4);
-}
-
-static addValues(builder:flatbuffers.Builder, valuesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, valuesOffset, 0);
-}
-
-static createValuesVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
-  builder.startVector(4, data.length, 4);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addOffset(data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startValuesVector(builder:flatbuffers.Builder, numElems:number) {
+static startPairsVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
 static endLeafNode(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
+  builder.requiredField(offset, 4) // pairs
   return offset;
 }
 
-static createLeafNode(builder:flatbuffers.Builder, keysOffset:flatbuffers.Offset, valuesOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createLeafNode(builder:flatbuffers.Builder, pairsOffset:flatbuffers.Offset):flatbuffers.Offset {
   LeafNode.startLeafNode(builder);
-  LeafNode.addKeys(builder, keysOffset);
-  LeafNode.addValues(builder, valuesOffset);
+  LeafNode.addPairs(builder, pairsOffset);
   return LeafNode.endLeafNode(builder);
 }
 }

@@ -8,10 +8,11 @@ import {
   createLeafNodeBuffer,
   KeyValuePair,
   createInternalNodeBuffer,
-  BranchPair,
+  Branch,
   Address,
   isLeafNodeProxy,
 } from "./node-proxy.js";
+import { nodeChunker } from "./node-chunking.js";
 
 export class NodeManager {
   constructor(
@@ -23,9 +24,7 @@ export class NodeManager {
     address: Address
   ): Promise<LeafNodeProxy | InternalNodeProxy | undefined> {
     const bytes = await this.blockManager.get(address);
-    if (!bytes) {
-      return undefined;
-    }
+    if (!bytes) return undefined;
     return createNodeProxy(bytes, this);
   }
 
@@ -39,49 +38,39 @@ export class NodeManager {
 
   isNodeFull(node: NodeProxy): boolean {
     const fanout = this.config.treeDefinition.targetFanout;
-    if (node.isLeaf()) {
-      return node.keysLength >= fanout;
-    }
-    // It's an InternalNodeProxy
-    const internalNode = node as InternalNodeProxy;
-    return internalNode.addressesLength >= fanout;
+    return node.isLeaf()
+      ? (node as LeafNodeProxy).length >= fanout
+      : (node as InternalNodeProxy).length >= fanout;
   }
 
   async createLeafNode(
     pairs: KeyValuePair[]
   ): Promise<{ address: Address; node: LeafNodeProxy }> {
     pairs.sort((a, b) => this.config.comparator(a.key, b.key));
-
-    const level = 0; // Leaf nodes are at level 0
-    const bytes = createLeafNodeBuffer(pairs, level);
+    const bytes = createLeafNodeBuffer(pairs, 0, pairs.length);
     const address = await this.blockManager.put(bytes);
     const node = new LeafNodeProxy(bytes, this);
     return { address, node };
   }
 
   async createInternalNode(
-    branches: BranchPair[]
+    branches: Branch[]
   ): Promise<{ address: Address; node: InternalNodeProxy }> {
     let totalSubtreeEntries = 0;
     let level = -1;
-
     for (const branch of branches) {
       const child = await this.getNode(branch.address);
       if (child) {
         totalSubtreeEntries += child.entryCount;
-        if (level === -1) {
-          level = child.level + 1;
-        }
+        if (level === -1) level = child.level + 1;
       }
     }
-    if (level === -1) {
-      level = 1; // Default to 1 if no children
-    }
+    if (level === -1) level = 1;
 
     const bytes = createInternalNodeBuffer(
       branches,
-      totalSubtreeEntries,
-      level
+      level,
+      totalSubtreeEntries
     );
     const address = await this.blockManager.put(bytes);
     const node = new InternalNodeProxy(bytes, this);
@@ -91,164 +80,97 @@ export class NodeManager {
   async updateChild(
     parent: InternalNodeProxy,
     oldChildAddress: Address,
-    newChildAddress: Address,
-    split?: { key: Uint8Array; address: Address }
-  ): Promise<{
-    newAddress: Address;
-    split?: { key: Uint8Array; address: Address };
-  }> {
-    const originalAddress = await this.blockManager.hashFn(parent.bytes);
-
-    // Deconstruct the parent into simple arrays of keys and addresses.
-    const keys: (Uint8Array | null)[] = [];
-    for (let i = 0; i < parent.keysLength; i++) {
-      keys.push(parent.getKey(i));
-    }
-    const addresses: Address[] = [];
-    for (let i = 0; i < parent.addressesLength; i++) {
-      addresses.push(parent.getAddress(i)!);
+    newBranches: Branch[]
+  ): Promise<{ newAddress: Address; newBranches?: Branch[] }> {
+    const branches: Branch[] = [];
+    for (let i = 0; i < parent.length; i++) {
+      branches.push(parent.getBranch(i));
     }
 
-    // Find the index of the child address to update.
-    const childIndex = addresses.findIndex(
-      (addr) => this.config.comparator(addr, oldChildAddress) === 0
+    const childIndex = branches.findIndex(
+      (b) => this.config.comparator(b.address, oldChildAddress) === 0
     );
-    if (childIndex === -1) {
+    if (childIndex === -1)
       throw new Error("Could not find child address in parent");
-    }
 
-    // Reconstruct the new keys and addresses arrays based on the update.
-    if (split) {
-      // A split occurred. The old pointer is replaced by two new ones, and a new separator key is inserted.
-      addresses.splice(childIndex, 1, newChildAddress, split.address);
-      keys.splice(childIndex, 0, split.key);
+    branches.splice(childIndex, 1, ...newBranches);
+
+    const newParentChunks = await nodeChunker(branches, this.config);
+
+    if (newParentChunks.length === 1) {
+      const { address } = await this.createInternalNode(
+        newParentChunks[0] as Branch[]
+      );
+      return { newAddress: address };
     } else {
-      // No split, just a simple update of the child's address.
-      addresses[childIndex] = newChildAddress;
-    }
-
-    // Re-serialize the new parent node from the updated keys and addresses.
-    const newBranches: BranchPair[] = addresses.map((address, i) => ({
-      // there is one more address than key
-      key: (i < keys.length ? keys[i] : new Uint8Array())!,
-      address,
-    }));
-
-    let totalSubtreeEntries = 0;
-    for (const branch of newBranches) {
-      const child = await this.getNode(branch.address);
-      if (child) {
-        totalSubtreeEntries += child.entryCount;
+      const newParentBranches: Branch[] = [];
+      for (const chunk of newParentChunks) {
+        const branchChunk = chunk as Branch[];
+        const { address: newChunkAddress } = await this.createInternalNode(
+          branchChunk
+        );
+        newParentBranches.push({
+          key: branchChunk[branchChunk.length - 1].key,
+          address: newChunkAddress,
+        });
       }
+      return {
+        newAddress: newParentBranches[0].address,
+        newBranches: newParentBranches,
+      };
     }
-
-    const newBytes = createInternalNodeBuffer(
-      newBranches,
-      totalSubtreeEntries,
-      parent.level
-    );
-    const newAddress = await this.blockManager.hashFn(newBytes);
-
-    if (this.config.comparator(originalAddress, newAddress) === 0) {
-      return { newAddress: originalAddress };
-    }
-
-    await this.blockManager.put(newBytes);
-    const newNode = new InternalNodeProxy(newBytes, this);
-
-    // Check if the new parent also needs to be split and propagate if necessary.
-    if (this.isNodeFull(newNode)) {
-      return this.splitNode(newNode);
-    }
-
-    return { newAddress };
   }
 
-  async splitNode(node: NodeProxy): Promise<{
-    newAddress: Address;
-    split: { key: Uint8Array; address: Address };
-  }> {
+  async splitNode(node: LeafNodeProxy | InternalNodeProxy): Promise<Branch[]> {
+    const newBranches: Branch[] = [];
+
     if (isLeafNodeProxy(node)) {
-      const pairs: KeyValuePair[] = [];
-      for (let i = 0; i < node.keysLength; i++) {
-        pairs.push(node.getPair(i));
+      const items: KeyValuePair[] = [];
+      for (let i = 0; i < node.length; i++) {
+        items.push(node.getPair(i));
       }
-      const mid = Math.ceil(pairs.length / 2);
-      const leftPairs = pairs.slice(0, mid);
-      const rightPairs = pairs.slice(mid);
-
-      const splitKey = rightPairs[0].key;
-
-      const { address: leftAddress } = await this.createLeafNode(leftPairs);
-      const { address: rightAddress } = await this.createLeafNode(rightPairs);
-
-      return {
-        newAddress: leftAddress,
-        split: { key: splitKey, address: rightAddress },
-      };
+      const chunks = await nodeChunker(items, this.config);
+      for (const chunk of chunks) {
+        const { address: newChunkAddress } = await this.createLeafNode(chunk);
+        newBranches.push({
+          key: chunk[chunk.length - 1].key,
+          address: newChunkAddress,
+        });
+      }
     } else {
-      const internalNode = node as InternalNodeProxy;
-
-      const keys: Uint8Array[] = [];
-      for (let i = 0; i < internalNode.keysLength; i++) {
-        keys.push(internalNode.getKey(i)!);
+      // It's an InternalNodeProxy
+      const items: Branch[] = [];
+      for (let i = 0; i < node.length; i++) {
+        items.push(node.getBranch(i));
       }
-      const addresses: Address[] = [];
-      for (let i = 0; i < internalNode.addressesLength; i++) {
-        addresses.push(internalNode.getAddress(i)!);
+      const chunks = await nodeChunker(items, this.config);
+      for (const chunk of chunks) {
+        const { address: newChunkAddress } = await this.createInternalNode(
+          chunk
+        );
+        newBranches.push({
+          key: chunk[chunk.length - 1].key,
+          address: newChunkAddress,
+        });
       }
-
-      const midKeyIndex = Math.floor(keys.length / 2);
-      const splitKey = keys[midKeyIndex];
-
-      const leftKeys = keys.slice(0, midKeyIndex);
-      const leftAddresses = addresses.slice(0, midKeyIndex + 1);
-
-      const rightKeys = keys.slice(midKeyIndex + 1);
-      const rightAddresses = addresses.slice(midKeyIndex + 1);
-
-      const leftBranches: BranchPair[] = leftAddresses.map((addr, i) => ({
-        key: i < leftKeys.length ? leftKeys[i] : new Uint8Array(),
-        address: addr,
-      }));
-
-      const rightBranches: BranchPair[] = rightAddresses.map((addr, i) => ({
-        key: i < rightKeys.length ? rightKeys[i] : new Uint8Array(),
-        address: addr,
-      }));
-
-      const { address: leftAddress } = await this.createInternalNode(
-        leftBranches
-      );
-      const { address: rightAddress } = await this.createInternalNode(
-        rightBranches
-      );
-
-      return {
-        newAddress: leftAddress,
-        split: { key: splitKey, address: rightAddress },
-      };
     }
+    return newBranches;
   }
 
   async _put(
     node: LeafNodeProxy,
     key: Uint8Array,
     value: Uint8Array
-  ): Promise<{
-    newAddress: Address;
-    split?: { key: Uint8Array; address: Address };
-  }> {
+  ): Promise<{ newAddress: Address; newBranches?: Branch[] }> {
     const pairs: KeyValuePair[] = [];
-    for (let i = 0; i < node.keysLength; i++) {
+    for (let i = 0; i < node.length; i++) {
       pairs.push(node.getPair(i));
     }
     const { found, index } = node.findKeyIndex(key);
 
-    const originalAddress = await this.blockManager.hashFn(node.bytes);
-
     if (found) {
       if (this.config.comparator(pairs[index].value, value) === 0) {
+        const originalAddress = await this.blockManager.hashFn(node.bytes);
         return { newAddress: originalAddress };
       }
       pairs[index] = { key, value };
@@ -256,20 +178,26 @@ export class NodeManager {
       pairs.splice(index, 0, { key, value });
     }
 
-    const newBytes = createLeafNodeBuffer(pairs, node.level);
-    const newAddress = await this.blockManager.hashFn(newBytes);
+    const chunks = await nodeChunker(pairs, this.config);
 
-    if (this.config.comparator(originalAddress, newAddress) === 0) {
-      return { newAddress: originalAddress };
+    if (chunks.length === 1) {
+      const { address } = await this.createLeafNode(
+        chunks[0] as KeyValuePair[]
+      );
+      return { newAddress: address };
+    } else {
+      const newBranches: Branch[] = [];
+      for (const chunk of chunks) {
+        const pairChunk = chunk as KeyValuePair[];
+        const { address: newChunkAddress } = await this.createLeafNode(
+          pairChunk
+        );
+        newBranches.push({
+          key: pairChunk[pairChunk.length - 1].key,
+          address: newChunkAddress,
+        });
+      }
+      return { newAddress: newBranches[0].address, newBranches: newBranches };
     }
-
-    await this.blockManager.put(newBytes);
-    const newNode = new LeafNodeProxy(newBytes, this);
-
-    if (this.isNodeFull(newNode)) {
-      return this.splitNode(newNode);
-    }
-
-    return { newAddress };
   }
 }

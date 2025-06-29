@@ -4,8 +4,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Address } from '../../zgdb/prolly-tree/address.js';
-import { Key } from '../../zgdb/prolly-tree/key.js';
+import { Branch } from '../../zgdb/prolly-tree/branch.js';
 
 
 export class InternalNode {
@@ -26,35 +25,25 @@ static getSizePrefixedRootAsInternalNode(bb:flatbuffers.ByteBuffer, obj?:Interna
   return (obj || new InternalNode()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-keys(index: number, obj?:Key):Key|null {
+branches(index: number, obj?:Branch):Branch|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? (obj || new Key()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
+  return offset ? (obj || new Branch()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
 }
 
-keysLength():number {
+branchesLength():number {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-addresses(index: number, obj?:Address):Address|null {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? (obj || new Address()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
-}
-
-addressesLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 static startInternalNode(builder:flatbuffers.Builder) {
-  builder.startObject(2);
+  builder.startObject(1);
 }
 
-static addKeys(builder:flatbuffers.Builder, keysOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, keysOffset, 0);
+static addBranches(builder:flatbuffers.Builder, branchesOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, branchesOffset, 0);
 }
 
-static createKeysVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+static createBranchesVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
   builder.startVector(4, data.length, 4);
   for (let i = data.length - 1; i >= 0; i--) {
     builder.addOffset(data[i]!);
@@ -62,35 +51,19 @@ static createKeysVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):
   return builder.endVector();
 }
 
-static startKeysVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(4, numElems, 4);
-}
-
-static addAddresses(builder:flatbuffers.Builder, addressesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, addressesOffset, 0);
-}
-
-static createAddressesVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
-  builder.startVector(4, data.length, 4);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addOffset(data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startAddressesVector(builder:flatbuffers.Builder, numElems:number) {
+static startBranchesVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
 static endInternalNode(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
+  builder.requiredField(offset, 4) // branches
   return offset;
 }
 
-static createInternalNode(builder:flatbuffers.Builder, keysOffset:flatbuffers.Offset, addressesOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createInternalNode(builder:flatbuffers.Builder, branchesOffset:flatbuffers.Offset):flatbuffers.Offset {
   InternalNode.startInternalNode(builder);
-  InternalNode.addKeys(builder, keysOffset);
-  InternalNode.addAddresses(builder, addressesOffset);
+  InternalNode.addBranches(builder, branchesOffset);
   return InternalNode.endInternalNode(builder);
 }
 }

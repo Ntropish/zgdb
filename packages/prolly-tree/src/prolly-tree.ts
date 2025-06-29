@@ -22,16 +22,21 @@ type Change = {
 };
 
 export class ProllyTree {
+  private rootNode: NodeProxy;
+  private nodeManager: NodeManager;
+
   private constructor(
-    public readonly rootNode: NodeProxy,
-    private readonly blockManager: BlockManager,
-    public readonly nodeManager: NodeManager
-  ) {}
+    rootNode: NodeProxy,
+    private readonly blockManager: BlockManager
+  ) {
+    this.rootNode = rootNode;
+    this.nodeManager = new NodeManager(blockManager, blockManager.config);
+  }
 
   public static async create(blockManager: BlockManager): Promise<ProllyTree> {
     const nodeManager = new NodeManager(blockManager, blockManager.config);
     const { node: rootNode } = await nodeManager.createLeafNode([]);
-    return new ProllyTree(rootNode, blockManager, nodeManager);
+    return new ProllyTree(rootNode, blockManager);
   }
 
   public static async load(
@@ -43,7 +48,7 @@ export class ProllyTree {
     if (!rootNode) {
       throw new Error(`Could not find root node at address: ${rootAddress}`);
     }
-    return new ProllyTree(rootNode, blockManager, nodeManager);
+    return new ProllyTree(rootNode, blockManager);
   }
 
   public get root(): Address {
@@ -56,13 +61,12 @@ export class ProllyTree {
 
     while (!isLeafNodeProxy(current)) {
       const internalNode = current as InternalNodeProxy;
-      const childIndex = internalNode.findChildIndex(key);
-      const nextAddress = internalNode.getAddress(childIndex);
-
-      if (!nextAddress)
-        throw new Error(
-          `Failed to find address for child index: ${childIndex}`
-        );
+      const index = internalNode.findChildIndex(key);
+      const branch = internalNode.getBranch(index);
+      if (!branch.address) {
+        throw new Error(`Failed to find address for child index: ${index}`);
+      }
+      const nextAddress = branch.address;
 
       const nextNode = await this.nodeManager.getNode(nextAddress);
       if (!nextNode)
@@ -79,13 +83,12 @@ export class ProllyTree {
 
     while (!isLeafNodeProxy(current)) {
       const internalNode = current as InternalNodeProxy;
-      const childIndex = internalNode.findChildIndex(key);
-      const nextAddress = internalNode.getAddress(childIndex);
-
-      if (!nextAddress)
-        throw new Error(
-          `Failed to find address for child index: ${childIndex}`
-        );
+      const index = internalNode.findChildIndex(key);
+      const branch = internalNode.getBranch(index);
+      if (!branch.address) {
+        throw new Error(`Failed to find address for child index: ${index}`);
+      }
+      const nextAddress = branch.address;
 
       const nextNode = this.nodeManager.getNodeSync(nextAddress);
       if (!nextNode)
@@ -174,54 +177,52 @@ export class ProllyTree {
     }
   }
 
-  public async put(
-    key: Uint8Array,
-    value: Uint8Array
-  ): Promise<{ tree: ProllyTree; changed: boolean }> {
+  public async put(key: Uint8Array, value: Uint8Array): Promise<void> {
     const path = await this.findPathToLeaf(key);
     const leaf = path[path.length - 1] as LeafNodeProxy;
 
     const originalLeafAddress = await this.blockManager.hashFn(leaf.bytes);
 
-    let { newAddress: currentAddress, split } = await this.nodeManager._put(
+    const { newAddress, newBranches } = await this.nodeManager._put(
       leaf,
       key,
       value
     );
 
-    if (compare(originalLeafAddress, currentAddress) === 0 && !split) {
-      return { tree: this, changed: false };
+    if (compare(originalLeafAddress, newAddress) === 0 && !newBranches) {
+      // no change
+      return;
     }
+
+    let currentAddress = newAddress;
+    let branchesToPropagate = newBranches;
 
     // Propagate splits up the tree
     for (let i = path.length - 2; i >= 0; i--) {
+      if (!branchesToPropagate) {
+        // If there are no more branches to propagate, we might still need to update the parent's address
+        // but for now we can break
+        break;
+      }
       const parent = path[i] as InternalNodeProxy;
       const oldChildAddress = await this.blockManager.hashFn(path[i + 1].bytes);
-      const parentAddress = await this.blockManager.hashFn(parent.bytes);
 
       const result = await this.nodeManager.updateChild(
         parent,
         oldChildAddress,
-        currentAddress,
-        split
+        branchesToPropagate
       );
 
       currentAddress = result.newAddress;
-      split = result.split;
-
-      // If the parent's address didn't change and there was no split, we can stop.
-      if (compare(parentAddress, currentAddress) === 0 && !split) {
-        break;
-      }
+      branchesToPropagate = result.newBranches;
     }
 
     let newRootNode;
     // If a split propagates all the way to the root, create a new root
-    if (split) {
-      const { node } = await this.nodeManager.createInternalNode([
-        { key: split.key, address: currentAddress },
-        { key: new Uint8Array(), address: split.address },
-      ]);
+    if (branchesToPropagate && branchesToPropagate.length > 1) {
+      const { node } = await this.nodeManager.createInternalNode(
+        branchesToPropagate
+      );
       newRootNode = node;
     } else {
       newRootNode = await this.nodeManager.getNode(currentAddress);
@@ -229,13 +230,7 @@ export class ProllyTree {
         throw new Error("Could not find new root node");
       }
     }
-
-    const newTree = new ProllyTree(
-      newRootNode,
-      this.blockManager,
-      this.nodeManager
-    );
-    return { tree: newTree, changed: true };
+    this.rootNode = newRootNode;
   }
 
   public createCursor(): Cursor {
@@ -248,47 +243,34 @@ export class ProllyTree {
   }
 
   private async printNode(node: NodeProxy): Promise<any> {
-    const nodeAddress = toString(
-      await this.blockManager.hashFn(node.bytes),
-      "base64"
-    );
-
     if (isLeafNodeProxy(node)) {
-      const entries: { key: string; value: string }[] = [];
-      for (let i = 0; i < node.keysLength; i++) {
-        const pair = node.getPair(i);
-        entries.push({
-          key: toString(pair.key),
-          value: toString(pair.value),
-        });
-      }
+      const leaf = node as LeafNodeProxy;
       return {
-        type: "Leaf",
-        level: node.level,
-        address: nodeAddress,
-        entries: entries,
+        type: "leaf",
+        level: leaf.level,
+        keys: Array.from({ length: leaf.length }, (_, i) =>
+          toString(leaf.getPair(i).key, "base64")
+        ),
       };
     } else {
-      const internalNode = node as InternalNodeProxy;
-      const children: any[] = [];
-      for (let i = 0; i < internalNode.addressesLength; i++) {
-        const childAddress = internalNode.getAddress(i)!;
-        const key = i < internalNode.keysLength ? internalNode.getKey(i) : null;
-
-        const childNode = await this.nodeManager.getNode(childAddress);
-        children.push({
-          key: key ? toString(key) : null,
-          address: toString(childAddress, "base64"),
-          node: childNode
-            ? await this.printNode(childNode)
-            : `Error: Node not found`,
-        });
+      const internal = node as InternalNodeProxy;
+      const children = [];
+      for (let i = 0; i < internal.length; i++) {
+        const branch = internal.getBranch(i);
+        if (branch.address) {
+          const childNode = await this.nodeManager.getNode(branch.address);
+          if (childNode) {
+            children.push(await this.printNode(childNode));
+          }
+        }
       }
       return {
-        type: "Internal",
-        level: internalNode.level,
-        address: nodeAddress,
-        children: children,
+        type: "internal",
+        level: internal.level,
+        keys: Array.from({ length: internal.length }, (_, i) =>
+          toString(internal.getBranch(i).key, "base64")
+        ),
+        children,
       };
     }
   }

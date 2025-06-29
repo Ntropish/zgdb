@@ -65,7 +65,7 @@ describe("Advanced Split Test", () => {
     }
 
     console.log("Tree structure after 10 insertions (fanout 3):");
-    console.log(await tree.print());
+    logTree(await tree.print());
 
     // 1. Verify all keys are retrievable
     for (const entry of entries) {

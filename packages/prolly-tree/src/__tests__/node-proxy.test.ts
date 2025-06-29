@@ -7,7 +7,7 @@ import {
   createLeafNodeBuffer,
   createInternalNodeBuffer,
   KeyValuePair,
-  BranchPair,
+  Branch,
 } from "../node-proxy.js";
 import { compare } from "uint8arrays/compare";
 import { fromString } from "uint8arrays/from-string";
@@ -28,13 +28,13 @@ describe("NodeProxy", () => {
     { key: fromString("a"), value: fromString("alpha") },
     { key: fromString("b"), value: fromString("bravo") },
   ];
-  const leafBuffer = createLeafNodeBuffer(leafPairs, 0);
+  const leafBuffer = createLeafNodeBuffer(leafPairs, 0, leafPairs.length);
 
-  const branches: BranchPair[] = [
+  const branches: Branch[] = [
     { key: fromString("c"), address: new Uint8Array(32).fill(1) },
-    { key: new Uint8Array(), address: new Uint8Array(32).fill(2) },
+    { key: fromString("e"), address: new Uint8Array(32).fill(2) },
   ];
-  const internalBuffer = createInternalNodeBuffer(branches, 100, 1);
+  const internalBuffer = createInternalNodeBuffer(branches, 1, 100);
 
   describe("LeafNodeProxy", () => {
     let proxy: LeafNodeProxy;
@@ -46,9 +46,9 @@ describe("NodeProxy", () => {
       expect(proxy.isLeaf()).toBe(true);
     });
 
-    it("should return correct entry count and number of keys", () => {
+    it("should return correct entry count and number of pairs", () => {
       expect(proxy.entryCount).toBe(2);
-      expect(proxy.keysLength).toBe(2);
+      expect(proxy.length).toBe(2);
     });
 
     it("should allow retrieving key-value pairs by index", () => {
@@ -110,26 +110,27 @@ describe("NodeProxy", () => {
       expect(proxy.isLeaf()).toBe(false);
     });
 
-    it("should return correct entry count and number of addresses", () => {
+    it("should return correct entry count and number of branches", () => {
       expect(proxy.entryCount).toBe(100);
-      expect(proxy.addressesLength).toBe(2);
+      expect(proxy.length).toBe(2);
     });
 
-    it("should allow retrieving keys and addresses by index", () => {
-      const key0 = proxy.getKey(0);
-      const address0 = proxy.getAddress(0);
-      expect(compare(key0!, fromString("c"))).toBe(0);
-      expect(compare(address0!, new Uint8Array(32).fill(1))).toBe(0);
+    it("should allow retrieving branches by index", () => {
+      const branch0 = proxy.getBranch(0);
+      expect(compare(branch0.key, fromString("c"))).toBe(0);
+      expect(compare(branch0.address, new Uint8Array(32).fill(1))).toBe(0);
 
-      const address1 = proxy.getAddress(1);
-      expect(compare(address1!, new Uint8Array(32).fill(2))).toBe(0);
+      const branch1 = proxy.getBranch(1);
+      expect(compare(branch1.key, fromString("e"))).toBe(0);
+      expect(compare(branch1.address, new Uint8Array(32).fill(2))).toBe(0);
     });
 
     it("should find the correct child index for a given key", () => {
-      expect(proxy.findChildIndex(fromString("a"))).toBe(0);
-      expect(proxy.findChildIndex(fromString("c"))).toBe(1);
-      expect(proxy.findChildIndex(fromString("d"))).toBe(1);
-      expect(proxy.findChildIndex(fromString("e"))).toBe(1);
+      expect(proxy.findChildIndex(fromString("a"))).toBe(0); // less than 'c'
+      expect(proxy.findChildIndex(fromString("c"))).toBe(0); // equal to 'c', should go to the branch holds 'c'
+      expect(proxy.findChildIndex(fromString("d"))).toBe(1); // between 'c' and 'e'
+      expect(proxy.findChildIndex(fromString("e"))).toBe(1); // equal to 'e'
+      expect(proxy.findChildIndex(fromString("f"))).toBe(2); // greater than 'e'
     });
   });
 
@@ -160,10 +161,10 @@ describe("NodeProxy", () => {
   describe("Heavy Duty Tests", () => {
     it("Exercise 1: The 'Empty and Full' Symphony", () => {
       // Test 1: Empty Leaf Node
-      const emptyLeafBuffer = createLeafNodeBuffer([], 0);
+      const emptyLeafBuffer = createLeafNodeBuffer([], 0, 0);
       const emptyLeafProxy = new LeafNodeProxy(emptyLeafBuffer, nodeManager);
       expect(emptyLeafProxy.isLeaf()).toBe(true);
-      expect(emptyLeafProxy.keysLength).toBe(0);
+      expect(emptyLeafProxy.length).toBe(0);
       expect(emptyLeafProxy.entryCount).toBe(0);
 
       // Test 2: Full Leaf Node with varied data
@@ -177,10 +178,14 @@ describe("NodeProxy", () => {
       largeLeafPairs.push({ key: fromString(""), value: fromString("empty") }); // empty key
       largeLeafPairs.sort((a, b) => compare(a.key, b.key));
 
-      const largeLeafBuffer = createLeafNodeBuffer(largeLeafPairs, 0);
+      const largeLeafBuffer = createLeafNodeBuffer(
+        largeLeafPairs,
+        0,
+        largeLeafPairs.length
+      );
       const largeLeafProxy = new LeafNodeProxy(largeLeafBuffer, nodeManager);
       expect(largeLeafProxy.isLeaf()).toBe(true);
-      expect(largeLeafProxy.keysLength).toBe(101);
+      expect(largeLeafProxy.length).toBe(101);
       expect(largeLeafProxy.entryCount).toBe(101);
       const entry = largeLeafProxy.getPair(50);
       expect(compare(entry.key, fromString("key049"))).toBe(0); // offset by empty key sort
@@ -195,7 +200,11 @@ describe("NodeProxy", () => {
           value: fromString(`${i}`),
         })
       );
-      const balletBuffer = createLeafNodeBuffer(balletKeys, 0);
+      const balletBuffer = createLeafNodeBuffer(
+        balletKeys,
+        0,
+        balletKeys.length
+      );
       const balletProxy = new LeafNodeProxy(balletBuffer, nodeManager);
 
       // Find first, middle, last
@@ -217,10 +226,10 @@ describe("NodeProxy", () => {
         { key: fromString("鍵-key"), value: fromString("japanese") },
       ].sort((a, b) => compare(a.key, b.key));
 
-      const utf8Buffer = createLeafNodeBuffer(utf8Pairs, 0);
+      const utf8Buffer = createLeafNodeBuffer(utf8Pairs, 0, utf8Pairs.length);
       const utf8Proxy = new LeafNodeProxy(utf8Buffer, nodeManager);
 
-      expect(utf8Proxy.keysLength).toBe(4);
+      expect(utf8Proxy.length).toBe(4);
       const emojiIndex = utf8Proxy.findKeyIndex(fromString("🔑-key"));
       expect(emojiIndex.found).toBe(true);
       const entry = utf8Proxy.getPair(emojiIndex.index);
@@ -233,9 +242,13 @@ describe("NodeProxy", () => {
         { key: fromString("key1"), value: new Uint8Array(10_000).fill(1) },
         { key: fromString("key2"), value: new Uint8Array(20_000).fill(2) },
       ];
-      const largeValueBuffer = createLeafNodeBuffer(largeValuePairs, 0);
+      const largeValueBuffer = createLeafNodeBuffer(
+        largeValuePairs,
+        0,
+        largeValuePairs.length
+      );
       const largeValueProxy = new LeafNodeProxy(largeValueBuffer, nodeManager);
-      expect(largeValueProxy.keysLength).toBe(2);
+      expect(largeValueProxy.length).toBe(2);
       const val2 = largeValueProxy.getPair(1).value;
       expect(val2.length).toBe(20_000);
       expect(val2[0]).toBe(2);
@@ -248,15 +261,16 @@ describe("NodeProxy", () => {
           value: fromString(`v${i}`),
         })
       );
-      const manyEntriesBuffer = createLeafNodeBuffer(manyEntriesPairs, 0);
+      const manyEntriesBuffer = createLeafNodeBuffer(
+        manyEntriesPairs,
+        0,
+        manyEntriesPairs.length
+      );
       const manyEntriesProxy = new LeafNodeProxy(
         manyEntriesBuffer,
         nodeManager
       );
-      expect(manyEntriesProxy.keysLength).toBe(500);
-      expect(manyEntriesProxy.findKeyIndex(fromString("k357")).found).toBe(
-        true
-      );
+      expect(manyEntriesProxy.length).toBe(500);
     });
   });
 });

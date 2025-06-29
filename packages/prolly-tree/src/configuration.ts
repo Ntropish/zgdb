@@ -27,9 +27,18 @@ export type ValueChunking =
   | FixedSizeChunking
   | RabinKarpChunking;
 
+export interface ProllyV1BoundaryChecker {
+  type: "prolly-v1";
+  bits: number;
+  pattern: number;
+}
+
+export type BoundaryChecker = ProllyV1BoundaryChecker;
+
 export interface TreeDefinition {
   targetFanout: number;
   minFanout: number;
+  boundaryChecker: BoundaryChecker;
 }
 
 export type HashingAlgorithm = "blake3" | "sha2-256" | "sha3-256";
@@ -46,6 +55,11 @@ export const defaultConfiguration: Configuration = {
   treeDefinition: {
     targetFanout: 32,
     minFanout: 16,
+    boundaryChecker: {
+      type: "prolly-v1",
+      bits: 5, // log2(32)
+      pattern: (1 << 5) - 1, // 0b11111
+    },
   },
   valueChunking: {
     chunkingStrategy: "fastcdc-v2020",

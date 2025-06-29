@@ -2,34 +2,28 @@
 
 namespace Zgdb.ProllyTree;
 
-// A wrapper for a key byte array.
-table Key {
-  key:[ubyte];
+// A key-value pair for leaf nodes.
+table KeyValuePair {
+  key:[ubyte] (required);
+  value:[ubyte] (required);
 }
 
-// A wrapper for a value byte array.
-table Value {
-  value:[ubyte];
+// A branch for internal nodes, pointing to a child.
+table Branch {
+  // The key is the separator for the child node.
+  // It represents the upper bound of the keys in the child's subtree.
+  key:[ubyte] (required);
+  address:[ubyte] (required);
 }
 
-// A wrapper for an address byte array.
-table Address {
-  address:[ubyte];
-}
-
-// A leaf node contains parallel arrays of keys and values.
+// A leaf node contains a sorted list of key-value pairs.
 table LeafNode {
-  keys:[Key];
-  values:[Value];
+  pairs:[KeyValuePair] (required);
 }
 
-// An internal node contains separator keys and pointers to child node addresses.
+// An internal node contains a sorted list of branches.
 table InternalNode {
-  // There are N keys and N+1 addresses.
-  // The keys are separators for the child nodes.
-  // The last address corresponds to the rightmost child and has no upper-bound key in this node.
-  keys:[Key];
-  addresses:[Address];
+  branches:[Branch] (required);
 }
 
 // A union to represent either a LeafNode or an InternalNode.

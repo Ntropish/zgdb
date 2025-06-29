@@ -2,10 +2,9 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-export { Address } from './prolly-tree/address.js';
+export { Branch } from './prolly-tree/branch.js';
 export { InternalNode } from './prolly-tree/internal-node.js';
-export { Key } from './prolly-tree/key.js';
+export { KeyValuePair } from './prolly-tree/key-value-pair.js';
 export { LeafNode } from './prolly-tree/leaf-node.js';
 export { Node } from './prolly-tree/node.js';
 export { NodeBody } from './prolly-tree/node-body.js';
-export { Value } from './prolly-tree/value.js';

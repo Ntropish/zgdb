@@ -32,9 +32,9 @@ export class Cursor {
     this.path = [this.tree.rootNode];
     let currentNode = this.tree.rootNode;
     while (!currentNode.isLeaf()) {
-      const firstChildAddress = (currentNode as InternalNodeProxy).getAddress(
+      const firstChildAddress = (currentNode as InternalNodeProxy).getBranch(
         0
-      );
+      ).address;
       if (!firstChildAddress) {
         // This is an empty internal node, so the tree is empty.
         this._current = null;
@@ -50,7 +50,7 @@ export class Cursor {
   async seek(key: Uint8Array): Promise<KeyValuePair | null> {
     this.path = await this.tree.findPathToLeaf(key);
     const leaf = this.path[this.path.length - 1] as LeafNodeProxy;
-    if (leaf.keysLength === 0) {
+    if (leaf.length === 0) {
       this._current = null;
       return null;
     }
@@ -69,7 +69,7 @@ export class Cursor {
     if (this.path.length === 0) return null;
     let leaf = this.path[this.path.length - 1] as LeafNodeProxy;
 
-    if (this.index >= leaf.keysLength) {
+    if (this.index >= leaf.length) {
       const nextLeaf = await this._findNextLeaf();
       if (!nextLeaf) {
         this._current = null;
@@ -78,7 +78,7 @@ export class Cursor {
       leaf = nextLeaf;
       this.index = 0;
     }
-    if (leaf.keysLength === 0) {
+    if (leaf.length === 0) {
       this._current = null;
       return null;
     }
@@ -97,22 +97,17 @@ export class Cursor {
         childNode.bytes
       );
 
-      // Find the index of the current child in the parent's addresses
       let childIndex = -1;
-      for (let i = 0; i < internalParent.addressesLength; i++) {
-        const address = internalParent.getAddress(i);
-        if (address && compare(address, childAddress) === 0) {
+      for (let i = 0; i < internalParent.length; i++) {
+        const branch = internalParent.getBranch(i);
+        if (branch.address && compare(branch.address, childAddress) === 0) {
           childIndex = i;
           break;
         }
       }
 
-      // If the child is found and it's not the rightmost child, move to the next one
-      if (
-        childIndex !== -1 &&
-        childIndex < internalParent.addressesLength - 1
-      ) {
-        let nextNodeAddress = internalParent.getAddress(childIndex + 1);
+      if (childIndex !== -1 && childIndex < internalParent.length - 1) {
+        let nextNodeAddress = internalParent.getBranch(childIndex + 1).address;
         if (!nextNodeAddress) return null;
 
         let nextNode = await this.nodeManager.getNode(nextNodeAddress);
@@ -120,11 +115,10 @@ export class Cursor {
 
         this.path.push(nextNode);
 
-        // Descend to the leftmost leaf of this new subtree
         while (!nextNode.isLeaf()) {
           const internal = nextNode as InternalNodeProxy;
-          if (internal.addressesLength === 0) return null;
-          nextNodeAddress = internal.getAddress(0);
+          if (internal.length === 0) return null;
+          nextNodeAddress = internal.getBranch(0).address;
           if (!nextNodeAddress) return null;
           nextNode = await this.nodeManager.getNode(nextNodeAddress);
           if (!nextNode) return null;
@@ -144,9 +138,9 @@ export class Cursor {
     this.path = [this.tree.rootNode];
     let currentNode = this.tree.rootNode;
     while (!currentNode.isLeaf()) {
-      const firstChildAddress = (currentNode as InternalNodeProxy).getAddress(
+      const firstChildAddress = (currentNode as InternalNodeProxy).getBranch(
         0
-      );
+      ).address;
       if (!firstChildAddress) {
         // This is an empty internal node, so the tree is empty.
         this._current = null;
@@ -162,7 +156,7 @@ export class Cursor {
   seekSync(key: Uint8Array): KeyValuePair | null {
     this.path = this.tree.findPathToLeafSync(key);
     const leaf = this.path[this.path.length - 1] as LeafNodeProxy;
-    if (leaf.keysLength === 0) {
+    if (leaf.length === 0) {
       this._current = null;
       return null;
     }
@@ -180,7 +174,7 @@ export class Cursor {
     if (this.path.length === 0) return null;
     let leaf = this.path[this.path.length - 1] as LeafNodeProxy;
 
-    if (this.index >= leaf.keysLength) {
+    if (this.index >= leaf.length) {
       const nextLeaf = this._findNextLeafSync();
       if (!nextLeaf) {
         this._current = null;
@@ -189,7 +183,7 @@ export class Cursor {
       leaf = nextLeaf;
       this.index = 0;
     }
-    if (leaf.keysLength === 0) {
+    if (leaf.length === 0) {
       this._current = null;
       return null;
     }
@@ -207,26 +201,23 @@ export class Cursor {
         childNode.bytes
       );
       let childIndex = -1;
-      for (let i = 0; i < internalParent.addressesLength; i++) {
-        const address = internalParent.getAddress(i);
-        if (address && compare(address, childAddress) === 0) {
+      for (let i = 0; i < internalParent.length; i++) {
+        const branch = internalParent.getBranch(i);
+        if (branch.address && compare(branch.address, childAddress) === 0) {
           childIndex = i;
           break;
         }
       }
-      if (
-        childIndex !== -1 &&
-        childIndex < internalParent.addressesLength - 1
-      ) {
-        let nextNodeAddress = internalParent.getAddress(childIndex + 1);
+      if (childIndex !== -1 && childIndex < internalParent.length - 1) {
+        let nextNodeAddress = internalParent.getBranch(childIndex + 1).address;
         if (!nextNodeAddress) return null;
         let nextNode = this.nodeManager.getNodeSync(nextNodeAddress);
         if (!nextNode) return null;
         this.path.push(nextNode);
         while (!nextNode.isLeaf()) {
           const internal = nextNode as InternalNodeProxy;
-          if (internal.addressesLength === 0) return null;
-          nextNodeAddress = internal.getAddress(0);
+          if (internal.length === 0) return null;
+          nextNodeAddress = internal.getBranch(0).address;
           if (!nextNodeAddress) return null;
           nextNode = this.nodeManager.getNodeSync(nextNodeAddress);
           if (!nextNode) return null;
