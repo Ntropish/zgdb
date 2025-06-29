@@ -51,7 +51,7 @@ describe("ProllyTree Splitting", () => {
 
     // It should have at least two children
     const internalRoot = rootNode as InternalNodeProxy;
-    expect(internalRoot.numBranches).toBeGreaterThanOrEqual(2);
+    expect(internalRoot.addressesLength).toBeGreaterThanOrEqual(2);
 
     // Verify all keys are still retrievable
     for (let i = 0; i < 10; i++) {
