@@ -19,7 +19,17 @@ export class BlockManager {
     return this.blocks.get(hash.toString());
   }
 
+  getSync(hash: Uint8Array): Uint8Array | undefined {
+    return this.blocks.get(hash.toString());
+  }
+
   async put(block: Uint8Array): Promise<Uint8Array> {
+    const hash = this.hashFn(block);
+    this.blocks.set(hash.toString(), block);
+    return hash;
+  }
+
+  putSync(block: Uint8Array): Uint8Array {
     const hash = this.hashFn(block);
     this.blocks.set(hash.toString(), block);
     return hash;
@@ -31,8 +41,19 @@ export class BlockManager {
     return deserializeNode(block);
   }
 
+  getNodeSync(address: Address): Node | undefined {
+    const block = this.getSync(address);
+    if (!block) return undefined;
+    return deserializeNode(block);
+  }
+
   async putNode(node: Node): Promise<Address> {
     const block = serializeNode(node);
     return this.put(block);
+  }
+
+  putNodeSync(node: Node): Address {
+    const block = serializeNode(node);
+    return this.putSync(block);
   }
 }

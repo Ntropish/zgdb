@@ -35,6 +35,15 @@ export class ProllyTree {
     return new ProllyTree(rootNode, blockManager, nodeManager);
   }
 
+  public static createSync(blockManager: BlockManager): ProllyTree {
+    const nodeManager = new NodeManager(blockManager, blockManager.config);
+    const rootNode = nodeManager.createLeafNodeSync([]);
+    if (!rootNode.address) {
+      throw new Error("Newly created root node must have an address");
+    }
+    return new ProllyTree(rootNode, blockManager, nodeManager);
+  }
+
   public static async load(
     rootAddress: Address,
     blockManager: BlockManager
@@ -78,8 +87,39 @@ export class ProllyTree {
     return path;
   }
 
+  private findPathToLeafSync(key: Uint8Array): ProllyNode[] {
+    const path: ProllyNode[] = [this.rootNode];
+    let current = this.rootNode;
+
+    while (!current.isLeaf) {
+      const internalNode = current as InternalNode;
+      const childIndex = internalNode.keys.findIndex(
+        (k) => compare(key, k) < 0
+      );
+
+      const nextAddress =
+        childIndex === -1
+          ? internalNode.children[internalNode.children.length - 1]
+          : internalNode.children[childIndex];
+
+      const nextNode = this.nodeManager.getNodeSync(nextAddress);
+      if (!nextNode)
+        throw new Error(`Failed to find node at address: ${nextAddress}`);
+      current = nextNode;
+      path.push(current);
+    }
+    return path;
+  }
+
   public async get(key: Uint8Array): Promise<Uint8Array | undefined> {
     const path = await this.findPathToLeaf(key);
+    const leaf = path[path.length - 1] as LeafNode;
+    const pair = leaf.pairs.find(([k]) => compare(k, key) === 0);
+    return pair ? pair[1] : undefined;
+  }
+
+  public getSync(key: Uint8Array): Uint8Array | undefined {
+    const path = this.findPathToLeafSync(key);
     const leaf = path[path.length - 1] as LeafNode;
     const pair = leaf.pairs.find(([k]) => compare(k, key) === 0);
     return pair ? pair[1] : undefined;
@@ -128,6 +168,60 @@ export class ProllyTree {
     }
 
     const newTree = await ProllyTree.load(newRootAddress, this.blockManager);
+    return { tree: newTree, changed: true };
+  }
+
+  public putSync(
+    key: Uint8Array,
+    value: Uint8Array
+  ): { tree: ProllyTree; changed: boolean } {
+    const path = this.findPathToLeafSync(key);
+    const leaf = path[path.length - 1] as LeafNode;
+
+    const existingPair = leaf.pairs.find(([k]) => compare(k, key) === 0);
+    if (existingPair && compare(existingPair[1], value) === 0) {
+      return { tree: this, changed: false };
+    }
+
+    let { newAddress: currentAddress, split } = this.nodeManager._putSync(
+      leaf,
+      key,
+      value
+    );
+
+    for (let i = path.length - 2; i >= 0; i--) {
+      const parent = path[i];
+      const oldChildAddress = path[i + 1].address!;
+      const result = this.nodeManager.updateChildSync(
+        parent,
+        oldChildAddress,
+        currentAddress,
+        split
+      );
+      currentAddress = result.newAddress;
+      split = result.split;
+    }
+
+    let newRootNode;
+    if (split) {
+      newRootNode = this.nodeManager.createNodeSync(
+        [],
+        [split.key],
+        [currentAddress, split.address],
+        false
+      );
+    } else {
+      newRootNode = this.nodeManager.getNodeSync(currentAddress);
+      if (!newRootNode) {
+        throw new Error("Could not find new root node");
+      }
+    }
+
+    const newTree = new ProllyTree(
+      newRootNode,
+      this.blockManager,
+      this.nodeManager
+    );
     return { tree: newTree, changed: true };
   }
 }

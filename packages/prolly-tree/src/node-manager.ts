@@ -27,6 +27,15 @@ export class NodeManager {
     return node;
   }
 
+  getNodeSync(address: Address): Node | undefined {
+    const node = this.blockManager.getNodeSync(address);
+    if (!node) {
+      return undefined;
+    }
+    node.address = address;
+    return node;
+  }
+
   isNodeFull(node: Node): boolean {
     if (node.isLeaf) {
       return node.pairs.length >= this.config.treeDefinition.targetFanout;
@@ -53,9 +62,29 @@ export class NodeManager {
     return finalNode;
   }
 
+  createNodeSync(
+    pairs: KeyValuePair[],
+    keys: Uint8Array[],
+    children: Address[],
+    isLeaf: boolean
+  ): Node {
+    const node: Node = isLeaf
+      ? { isLeaf: true, pairs }
+      : { isLeaf: false, keys, children };
+
+    const address = this.blockManager.putNodeSync(node);
+    const finalNode = { ...node, address };
+    return finalNode;
+  }
+
   async createLeafNode(pairs: KeyValuePair[]): Promise<Node> {
     pairs.sort(([a], [b]) => compare(a, b));
     return this.createNode(pairs, [], [], true);
+  }
+
+  createLeafNodeSync(pairs: KeyValuePair[]): Node {
+    pairs.sort(([a], [b]) => compare(a, b));
+    return this.createNodeSync(pairs, [], [], true);
   }
 
   async updateChild(
@@ -190,6 +219,141 @@ export class NodeManager {
     }
 
     const newAddress = await this.blockManager.putNode(newNode);
+    return { newAddress };
+  }
+
+  updateChildSync(
+    parent: Node,
+    oldChildAddress: Address,
+    newChildAddress: Address,
+    split?: { key: Uint8Array; address: Address }
+  ): {
+    newAddress: Address;
+    split?: { key: Uint8Array; address: Address };
+  } {
+    if (parent.isLeaf) {
+      throw new Error("updateChild should not be called on a leaf node");
+    }
+
+    const childIndex = parent.children.findIndex(
+      (childAddress: Address) =>
+        this.compare(childAddress, oldChildAddress) === 0
+    );
+
+    if (childIndex === -1) {
+      throw new Error("Could not find child address in parent");
+    }
+
+    const newChildren = [...parent.children];
+    newChildren[childIndex] = newChildAddress;
+
+    let newKeys = [...parent.keys];
+
+    if (split) {
+      // The new key is the separator between the updated child and the new split-off child.
+      newKeys.splice(childIndex, 0, split.key);
+      newChildren.splice(childIndex + 1, 0, split.address);
+    }
+
+    const newNode = { ...parent, keys: newKeys, children: newChildren };
+    const newAddress = this.blockManager.putNodeSync(newNode);
+
+    if (this.isNodeFull(newNode)) {
+      return this.splitNodeSync(newNode);
+    }
+
+    return { newAddress };
+  }
+
+  splitNodeSync(node: Node): {
+    newAddress: Address;
+    split: { key: Uint8Array; address: Address };
+  } {
+    if (node.isLeaf) {
+      const mid = Math.ceil(node.pairs.length / 2);
+      const leftPairs = node.pairs.slice(0, mid);
+      const rightPairs = node.pairs.slice(mid);
+      const splitKey = rightPairs[0][0];
+
+      const leftNode = this.createLeafNodeSync(leftPairs);
+      const rightNode = this.createLeafNodeSync(rightPairs);
+
+      if (!leftNode.address || !rightNode.address) {
+        throw new Error("Newly created nodes must have an address");
+      }
+
+      return {
+        newAddress: leftNode.address, // address of the new left node
+        split: { key: splitKey, address: rightNode.address },
+      };
+    } else {
+      const mid = Math.ceil(node.children.length / 2);
+      const splitKey = node.keys[mid - 1];
+
+      const leftKeys = node.keys.slice(0, mid - 1);
+      const rightKeys = node.keys.slice(mid);
+
+      const leftChildren = node.children.slice(0, mid);
+      const rightChildren = node.children.slice(mid);
+
+      const leftNode = this.createNodeSync([], leftKeys, leftChildren, false);
+      const rightNode = this.createNodeSync(
+        [],
+        rightKeys,
+        rightChildren,
+        false
+      );
+
+      if (!leftNode.address || !rightNode.address) {
+        throw new Error("Newly created nodes must have an address");
+      }
+
+      return {
+        newAddress: leftNode.address, // address of the new left node
+        split: { key: splitKey, address: rightNode.address },
+      };
+    }
+  }
+
+  _putSync(
+    node: Node,
+    key: Uint8Array,
+    value: Uint8Array
+  ): {
+    newAddress: Address;
+    split?: { key: Uint8Array; address: Address };
+  } {
+    if (!node.isLeaf) {
+      throw new Error("_put can only be called on leaf nodes");
+    }
+
+    const existingPairIndex = node.pairs.findIndex(
+      ([k]: KeyValuePair) => compare(k, key) === 0
+    );
+
+    let newPairs: KeyValuePair[];
+
+    if (existingPairIndex !== -1) {
+      if (compare(node.pairs[existingPairIndex][1], value) === 0) {
+        if (!node.address) {
+          throw new Error("Node address is missing");
+        }
+        return { newAddress: node.address };
+      }
+      newPairs = [...node.pairs];
+      newPairs[existingPairIndex] = [key, value];
+    } else {
+      newPairs = [...node.pairs, [key, value]];
+    }
+
+    newPairs.sort(([a], [b]) => compare(a, b));
+    const newNode = { ...node, pairs: newPairs };
+
+    if (this.isNodeFull(newNode)) {
+      return this.splitNodeSync(newNode);
+    }
+
+    const newAddress = this.blockManager.putNodeSync(newNode);
     return { newAddress };
   }
 }
