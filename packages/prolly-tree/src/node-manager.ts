@@ -188,22 +188,34 @@ export class NodeManager {
       };
     } else {
       const internalNode = node as InternalNodeProxy;
-      const allBranches: BranchPair[] = [];
+
+      const keys: Uint8Array[] = [];
+      for (let i = 0; i < internalNode.keysLength; i++) {
+        keys.push(internalNode.getKey(i)!);
+      }
+      const addresses: Address[] = [];
       for (let i = 0; i < internalNode.addressesLength; i++) {
-        const address = internalNode.getAddress(i)!;
-        const key =
-          i < internalNode.keysLength
-            ? internalNode.getKey(i)!
-            : new Uint8Array();
-        allBranches.push({ key, address });
+        addresses.push(internalNode.getAddress(i)!);
       }
 
-      const mid = Math.ceil(allBranches.length / 2);
-      const leftBranches = allBranches.slice(0, mid);
-      const rightBranches = allBranches.slice(mid);
+      const midKeyIndex = Math.floor(keys.length / 2);
+      const splitKey = keys[midKeyIndex];
 
-      const splitKey = leftBranches[leftBranches.length - 1].key;
-      leftBranches[leftBranches.length - 1].key = new Uint8Array();
+      const leftKeys = keys.slice(0, midKeyIndex);
+      const leftAddresses = addresses.slice(0, midKeyIndex + 1);
+
+      const rightKeys = keys.slice(midKeyIndex + 1);
+      const rightAddresses = addresses.slice(midKeyIndex + 1);
+
+      const leftBranches: BranchPair[] = leftAddresses.map((addr, i) => ({
+        key: i < leftKeys.length ? leftKeys[i] : new Uint8Array(),
+        address: addr,
+      }));
+
+      const rightBranches: BranchPair[] = rightAddresses.map((addr, i) => ({
+        key: i < rightKeys.length ? rightKeys[i] : new Uint8Array(),
+        address: addr,
+      }));
 
       const { address: leftAddress } = await this.createInternalNode(
         leftBranches

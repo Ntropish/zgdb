@@ -243,46 +243,53 @@ export class ProllyTree {
   }
 
   async print(): Promise<string> {
-    return this.printNode(this.rootNode, 0);
+    const treeStructure = await this.printNode(this.rootNode);
+    return JSON.stringify(treeStructure, null, 2);
   }
 
-  private async printNode(node: NodeProxy, level: number): Promise<string> {
-    let output = "";
-    const indent = "  ".repeat(level);
-    const nodeAddress = toString(await this.blockManager.hashFn(node.bytes));
+  private async printNode(node: NodeProxy): Promise<any> {
+    const nodeAddress = toString(
+      await this.blockManager.hashFn(node.bytes),
+      "base64"
+    );
 
     if (isLeafNodeProxy(node)) {
-      output += `${indent}Leaf (L${node.level}) @ ${nodeAddress} (${node.keysLength} keys)\\n`;
+      const entries: { key: string; value: string }[] = [];
       for (let i = 0; i < node.keysLength; i++) {
         const pair = node.getPair(i);
-        output += `${indent}  - Key: "${toString(
-          pair.key
-        )}", Value: "${toString(pair.value)}"\\n`;
+        entries.push({
+          key: toString(pair.key),
+          value: toString(pair.value),
+        });
       }
+      return {
+        type: "Leaf",
+        level: node.level,
+        address: nodeAddress,
+        entries: entries,
+      };
     } else {
       const internalNode = node as InternalNodeProxy;
-      output += `${indent}Internal (L${internalNode.level}) @ ${nodeAddress} (${internalNode.keysLength} keys, ${internalNode.addressesLength} children)\\n`;
-      for (let i = 0; i < internalNode.keysLength; i++) {
-        const key = internalNode.getKey(i);
-        const childAddress = internalNode.getAddress(i);
-        output += `${indent}  - Key: "${toString(key!)}" -> Pointer: ${toString(
-          childAddress!
-        )}\\n`;
-        const childNode = await this.nodeManager.getNode(childAddress!);
-        if (childNode) {
-          output += await this.printNode(childNode, level + 1);
-        }
+      const children: any[] = [];
+      for (let i = 0; i < internalNode.addressesLength; i++) {
+        const childAddress = internalNode.getAddress(i)!;
+        const key = i < internalNode.keysLength ? internalNode.getKey(i) : null;
+
+        const childNode = await this.nodeManager.getNode(childAddress);
+        children.push({
+          key: key ? toString(key) : null,
+          address: toString(childAddress, "base64"),
+          node: childNode
+            ? await this.printNode(childNode)
+            : `Error: Node not found`,
+        });
       }
-      // Print the last child
-      const lastChildAddress = internalNode.getAddress(internalNode.keysLength);
-      if (lastChildAddress) {
-        output += `${indent}  - Pointer: ${toString(lastChildAddress)}\\n`;
-        const childNode = await this.nodeManager.getNode(lastChildAddress);
-        if (childNode) {
-          output += await this.printNode(childNode, level + 1);
-        }
-      }
+      return {
+        type: "Internal",
+        level: internalNode.level,
+        address: nodeAddress,
+        children: children,
+      };
     }
-    return output;
   }
 }
