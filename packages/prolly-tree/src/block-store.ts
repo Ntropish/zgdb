@@ -28,10 +28,4 @@ export class BlockManager {
     this.blocks.set(hash.toString(), block);
     return hash;
   }
-
-  putSync(block: Uint8Array): Uint8Array {
-    const hash = this.hashFn(block);
-    this.blocks.set(hash.toString(), block);
-    return hash;
-  }
 }

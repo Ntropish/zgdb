@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Store } from "../store.js";
 import { ProllyTree } from "../prolly-tree.js";
 import { BlockManager } from "../block-store.js";
-import { InternalNode } from "../node.js";
+import { isLeafNodeProxy, InternalNodeProxy } from "../node-proxy.js";
 
 const enc = new TextEncoder();
 
@@ -23,14 +22,12 @@ const splittingConfig = {
 };
 
 describe("ProllyTree Splitting", () => {
-  let store: Store;
   let tree: ProllyTree;
   let blockManager: BlockManager;
 
   beforeEach(async () => {
-    store = new Store(splittingConfig);
-    tree = await store.getTree();
-    blockManager = store.blockManager;
+    blockManager = new BlockManager(splittingConfig);
+    tree = await ProllyTree.create(blockManager);
   });
 
   it("should split a leaf node when it becomes too large", async () => {
@@ -48,13 +45,13 @@ describe("ProllyTree Splitting", () => {
     expect(tree.root).not.toEqual(initialRoot);
 
     // The new root should be an internal node
-    const rootNode = await blockManager.getNode(tree.root);
+    const rootNode = await tree.nodeManager.getNode(tree.root);
     expect(rootNode).toBeDefined();
-    expect(rootNode!.isLeaf).toBe(false);
+    expect(isLeafNodeProxy(rootNode!)).toBe(false);
 
     // It should have at least two children
-    const internalRoot = rootNode as InternalNode;
-    expect(internalRoot.children.length).toBeGreaterThanOrEqual(2);
+    const internalRoot = rootNode as InternalNodeProxy;
+    expect(internalRoot.numBranches).toBeGreaterThanOrEqual(2);
 
     // Verify all keys are still retrievable
     for (let i = 0; i < 10; i++) {

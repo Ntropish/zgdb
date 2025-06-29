@@ -2,12 +2,13 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { NodeManager } from "../node-manager.js";
 import { BlockManager } from "../block-store.js";
 import {
-  Node,
   Address,
   KeyValuePair,
-  createLeafNode,
-  createInternalNode,
-} from "../node.js";
+  createLeafNodeBuffer,
+  createInternalNodeBuffer,
+  LeafNodeProxy,
+  InternalNodeProxy,
+} from "../node-proxy.js";
 import { Configuration, defaultConfiguration } from "../configuration.js";
 import { fromString } from "uint8arrays/from-string";
 import { sha256 } from "@noble/hashes/sha256";
@@ -26,61 +27,63 @@ describe("NodeManager", () => {
       },
       hashingAlgorithm: "sha2-256",
     };
-    blockManager = new BlockManager({
-      treeDefinition: { targetFanout: 4, minFanout: 2 },
-      hashingAlgorithm: "sha2-256",
-    });
+    blockManager = new BlockManager(config);
     nodeManager = new NodeManager(blockManager, blockManager.config);
   });
 
   it("should get an existing node", async () => {
-    const node = createLeafNode([[fromString("a"), fromString("value-a")]]);
-    const address = await blockManager.putNode(node);
+    const bytes = createLeafNodeBuffer([
+      { key: fromString("a"), value: fromString("value-a") },
+    ]);
+    const address = await blockManager.put(bytes);
 
     const retrievedNode = await nodeManager.getNode(address);
     expect(retrievedNode).toBeDefined();
-    expect(retrievedNode?.isLeaf).toBe(true);
-    expect(retrievedNode?.address).toEqual(address);
+    expect(retrievedNode!.isLeaf).toBe(true);
+    const retrievedAddress = blockManager.hashFn(retrievedNode!.bytes);
+    expect(retrievedAddress).toEqual(address);
   });
 
   it("should create a new leaf node", async () => {
-    const pairs: KeyValuePair[] = [[fromString("key1"), fromString("value1")]];
-    const node = await nodeManager.createLeafNode(pairs);
+    const pairs: KeyValuePair[] = [
+      { key: fromString("key1"), value: fromString("value1") },
+    ];
+    const { node, address } = await nodeManager.createLeafNode(pairs);
 
     expect(node).toBeDefined();
     expect(node.isLeaf).toBe(true);
-    expect((node as any).pairs).toEqual(pairs);
+    expect(node.numEntries).toBe(1);
 
-    const address = (node as any).address;
-    expect(address).toBeDefined();
-
-    const storedNode = await blockManager.getNode(address);
-    expect(storedNode).toBeDefined();
+    const storedBytes = await blockManager.get(address);
+    expect(storedBytes).toBeDefined();
   });
 
   it("should split a leaf node that is too full", async () => {
     const pairs: KeyValuePair[] = [
-      [fromString("a"), fromString("val-a")],
-      [fromString("b"), fromString("val-b")],
-      [fromString("c"), fromString("val-c")],
-      [fromString("d"), fromString("val-d")],
+      { key: fromString("a"), value: fromString("val-a") },
+      { key: fromString("b"), value: fromString("val-b") },
+      { key: fromString("c"), value: fromString("val-c") },
+      { key: fromString("d"), value: fromString("val-d") },
     ];
-    const fullNode = createLeafNode(pairs);
+    const bytes = createLeafNodeBuffer(pairs);
+    const fullNode = new LeafNodeProxy(bytes);
 
     const { newAddress, split } = await nodeManager.splitNode(fullNode);
 
     expect(newAddress).toBeDefined();
     expect(split).toBeDefined();
-    expect(split.key).toEqual(fromString("c"));
+    expect(split!.key).toEqual(fromString("c"));
 
-    const leftNode = await blockManager.getNode(newAddress);
-    const rightNode = await blockManager.getNode(split.address);
+    const leftNode = (await nodeManager.getNode(newAddress)) as LeafNodeProxy;
+    const rightNode = (await nodeManager.getNode(
+      split!.address
+    )) as LeafNodeProxy;
 
     expect(leftNode).toBeDefined();
-    expect((leftNode as any).pairs.length).toBe(2);
+    expect(leftNode.numEntries).toBe(2);
 
     expect(rightNode).toBeDefined();
-    expect((rightNode as any).pairs.length).toBe(2);
+    expect(rightNode.numEntries).toBe(2);
   });
 
   it("should split an internal node that is too full", async () => {
@@ -91,30 +94,44 @@ describe("NodeManager", () => {
       sha256(fromString("child3")),
       sha256(fromString("child4")),
     ];
-    const fullNode = createInternalNode(keys, children);
+    const branches = keys.map((k, i) => ({
+      key: k,
+      address: children[i],
+    }));
+    branches.push({
+      key: new Uint8Array(),
+      address: children[children.length - 1],
+    });
+
+    const bytes = createInternalNodeBuffer(branches, 100);
+    const fullNode = new InternalNodeProxy(bytes);
 
     const { newAddress, split } = await nodeManager.splitNode(fullNode);
 
     expect(newAddress).toBeDefined();
     expect(split).toBeDefined();
-    expect(split.key).toEqual(fromString("d")); // The middle key
+    expect(split!.key).toEqual(fromString("d")); // The middle key
 
-    const leftNode = await blockManager.getNode(newAddress);
-    const rightNode = await blockManager.getNode(split.address);
+    const leftNode = (await nodeManager.getNode(
+      newAddress
+    )) as InternalNodeProxy;
+    const rightNode = (await nodeManager.getNode(
+      split!.address
+    )) as InternalNodeProxy;
 
     expect(leftNode).toBeDefined();
-    expect((leftNode as any).keys.length).toBe(1);
-    expect((leftNode as any).children.length).toBe(2);
+    expect(leftNode.numBranches).toBe(2);
 
     expect(rightNode).toBeDefined();
-    expect((rightNode as any).keys.length).toBe(1);
-    expect((rightNode as any).children.length).toBe(2);
+    expect(rightNode.numBranches).toBe(2);
   });
 
   describe("_put", () => {
     it("should insert a key-value pair into a non-full leaf node", async () => {
-      const pairs: KeyValuePair[] = [[fromString("a"), fromString("val-a")]];
-      const leaf = await nodeManager.createLeafNode(pairs);
+      const pairs: KeyValuePair[] = [
+        { key: fromString("a"), value: fromString("val-a") },
+      ];
+      const { node: leaf } = await nodeManager.createLeafNode(pairs);
 
       const { newAddress, split } = await nodeManager._put(
         leaf,
@@ -123,14 +140,16 @@ describe("NodeManager", () => {
       );
 
       expect(split).toBeUndefined();
-      const newNode = await nodeManager.getNode(newAddress);
+      const newNode = (await nodeManager.getNode(newAddress)) as LeafNodeProxy;
       expect(newNode).toBeDefined();
-      expect((newNode as any).pairs.length).toBe(2);
+      expect(newNode.numEntries).toBe(2);
     });
 
     it("should update the value for an existing key", async () => {
-      const pairs: KeyValuePair[] = [[fromString("a"), fromString("val-a")]];
-      const leaf = await nodeManager.createLeafNode(pairs);
+      const pairs: KeyValuePair[] = [
+        { key: fromString("a"), value: fromString("val-a") },
+      ];
+      const { node: leaf } = await nodeManager.createLeafNode(pairs);
 
       const { newAddress, split } = await nodeManager._put(
         leaf,
@@ -139,19 +158,19 @@ describe("NodeManager", () => {
       );
 
       expect(split).toBeUndefined();
-      const newNode = await nodeManager.getNode(newAddress);
+      const newNode = (await nodeManager.getNode(newAddress)) as LeafNodeProxy;
       expect(newNode).toBeDefined();
-      expect((newNode as any).pairs.length).toBe(1);
-      expect((newNode as any).pairs[0][1]).toEqual(fromString("new-val-a"));
+      expect(newNode.numEntries).toBe(1);
+      expect(newNode.getEntry(0).value).toEqual(fromString("new-val-a"));
     });
 
     it("should split a leaf node when _put makes it too full", async () => {
       const pairs: KeyValuePair[] = [
-        [fromString("a"), fromString("val-a")],
-        [fromString("b"), fromString("val-b")],
-        [fromString("c"), fromString("val-c")],
+        { key: fromString("a"), value: fromString("val-a") },
+        { key: fromString("b"), value: fromString("val-b") },
+        { key: fromString("c"), value: fromString("val-c") },
       ];
-      const leaf = await nodeManager.createLeafNode(pairs);
+      const { node: leaf } = await nodeManager.createLeafNode(pairs);
 
       // This put will increase the number of pairs to 4, which is the fanout, triggering a split
       const { newAddress, split } = await nodeManager._put(
@@ -163,73 +182,82 @@ describe("NodeManager", () => {
       expect(newAddress).toBeDefined();
       expect(split).toBeDefined();
 
-      const leftNode = await blockManager.getNode(newAddress);
+      const leftNode = (await nodeManager.getNode(newAddress)) as LeafNodeProxy;
       expect(leftNode).toBeDefined();
-      expect((leftNode as any).pairs.length).toBe(2);
+      expect(leftNode.numEntries).toBe(2);
 
-      const rightNode = await blockManager.getNode(split!.address);
+      const rightNode = (await nodeManager.getNode(
+        split!.address
+      )) as LeafNodeProxy;
       expect(rightNode).toBeDefined();
-      expect((rightNode as any).pairs.length).toBe(2);
+      expect(rightNode.numEntries).toBe(2);
     });
   });
 
   describe("updateChild", () => {
     it("should update a child address in an internal node without a split", async () => {
-      const child1 = await nodeManager.createLeafNode([]);
-      const child2 = await nodeManager.createLeafNode([]);
-      const parent = await nodeManager.createNode(
-        [],
-        [fromString("m")],
-        [child1.address!, child2.address!],
-        false
+      const { address: child1Address } = await nodeManager.createLeafNode([]);
+      const { address: child2Address } = await nodeManager.createLeafNode([]);
+      const parentBytes = createInternalNodeBuffer(
+        [
+          { key: fromString("m"), address: child1Address },
+          { key: new Uint8Array(), address: child2Address },
+        ],
+        2
       );
+      const parent = new InternalNodeProxy(parentBytes);
 
-      const newChild1 = await nodeManager.createLeafNode([
-        [fromString("a"), fromString("val-a")],
+      const { address: newChild1Address } = await nodeManager.createLeafNode([
+        { key: fromString("a"), value: fromString("val-a") },
       ]);
 
       const { newAddress, split } = await nodeManager.updateChild(
         parent,
-        child1.address!,
-        newChild1.address!
+        child1Address,
+        newChild1Address
       );
 
       expect(split).toBeUndefined();
-      const updatedParent = await nodeManager.getNode(newAddress);
+      const updatedParent = (await nodeManager.getNode(
+        newAddress
+      )) as InternalNodeProxy;
       expect(updatedParent).toBeDefined();
-      expect((updatedParent as any).children[0]).toEqual(newChild1.address);
+      expect(updatedParent.getBranch(0).address).toEqual(newChild1Address);
     });
 
     it("should update a child address and handle a split", async () => {
-      const child1 = await nodeManager.createLeafNode([]);
-      const child2 = await nodeManager.createLeafNode([]);
-      const parent = await nodeManager.createNode(
-        [],
-        [fromString("m")],
-        [child1.address!, child2.address!],
-        false
+      const { address: child1Address } = await nodeManager.createLeafNode([]);
+      const { address: child2Address } = await nodeManager.createLeafNode([]);
+      const parentBytes = createInternalNodeBuffer(
+        [
+          { key: fromString("m"), address: child1Address },
+          { key: new Uint8Array(), address: child2Address },
+        ],
+        2
       );
+      const parent = new InternalNodeProxy(parentBytes);
 
-      const newChild1 = await nodeManager.createLeafNode([
-        [fromString("a"), fromString("val-a")],
+      const { address: newChild1Address } = await nodeManager.createLeafNode([
+        { key: fromString("a"), value: fromString("val-a") },
       ]);
-      const splitChild = await nodeManager.createLeafNode([
-        [fromString("g"), fromString("val-g")],
+      const { address: splitChildAddress } = await nodeManager.createLeafNode([
+        { key: fromString("g"), value: fromString("val-g") },
       ]);
 
       const { newAddress, split } = await nodeManager.updateChild(
         parent,
-        child1.address!,
-        newChild1.address!,
-        { key: fromString("f"), address: splitChild.address! }
+        child1Address,
+        newChild1Address,
+        { key: fromString("f"), address: splitChildAddress }
       );
 
       expect(split).toBeUndefined(); // The parent itself shouldn't split yet
-      const updatedParent = await nodeManager.getNode(newAddress);
+      const updatedParent = (await nodeManager.getNode(
+        newAddress
+      )) as InternalNodeProxy;
       expect(updatedParent).toBeDefined();
-      expect((updatedParent as any).children.length).toBe(3);
-      expect((updatedParent as any).keys.length).toBe(2);
-      expect((updatedParent as any).keys[0]).toEqual(fromString("f"));
+      expect(updatedParent.numBranches).toBe(3);
+      expect(updatedParent.getBranch(0).key).toEqual(fromString("f"));
     });
   });
 });

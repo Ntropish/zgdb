@@ -65,17 +65,6 @@ export class NodeManager {
     return { address, node };
   }
 
-  createLeafNodeSync(pairs: KeyValuePair[]): {
-    address: Address;
-    node: LeafNodeProxy;
-  } {
-    pairs.sort((a, b) => compare(a.key, b.key));
-    const bytes = createLeafNodeBuffer(pairs);
-    const address = this.blockManager.putSync(bytes);
-    const node = new LeafNodeProxy(bytes);
-    return { address, node };
-  }
-
   async updateChild(
     parent: InternalNodeProxy,
     oldChildAddress: Address,
@@ -219,36 +208,5 @@ export class NodeManager {
 
     const newAddress = await this.blockManager.put(bytes);
     return { newAddress };
-  }
-
-  updateChildSync(
-    parent: InternalNodeProxy,
-    oldChildAddress: Address,
-    newChildAddress: Address,
-    split?: { key: Uint8Array; address: Address }
-  ): {
-    newAddress: Address;
-    split?: { key: Uint8Array; address: Address };
-  } {
-    // This will be very similar to the async version
-    throw new Error("Not implemented");
-  }
-
-  splitNodeSync(node: NodeProxy): {
-    newAddress: Address;
-    split: { key: Uint8Array; address: Address };
-  } {
-    throw new Error("Not implemented");
-  }
-
-  _putSync(
-    node: LeafNodeProxy,
-    key: Uint8Array,
-    value: Uint8Array
-  ): {
-    newAddress: Address;
-    split?: { key: Uint8Array; address: Address };
-  } {
-    throw new Error("Not implemented");
   }
 }

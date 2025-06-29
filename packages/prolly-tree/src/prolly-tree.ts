@@ -23,18 +23,12 @@ export class ProllyTree {
   private constructor(
     public readonly rootNode: NodeProxy,
     private readonly blockManager: BlockManager,
-    private readonly nodeManager: NodeManager
+    public readonly nodeManager: NodeManager
   ) {}
 
   public static async create(blockManager: BlockManager): Promise<ProllyTree> {
     const nodeManager = new NodeManager(blockManager, blockManager.config);
     const { node: rootNode } = await nodeManager.createLeafNode([]);
-    return new ProllyTree(rootNode, blockManager, nodeManager);
-  }
-
-  public static createSync(blockManager: BlockManager): ProllyTree {
-    const nodeManager = new NodeManager(blockManager, blockManager.config);
-    const { node: rootNode } = nodeManager.createLeafNodeSync([]);
     return new ProllyTree(rootNode, blockManager, nodeManager);
   }
 
@@ -220,8 +214,7 @@ export class ProllyTree {
       while (path.length > 1) {
         const childNode = path.pop()!;
         const parent = path[path.length - 1];
-        if (parent.isLeaf) {
-          // Should not happen, root is leaf and we are done
+        if (isLeafNodeProxy(parent)) {
           break;
         }
         const internalParent = parent as InternalNodeProxy;
@@ -256,8 +249,8 @@ export class ProllyTree {
             path.push(nextNode);
           }
 
-          if (nextNode.isLeaf) {
-            currentLeaf = nextNode as LeafNodeProxy;
+          if (isLeafNodeProxy(nextNode)) {
+            currentLeaf = nextNode;
             foundNextLeaf = true;
             break;
           }
@@ -321,59 +314,6 @@ export class ProllyTree {
       newRootNode = await this.nodeManager.getNode(currentAddress); // Placeholder
     } else {
       newRootNode = await this.nodeManager.getNode(currentAddress);
-    }
-    if (!newRootNode) {
-      throw new Error("Could not find new root node");
-    }
-
-    const newTree = new ProllyTree(
-      newRootNode,
-      this.blockManager,
-      this.nodeManager
-    );
-    return { tree: newTree, changed: true };
-  }
-
-  public putSync(
-    key: Uint8Array,
-    value: Uint8Array
-  ): { tree: ProllyTree; changed: boolean } {
-    const path = this.findPathToLeafSync(key);
-    const leaf = path[path.length - 1] as LeafNodeProxy;
-
-    const entryIndex = leaf.findEntryIndex(key);
-    if (entryIndex >= 0) {
-      const existingValue = leaf.getEntry(entryIndex).value;
-      if (compare(existingValue, value) === 0) {
-        return { tree: this, changed: false };
-      }
-    }
-
-    let { newAddress: currentAddress, split } = this.nodeManager._putSync(
-      leaf,
-      key,
-      value
-    );
-
-    for (let i = path.length - 2; i >= 0; i--) {
-      const parent = path[i] as InternalNodeProxy;
-      const oldChildAddress = this.blockManager.hashFn(path[i + 1].bytes);
-      const result = this.nodeManager.updateChildSync(
-        parent,
-        oldChildAddress,
-        currentAddress,
-        split
-      );
-      currentAddress = result.newAddress;
-      split = result.split;
-    }
-
-    let newRootNode;
-    if (split) {
-      // This is not how we create a root node. Placeholder logic.
-      newRootNode = this.nodeManager.getNodeSync(currentAddress);
-    } else {
-      newRootNode = this.nodeManager.getNodeSync(currentAddress);
     }
     if (!newRootNode) {
       throw new Error("Could not find new root node");

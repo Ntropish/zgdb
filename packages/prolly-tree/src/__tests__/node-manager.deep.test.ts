@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { NodeManager } from "../node-manager.js";
 import { BlockManager } from "../block-store.js";
 import {
-  Node,
+  NodeProxy,
   Address,
   KeyValuePair,
-  InternalNode,
-  LeafNode,
-  createInternalNode,
-  createLeafNode,
-} from "../node.js";
-import { Configuration, defaultConfiguration } from "../configuration.js";
+  InternalNodeProxy,
+  LeafNodeProxy,
+  createInternalNodeBuffer,
+  isLeafNodeProxy,
+} from "../node-proxy.js";
+import { Configuration } from "../configuration.js";
 import { fromString } from "uint8arrays/from-string";
 import { faker } from "@faker-js/faker";
 import { compare } from "uint8arrays/compare";
@@ -22,20 +22,17 @@ async function findPathToLeaf(
   nodeManager: NodeManager,
   rootAddress: Address,
   key: Uint8Array
-): Promise<Node[]> {
-  const path: Node[] = [];
+): Promise<NodeProxy[]> {
+  const path: NodeProxy[] = [];
   let current = await nodeManager.getNode(rootAddress);
   if (!current) throw new Error("Root node not found");
   path.push(current);
 
-  while (!current.isLeaf) {
-    const internalNode = current as InternalNode;
-    const childIndex = internalNode.keys.findIndex((k) => compare(key, k) < 0);
+  while (!isLeafNodeProxy(current)) {
+    const internalNode = current as InternalNodeProxy;
+    const childIndex = internalNode.findChildIndex(key);
 
-    const nextAddress =
-      childIndex === -1
-        ? internalNode.children[internalNode.children.length - 1]
-        : internalNode.children[childIndex];
+    const nextAddress = internalNode.getBranch(childIndex).address;
 
     current = await nodeManager.getNode(nextAddress);
     if (!current)
@@ -48,7 +45,6 @@ async function findPathToLeaf(
 describe("NodeManager Deep Tests", () => {
   let blockManager: BlockManager;
   let nodeManager: NodeManager;
-  let config: Configuration;
   const MANUSCRIPT_COUNT = 500;
 
   beforeEach(() => {
@@ -75,12 +71,11 @@ describe("NodeManager Deep Tests", () => {
     }));
 
     // 2. Insert all manuscripts, simulating the tree's growth
-    let rootNode = await nodeManager.createLeafNode([]);
-    let rootAddress = rootNode.address!;
+    let { address: rootAddress } = await nodeManager.createLeafNode([]);
 
     for (const data of manuscriptData) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
-      const leaf = path[path.length - 1];
+      const leaf = path[path.length - 1] as LeafNodeProxy;
 
       let { newAddress: currentAddress, split } = await nodeManager._put(
         leaf,
@@ -90,8 +85,8 @@ describe("NodeManager Deep Tests", () => {
 
       // Propagate splits up the tree
       for (let i = path.length - 2; i >= 0; i--) {
-        const parent = path[i];
-        const oldChildAddress = path[i + 1].address!;
+        const parent = path[i] as InternalNodeProxy;
+        const oldChildAddress = blockManager.hashFn(path[i + 1].bytes);
         const result = await nodeManager.updateChild(
           parent,
           oldChildAddress,
@@ -104,13 +99,15 @@ describe("NodeManager Deep Tests", () => {
 
       // If a split propagates all the way to the root, create a new root
       if (split) {
-        const newRoot = await nodeManager.createNode(
-          [],
-          [split.key],
-          [currentAddress, split.address],
-          false
-        );
-        rootAddress = newRoot.address!;
+        // This is a simplified root creation. A real tree would need to handle subtree entry counts.
+        const newRootBytes = createInternalNodeBuffer(
+          [
+            { key: split.key, address: currentAddress },
+            { key: new Uint8Array(), address: split.address },
+          ],
+          leaf.entryCount * 2
+        ); // Placeholder entry count
+        rootAddress = await blockManager.put(newRootBytes);
       } else {
         rootAddress = currentAddress;
       }
@@ -119,10 +116,11 @@ describe("NodeManager Deep Tests", () => {
     // 3. Verify all manuscripts are retrievable
     for (const data of manuscriptData) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
-      const leaf = path[path.length - 1] as LeafNode;
-      const foundPair = leaf.pairs.find((p) => compare(p[0], data.key) === 0);
-      expect(foundPair).toBeDefined();
-      expect(foundPair![1]).toEqual(data.value);
+      const leaf = path[path.length - 1] as LeafNodeProxy;
+      const foundIndex = leaf.findEntryIndex(data.key);
+      expect(foundIndex).toBeGreaterThanOrEqual(0);
+      const foundPair = leaf.getEntry(foundIndex);
+      expect(foundPair.value).toEqual(data.value);
     }
 
     // 4. Update a random subset of manuscripts
@@ -136,7 +134,7 @@ describe("NodeManager Deep Tests", () => {
 
     for (const data of manuscriptsToUpdate) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
-      const leaf = path[path.length - 1];
+      const leaf = path[path.length - 1] as LeafNodeProxy;
 
       let { newAddress: currentAddress, split } = await nodeManager._put(
         leaf,
@@ -145,8 +143,8 @@ describe("NodeManager Deep Tests", () => {
       );
 
       for (let i = path.length - 2; i >= 0; i--) {
-        const parent = path[i];
-        const oldChildAddress = path[i + 1].address!;
+        const parent = path[i] as InternalNodeProxy;
+        const oldChildAddress = blockManager.hashFn(path[i + 1].bytes);
         const result = await nodeManager.updateChild(
           parent,
           oldChildAddress,
@@ -158,13 +156,14 @@ describe("NodeManager Deep Tests", () => {
       }
 
       if (split) {
-        const newRoot = await nodeManager.createNode(
-          [],
-          [split.key],
-          [currentAddress, split.address],
-          false
-        );
-        rootAddress = newRoot.address!;
+        const newRootBytes = createInternalNodeBuffer(
+          [
+            { key: split.key, address: currentAddress },
+            { key: new Uint8Array(), address: split.address },
+          ],
+          leaf.entryCount * 2
+        ); // Placeholder entry count
+        rootAddress = await blockManager.put(newRootBytes);
       } else {
         rootAddress = currentAddress;
       }
@@ -173,10 +172,11 @@ describe("NodeManager Deep Tests", () => {
     // 5. Verify updated manuscripts and a sample of truly unchanged ones
     for (const data of manuscriptsToUpdate) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
-      const leaf = path[path.length - 1] as LeafNode;
-      const foundPair = leaf.pairs.find((p) => compare(p[0], data.key) === 0);
-      expect(foundPair).toBeDefined();
-      expect(foundPair![1]).toEqual(data.value);
+      const leaf = path[path.length - 1] as LeafNodeProxy;
+      const foundIndex = leaf.findEntryIndex(data.key);
+      expect(foundIndex).toBeGreaterThanOrEqual(0);
+      const foundPair = leaf.getEntry(foundIndex);
+      expect(foundPair.value).toEqual(data.value);
     }
 
     const unchangedManuscripts = manuscriptData.filter(
@@ -184,10 +184,11 @@ describe("NodeManager Deep Tests", () => {
     );
     for (const data of sampleSize(unchangedManuscripts, 50)) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
-      const leaf = path[path.length - 1] as LeafNode;
-      const foundPair = leaf.pairs.find((p) => compare(p[0], data.key) === 0);
-      expect(foundPair).toBeDefined();
-      expect(foundPair![1]).toEqual(data.value);
+      const leaf = path[path.length - 1] as LeafNodeProxy;
+      const foundIndex = leaf.findEntryIndex(data.key);
+      expect(foundIndex).toBeGreaterThanOrEqual(0);
+      const foundPair = leaf.getEntry(foundIndex);
+      expect(foundPair.value).toEqual(data.value);
     }
   });
 });

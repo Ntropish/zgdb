@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Store } from "../store.js";
 import { ProllyTree } from "../prolly-tree.js";
 import { BlockManager } from "../block-store.js";
-import { Node, isLeafNode, LeafNode, InternalNode } from "../node.js";
+import {
+  NodeProxy,
+  isLeafNodeProxy,
+  InternalNodeProxy,
+} from "../node-proxy.js";
 import { Configuration, defaultConfiguration } from "../configuration.js";
 
 const enc = new TextEncoder();
@@ -27,21 +31,23 @@ async function collectNodeHashes(
   blockManager: BlockManager
 ): Promise<string[]> {
   const collectedHashes: Set<string> = new Set();
-  const rootNode = await blockManager.getNode(prollyTree.root);
+  const rootNode = await prollyTree.nodeManager.getNode(prollyTree.root);
   if (!rootNode) {
     return [];
   }
 
-  const queue: Node[] = [rootNode];
+  const queue: NodeProxy[] = [rootNode];
   collectedHashes.add(prollyTree.root.toString());
 
   while (queue.length > 0) {
     const node = queue.shift();
-    if (node && !isLeafNode(node)) {
-      for (const childAddress of node.children) {
+    if (node && !isLeafNodeProxy(node)) {
+      const internalNode = node as InternalNodeProxy;
+      for (let i = 0; i < internalNode.numBranches; i++) {
+        const childAddress = internalNode.getBranch(i).address;
         if (!collectedHashes.has(childAddress.toString())) {
           collectedHashes.add(childAddress.toString());
-          const childNode = await blockManager.getNode(childAddress);
+          const childNode = await prollyTree.nodeManager.getNode(childAddress);
           if (childNode) {
             queue.push(childNode);
           }
@@ -95,11 +101,13 @@ describe("Cascading Splits", () => {
     }
 
     // 2. Check the tree structure (optional, but good for debugging)
-    const rootNode = (await blockManager.getNode(tree.root)) as InternalNode;
+    const rootNode = (await tree.nodeManager.getNode(
+      tree.root
+    )) as InternalNodeProxy;
     expect(rootNode.isLeaf).toBe(false);
 
     // The root should have children, indicating at least one split happened.
-    expect(rootNode.children.length).toBeGreaterThan(1);
+    expect(rootNode.numBranches).toBeGreaterThan(1);
 
     // 3. Check for runaway node creation (a symptom of the previous bug)
     const nodeCount = (await collectNodeHashes(tree, blockManager)).length;
