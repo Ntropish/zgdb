@@ -51,7 +51,7 @@ describe("ZG Client: Relationships", () => {
 
     // 2. Fetch the node from the "database" using a client
     const clientForUserA = db.createClient({ id: "user-A" });
-    const foundPost = await clientForUserA.posts.get("post-1");
+    const foundPost = clientForUserA.posts.get("post-1");
     expect(foundPost).toBeDefined();
 
     // 3. Traverse the relationship SYNCHRONOUSLY
