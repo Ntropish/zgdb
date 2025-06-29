@@ -97,10 +97,12 @@ export class NodeManager {
     newAddress: Address;
     split?: { key: Uint8Array; address: Address };
   }> {
+    const originalAddress = await this.blockManager.hashFn(parent.bytes);
+
     // Deconstruct the parent into simple arrays of keys and addresses.
-    const keys: Uint8Array[] = [];
+    const keys: (Uint8Array | null)[] = [];
     for (let i = 0; i < parent.keysLength; i++) {
-      keys.push(parent.getKey(i)!);
+      keys.push(parent.getKey(i));
     }
     const addresses: Address[] = [];
     for (let i = 0; i < parent.addressesLength; i++) {
@@ -128,12 +130,31 @@ export class NodeManager {
     // Re-serialize the new parent node from the updated keys and addresses.
     const newBranches: BranchPair[] = addresses.map((address, i) => ({
       // there is one more address than key
-      key: i < keys.length ? keys[i] : new Uint8Array(),
+      key: (i < keys.length ? keys[i] : new Uint8Array())!,
       address,
     }));
 
-    const { address: newAddress, node: newNode } =
-      await this.createInternalNode(newBranches);
+    let totalSubtreeEntries = 0;
+    for (const branch of newBranches) {
+      const child = await this.getNode(branch.address);
+      if (child) {
+        totalSubtreeEntries += child.entryCount;
+      }
+    }
+
+    const newBytes = createInternalNodeBuffer(
+      newBranches,
+      totalSubtreeEntries,
+      parent.level
+    );
+    const newAddress = await this.blockManager.hashFn(newBytes);
+
+    if (this.config.comparator(originalAddress, newAddress) === 0) {
+      return { newAddress: originalAddress };
+    }
+
+    await this.blockManager.put(newBytes);
+    const newNode = new InternalNodeProxy(newBytes, this);
 
     // Check if the new parent also needs to be split and propagate if necessary.
     if (this.isNodeFull(newNode)) {
@@ -212,22 +233,26 @@ export class NodeManager {
     }
     const { found, index } = node.findKeyIndex(key);
 
+    const originalAddress = await this.blockManager.hashFn(node.bytes);
+
     if (found) {
-      // Key exists. If value is the same, do nothing.
       if (this.config.comparator(pairs[index].value, value) === 0) {
-        const address = await this.blockManager.hashFn(node.bytes);
-        return { newAddress: address };
+        return { newAddress: originalAddress };
       }
-      // Value is different, update it.
       pairs[index] = { key, value };
     } else {
-      // Key does not exist, insert it.
       pairs.splice(index, 0, { key, value });
     }
 
-    const { address: newAddress, node: newNode } = await this.createLeafNode(
-      pairs
-    );
+    const newBytes = createLeafNodeBuffer(pairs, node.level);
+    const newAddress = await this.blockManager.hashFn(newBytes);
+
+    if (this.config.comparator(originalAddress, newAddress) === 0) {
+      return { newAddress: originalAddress };
+    }
+
+    await this.blockManager.put(newBytes);
+    const newNode = new LeafNodeProxy(newBytes, this);
 
     if (this.isNodeFull(newNode)) {
       return this.splitNode(newNode);

@@ -189,19 +189,15 @@ export class ProllyTree {
       value
     );
 
-    if (
-      !split &&
-      this.nodeManager.config.comparator(
-        originalLeafAddress,
-        currentAddress
-      ) === 0
-    ) {
+    if (compare(originalLeafAddress, currentAddress) === 0 && !split) {
       return { tree: this, changed: false };
     }
 
+    // Propagate splits up the tree
     for (let i = path.length - 2; i >= 0; i--) {
       const parent = path[i] as InternalNodeProxy;
       const oldChildAddress = await this.blockManager.hashFn(path[i + 1].bytes);
+      const parentAddress = await this.blockManager.hashFn(parent.bytes);
 
       const result = await this.nodeManager.updateChild(
         parent,
@@ -209,26 +205,29 @@ export class ProllyTree {
         currentAddress,
         split
       );
+
       currentAddress = result.newAddress;
       split = result.split;
+
+      // If the parent's address didn't change and there was no split, we can stop.
+      if (compare(parentAddress, currentAddress) === 0 && !split) {
+        break;
+      }
     }
 
     let newRootNode;
+    // If a split propagates all the way to the root, create a new root
     if (split) {
-      // The root node split, so we need to create a new root.
-      const leftChildAddress = currentAddress;
-      const rightChildAddress = split.address;
-
-      const { node: newRoot } = await this.nodeManager.createInternalNode([
-        { key: split.key, address: leftChildAddress },
-        { key: new Uint8Array(), address: rightChildAddress },
+      const { node } = await this.nodeManager.createInternalNode([
+        { key: split.key, address: currentAddress },
+        { key: new Uint8Array(), address: split.address },
       ]);
-      newRootNode = newRoot;
+      newRootNode = node;
     } else {
       newRootNode = await this.nodeManager.getNode(currentAddress);
-    }
-    if (!newRootNode) {
-      throw new Error("Could not find new root node");
+      if (!newRootNode) {
+        throw new Error("Could not find new root node");
+      }
     }
 
     const newTree = new ProllyTree(
@@ -248,34 +247,37 @@ export class ProllyTree {
   }
 
   private async printNode(node: NodeProxy, level: number): Promise<string> {
+    let output = "";
     const indent = "  ".repeat(level);
-    const address = await this.blockManager.hashFn(node.bytes);
-    const addressStr = toString(address.slice(0, 6), "hex");
-    let output = `${indent}${
-      node.isLeaf() ? "LEAF" : "INTERNAL"
-    } @ ${addressStr} (${node.entryCount} entries, L${node.level})\n`;
+    const nodeAddress = toString(await this.blockManager.hashFn(node.bytes));
 
-    if (node.isLeaf()) {
-      const pairs = node.getAllPairs();
-      for (const pair of pairs) {
-        output += `${indent}  - [${toString(pair.key)}] = ${toString(
-          pair.value
-        )}\n`;
+    if (isLeafNodeProxy(node)) {
+      output += `${indent}Leaf (L${node.level}) @ ${nodeAddress} (${node.keysLength} keys)\\n`;
+      for (let i = 0; i < node.keysLength; i++) {
+        const pair = node.getPair(i);
+        output += `${indent}  - Key: "${toString(
+          pair.key
+        )}", Value: "${toString(pair.value)}"\\n`;
       }
     } else {
       const internalNode = node as InternalNodeProxy;
-      for (let i = 0; i < internalNode.addressesLength; i++) {
-        const childAddress = internalNode.getAddress(i)!;
-        const key =
-          i < internalNode.keysLength ? internalNode.getKey(i) : undefined;
-
-        const childPrefix = key ? `> [${toString(key)}]` : `> *`;
-        output += `${indent}  ${childPrefix} -> ${toString(
-          childAddress.slice(0, 6),
-          "hex"
-        )}\n`;
-
-        const childNode = await this.nodeManager.getNode(childAddress);
+      output += `${indent}Internal (L${internalNode.level}) @ ${nodeAddress} (${internalNode.keysLength} keys, ${internalNode.addressesLength} children)\\n`;
+      for (let i = 0; i < internalNode.keysLength; i++) {
+        const key = internalNode.getKey(i);
+        const childAddress = internalNode.getAddress(i);
+        output += `${indent}  - Key: "${toString(key!)}" -> Pointer: ${toString(
+          childAddress!
+        )}\\n`;
+        const childNode = await this.nodeManager.getNode(childAddress!);
+        if (childNode) {
+          output += await this.printNode(childNode, level + 1);
+        }
+      }
+      // Print the last child
+      const lastChildAddress = internalNode.getAddress(internalNode.keysLength);
+      if (lastChildAddress) {
+        output += `${indent}  - Pointer: ${toString(lastChildAddress)}\\n`;
+        const childNode = await this.nodeManager.getNode(lastChildAddress);
         if (childNode) {
           output += await this.printNode(childNode, level + 1);
         }
