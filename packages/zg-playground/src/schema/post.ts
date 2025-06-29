@@ -16,9 +16,10 @@ export const PostDef: EntityDef = {
   relationships: {
     author: {
       entity: "User",
-      cardinality: "one",
-      required: true,
       field: "authorId",
+      cardinality: "one",
+      description: "The user who wrote the post.",
+      required: true,
     },
     comments: {
       entity: "Comment",

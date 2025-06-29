@@ -61,22 +61,42 @@ ${fields}
 function generateDbAccessors(schema: NormalizedSchema): string {
   const schemaNameLower =
     schema.name.charAt(0).toLowerCase() + schema.name.slice(1);
+  const nodeName = `${schema.name}Node<TActor>`;
+
+  // Helper type for this specific accessor
+  const resolvedNodeType = `ResolvedNode<${nodeName}, TEntityResolvers["${schema.name}"], TGlobalResolvers>`;
 
   return `
   get ${schemaNameLower}s() {
     return {
-      get: async (id: string): Promise<${schema.name}Node<TActor> | null> => {
-        return this.db.get<LowLevel.${schema.name}, ${schema.name}Node<TActor>>('${schema.name}', id, (db, fbb, ac) => new ${schema.name}Node(db, fbb, ac));
+      get: (id: string): Promise<${resolvedNodeType} | null> => {
+        return this.db.get<LowLevel.${schema.name}, ${nodeName}>(
+          '${schema.name}',
+          id,
+          (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
+          this.authContext,
+        ) as Promise<${resolvedNodeType} | null>;
       },
-      create: (data: Partial<I${schema.name}>): ${schema.name}Node<TActor> => {
-        return this.db.create<LowLevel.${schema.name}, ${schema.name}Node<TActor>>('${schema.name}', data, (db, fbb, ac) => new ${schema.name}Node(db, fbb, ac));
+      create: (data: Partial<I${schema.name}>): ${resolvedNodeType} => {
+        return this.db.create<LowLevel.${schema.name}, ${nodeName}>(
+          '${schema.name}',
+          data,
+          (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
+          this.authContext,
+        ) as ${resolvedNodeType};
       },
-      update: (id: string, data: Partial<I${schema.name}>): ${schema.name}Node<TActor> => {
-        return this.db.update<LowLevel.${schema.name}, ${schema.name}Node<TActor>>('${schema.name}', id, data, (db, fbb, ac) => new ${schema.name}Node(db, fbb, ac));
+      update: (id: string, data: Partial<I${schema.name}>): ${resolvedNodeType} => {
+        return this.db.update<LowLevel.${schema.name}, ${nodeName}>(
+          '${schema.name}',
+          id,
+          data,
+          (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
+          this.authContext,
+        ) as ${resolvedNodeType};
       },
-      delete: async (id: string): Promise<void> => {
-        return this.db.delete('${schema.name}', id);
-      }
+      delete: (id: string) => {
+        return this.db.delete('${schema.name}', id, this.authContext);
+      },
     };
   }`;
 }
@@ -96,6 +116,15 @@ export function generateZgFile(
 import { ZgDatabase, ZgBaseNode, ZgAuthContext } from '@zgdb/client';
 import * as LowLevel from './schema${importExt}';
 
+// --- Helper Types ---
+type ResolverFn = (context: any) => any;
+type ResolverMap = Record<string, ResolverFn>;
+type ResolvedNode<TNode, TEntityResolvers extends ResolverMap, TGlobalResolvers extends ResolverMap> = TNode & {
+  [K in keyof TEntityResolvers]: ReturnType<TEntityResolvers[K]>;
+} & {
+  [K in keyof TGlobalResolvers]: ReturnType<TGlobalResolvers[K]>;
+};
+
 // --- Interfaces ---
 ${interfaces}
 
@@ -103,28 +132,51 @@ ${interfaces}
 ${nodeClasses}
 
 // --- Database Class ---
-export class ZgClient<TActor> {
+export class ZgClient<
+  TActor,
+  TGlobalResolvers extends ResolverMap,
+  TEntityResolvers extends Record<string, ResolverMap>
+> {
   private db: ZgDatabase;
-  private authContext: ZgAuthContext<TActor> | null = null;
+  private authContext: ZgAuthContext<TActor>;
 
-  constructor() {
-    this.db = new ZgDatabase();
-  }
-
-  setAuthContext(context: ZgAuthContext<TActor>) {
-    this.authContext = context;
+  constructor(db: ZgDatabase, authContext: ZgAuthContext<TActor>) {
+    this.db = db;
+    this.authContext = authContext;
   }
 ${dbAccessors}
 }
 
-export function createDB<TActor>(config: {
-  globalResolvers: Record<string, Function>;
-  entityResolvers: Record<string, Record<string, Function>>;
+// The main database instance, created once
+class Database<
+  TGlobalResolvers extends ResolverMap,
+  TEntityResolvers extends Record<string, ResolverMap>
+> {
+  private db: ZgDatabase;
+
+  constructor(config: {
+    globalResolvers: TGlobalResolvers;
+    entityResolvers: TEntityResolvers;
+    auth: Record<string, any>;
+  }) {
+    this.db = new ZgDatabase(config);
+  }
+
+  createClient<TActor>(actor: TActor): ZgClient<TActor, TGlobalResolvers, TEntityResolvers> {
+    return new ZgClient(this.db, { actor });
+  }
+}
+
+export function createDB<
+  TActor,
+  const TGlobalResolvers extends ResolverMap,
+  const TEntityResolvers extends Record<string, ResolverMap>
+>(config: {
+  globalResolvers: TGlobalResolvers;
+  entityResolvers: TEntityResolvers;
   auth: Record<string, any>;
-}) {
-  const client = new ZgClient<TActor>();
-  // TODO: Attach runtime resolvers and auth config
-  return client;
+}): Database<TGlobalResolvers, TEntityResolvers> {
+  return new Database(config);
 }
 `;
 }

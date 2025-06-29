@@ -12,7 +12,7 @@ export class ZgBaseNode<T extends Table, TActor = any> {
   constructor(
     protected db: ZgDatabase,
     public fbb: T,
-    protected authContext: ZgAuthContext<TActor> | null
+    public authContext: ZgAuthContext<TActor> | null
   ) {}
 }
 
@@ -20,9 +20,53 @@ export class ZgBaseNode<T extends Table, TActor = any> {
 // In a real application, this would interact with a database like Prolly Trees.
 export class ZgDatabase {
   private store = new Map<string, any>();
+  private config: any;
 
   constructor(options?: any) {
     // In the future, options could contain storage paths, etc.
+    this.config = options;
+  }
+
+  private _getNodeName(node: ZgBaseNode<any, any>): string {
+    // A bit of a hack to get the entity name from the node instance
+    // e.g., "PostNode" -> "Post"
+    const constructorName = node.constructor.name;
+    return constructorName.endsWith("Node")
+      ? constructorName.slice(0, -4)
+      : constructorName;
+  }
+
+  private _createNodeProxy<TNode extends ZgBaseNode<any, any>>(
+    node: TNode
+  ): TNode {
+    const entityName = this._getNodeName(node);
+    const entityResolvers = this.config.entityResolvers?.[entityName] ?? {};
+    const globalResolvers = this.config.globalResolvers ?? {};
+    const allResolverNames = new Set([
+      ...Object.keys(entityResolvers),
+      ...Object.keys(globalResolvers),
+    ]);
+
+    return new Proxy(node, {
+      get: (target, prop, receiver) => {
+        // If the property is on the node itself, return it
+        if (Reflect.has(target, prop)) {
+          return Reflect.get(target, prop, receiver);
+        }
+
+        // If it's a known resolver, resolve it
+        if (typeof prop === "string" && allResolverNames.has(prop)) {
+          const resolver = entityResolvers[prop] ?? globalResolvers[prop];
+          return resolver({
+            actor: node.authContext?.actor,
+            db: this,
+            node: target,
+          });
+        }
+
+        return undefined;
+      },
+    });
   }
 
   async get<T extends Table, TNode extends ZgBaseNode<T>>(
@@ -38,7 +82,8 @@ export class ZgDatabase {
     const mockFbb = new Proxy({} as any, {
       get: (_, prop: string) => () => data[prop],
     }) as T;
-    return nodeFactory(this, mockFbb, null);
+    const node = nodeFactory(this, mockFbb, null);
+    return this._createNodeProxy(node);
   }
 
   async getRaw(entityName: string, id: string): Promise<any | null> {
@@ -66,7 +111,8 @@ export class ZgDatabase {
     const mockFbb = new Proxy({} as any, {
       get: (_, prop: string) => () => data[prop],
     }) as T;
-    return nodeFactory(this, mockFbb, null);
+    const node = nodeFactory(this, mockFbb, null);
+    return this._createNodeProxy(node);
   }
 
   update<T extends Table, TNode extends ZgBaseNode<T>>(
@@ -90,7 +136,8 @@ export class ZgDatabase {
     const mockFbb = new Proxy({} as any, {
       get: (_, prop: string) => () => updated[prop],
     }) as T;
-    return nodeFactory(this, mockFbb, null);
+    const node = nodeFactory(this, mockFbb, null);
+    return this._createNodeProxy(node);
   }
 
   async delete(entityName: string, id: string): Promise<void> {

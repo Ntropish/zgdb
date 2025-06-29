@@ -2,6 +2,15 @@
 import { ZgDatabase, ZgBaseNode, ZgAuthContext } from '@zgdb/client';
 import * as LowLevel from './schema.js';
 
+// --- Helper Types ---
+type ResolverFn = (context: any) => any;
+type ResolverMap = Record<string, ResolverFn>;
+type ResolvedNode<TNode, TEntityResolvers extends ResolverMap, TGlobalResolvers extends ResolverMap> = TNode & {
+  [K in keyof TEntityResolvers]: ReturnType<TEntityResolvers[K]>;
+} & {
+  [K in keyof TGlobalResolvers]: ReturnType<TGlobalResolvers[K]>;
+};
+
 // --- Interfaces ---
 export interface IUser {
   id: string;
@@ -353,178 +362,345 @@ export class PostTagNode<TActor> extends ZgBaseNode<LowLevel.PostTag, TActor> {
 }
 
 // --- Database Class ---
-export class ZgClient<TActor> {
+export class ZgClient<
+  TActor,
+  TGlobalResolvers extends ResolverMap,
+  TEntityResolvers extends Record<string, ResolverMap>
+> {
   private db: ZgDatabase;
-  private authContext: ZgAuthContext<TActor> | null = null;
+  private authContext: ZgAuthContext<TActor>;
 
-  constructor() {
-    this.db = new ZgDatabase();
-  }
-
-  setAuthContext(context: ZgAuthContext<TActor>) {
-    this.authContext = context;
+  constructor(db: ZgDatabase, authContext: ZgAuthContext<TActor>) {
+    this.db = db;
+    this.authContext = authContext;
   }
 
   get users() {
     return {
-      get: async (id: string): Promise<UserNode<TActor> | null> => {
-        return this.db.get<LowLevel.User, UserNode<TActor>>('User', id, (db, fbb, ac) => new UserNode(db, fbb, ac));
+      get: (id: string): Promise<ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null> => {
+        return this.db.get<LowLevel.User, UserNode<TActor>>(
+          'User',
+          id,
+          (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as Promise<ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null>;
       },
-      create: (data: Partial<IUser>): UserNode<TActor> => {
-        return this.db.create<LowLevel.User, UserNode<TActor>>('User', data, (db, fbb, ac) => new UserNode(db, fbb, ac));
+      create: (data: Partial<IUser>): ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> => {
+        return this.db.create<LowLevel.User, UserNode<TActor>>(
+          'User',
+          data,
+          (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers>;
       },
-      update: (id: string, data: Partial<IUser>): UserNode<TActor> => {
-        return this.db.update<LowLevel.User, UserNode<TActor>>('User', id, data, (db, fbb, ac) => new UserNode(db, fbb, ac));
+      update: (id: string, data: Partial<IUser>): ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> => {
+        return this.db.update<LowLevel.User, UserNode<TActor>>(
+          'User',
+          id,
+          data,
+          (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers>;
       },
-      delete: async (id: string): Promise<void> => {
-        return this.db.delete('User', id);
-      }
+      delete: (id: string) => {
+        return this.db.delete('User', id, this.authContext);
+      },
     };
   }
 
   get posts() {
     return {
-      get: async (id: string): Promise<PostNode<TActor> | null> => {
-        return this.db.get<LowLevel.Post, PostNode<TActor>>('Post', id, (db, fbb, ac) => new PostNode(db, fbb, ac));
+      get: (id: string): Promise<ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> | null> => {
+        return this.db.get<LowLevel.Post, PostNode<TActor>>(
+          'Post',
+          id,
+          (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as Promise<ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> | null>;
       },
-      create: (data: Partial<IPost>): PostNode<TActor> => {
-        return this.db.create<LowLevel.Post, PostNode<TActor>>('Post', data, (db, fbb, ac) => new PostNode(db, fbb, ac));
+      create: (data: Partial<IPost>): ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> => {
+        return this.db.create<LowLevel.Post, PostNode<TActor>>(
+          'Post',
+          data,
+          (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers>;
       },
-      update: (id: string, data: Partial<IPost>): PostNode<TActor> => {
-        return this.db.update<LowLevel.Post, PostNode<TActor>>('Post', id, data, (db, fbb, ac) => new PostNode(db, fbb, ac));
+      update: (id: string, data: Partial<IPost>): ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> => {
+        return this.db.update<LowLevel.Post, PostNode<TActor>>(
+          'Post',
+          id,
+          data,
+          (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers>;
       },
-      delete: async (id: string): Promise<void> => {
-        return this.db.delete('Post', id);
-      }
+      delete: (id: string) => {
+        return this.db.delete('Post', id, this.authContext);
+      },
     };
   }
 
   get comments() {
     return {
-      get: async (id: string): Promise<CommentNode<TActor> | null> => {
-        return this.db.get<LowLevel.Comment, CommentNode<TActor>>('Comment', id, (db, fbb, ac) => new CommentNode(db, fbb, ac));
+      get: (id: string): Promise<ResolvedNode<CommentNode<TActor>, TEntityResolvers["Comment"], TGlobalResolvers> | null> => {
+        return this.db.get<LowLevel.Comment, CommentNode<TActor>>(
+          'Comment',
+          id,
+          (db, fbb, ac) => new CommentNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as Promise<ResolvedNode<CommentNode<TActor>, TEntityResolvers["Comment"], TGlobalResolvers> | null>;
       },
-      create: (data: Partial<IComment>): CommentNode<TActor> => {
-        return this.db.create<LowLevel.Comment, CommentNode<TActor>>('Comment', data, (db, fbb, ac) => new CommentNode(db, fbb, ac));
+      create: (data: Partial<IComment>): ResolvedNode<CommentNode<TActor>, TEntityResolvers["Comment"], TGlobalResolvers> => {
+        return this.db.create<LowLevel.Comment, CommentNode<TActor>>(
+          'Comment',
+          data,
+          (db, fbb, ac) => new CommentNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<CommentNode<TActor>, TEntityResolvers["Comment"], TGlobalResolvers>;
       },
-      update: (id: string, data: Partial<IComment>): CommentNode<TActor> => {
-        return this.db.update<LowLevel.Comment, CommentNode<TActor>>('Comment', id, data, (db, fbb, ac) => new CommentNode(db, fbb, ac));
+      update: (id: string, data: Partial<IComment>): ResolvedNode<CommentNode<TActor>, TEntityResolvers["Comment"], TGlobalResolvers> => {
+        return this.db.update<LowLevel.Comment, CommentNode<TActor>>(
+          'Comment',
+          id,
+          data,
+          (db, fbb, ac) => new CommentNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<CommentNode<TActor>, TEntityResolvers["Comment"], TGlobalResolvers>;
       },
-      delete: async (id: string): Promise<void> => {
-        return this.db.delete('Comment', id);
-      }
+      delete: (id: string) => {
+        return this.db.delete('Comment', id, this.authContext);
+      },
     };
   }
 
   get follows() {
     return {
-      get: async (id: string): Promise<FollowNode<TActor> | null> => {
-        return this.db.get<LowLevel.Follow, FollowNode<TActor>>('Follow', id, (db, fbb, ac) => new FollowNode(db, fbb, ac));
+      get: (id: string): Promise<ResolvedNode<FollowNode<TActor>, TEntityResolvers["Follow"], TGlobalResolvers> | null> => {
+        return this.db.get<LowLevel.Follow, FollowNode<TActor>>(
+          'Follow',
+          id,
+          (db, fbb, ac) => new FollowNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as Promise<ResolvedNode<FollowNode<TActor>, TEntityResolvers["Follow"], TGlobalResolvers> | null>;
       },
-      create: (data: Partial<IFollow>): FollowNode<TActor> => {
-        return this.db.create<LowLevel.Follow, FollowNode<TActor>>('Follow', data, (db, fbb, ac) => new FollowNode(db, fbb, ac));
+      create: (data: Partial<IFollow>): ResolvedNode<FollowNode<TActor>, TEntityResolvers["Follow"], TGlobalResolvers> => {
+        return this.db.create<LowLevel.Follow, FollowNode<TActor>>(
+          'Follow',
+          data,
+          (db, fbb, ac) => new FollowNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<FollowNode<TActor>, TEntityResolvers["Follow"], TGlobalResolvers>;
       },
-      update: (id: string, data: Partial<IFollow>): FollowNode<TActor> => {
-        return this.db.update<LowLevel.Follow, FollowNode<TActor>>('Follow', id, data, (db, fbb, ac) => new FollowNode(db, fbb, ac));
+      update: (id: string, data: Partial<IFollow>): ResolvedNode<FollowNode<TActor>, TEntityResolvers["Follow"], TGlobalResolvers> => {
+        return this.db.update<LowLevel.Follow, FollowNode<TActor>>(
+          'Follow',
+          id,
+          data,
+          (db, fbb, ac) => new FollowNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<FollowNode<TActor>, TEntityResolvers["Follow"], TGlobalResolvers>;
       },
-      delete: async (id: string): Promise<void> => {
-        return this.db.delete('Follow', id);
-      }
+      delete: (id: string) => {
+        return this.db.delete('Follow', id, this.authContext);
+      },
     };
   }
 
   get image_Metadatas() {
     return {
-      get: async (id: string): Promise<Image_MetadataNode<TActor> | null> => {
-        return this.db.get<LowLevel.Image_Metadata, Image_MetadataNode<TActor>>('Image_Metadata', id, (db, fbb, ac) => new Image_MetadataNode(db, fbb, ac));
+      get: (id: string): Promise<ResolvedNode<Image_MetadataNode<TActor>, TEntityResolvers["Image_Metadata"], TGlobalResolvers> | null> => {
+        return this.db.get<LowLevel.Image_Metadata, Image_MetadataNode<TActor>>(
+          'Image_Metadata',
+          id,
+          (db, fbb, ac) => new Image_MetadataNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as Promise<ResolvedNode<Image_MetadataNode<TActor>, TEntityResolvers["Image_Metadata"], TGlobalResolvers> | null>;
       },
-      create: (data: Partial<IImage_Metadata>): Image_MetadataNode<TActor> => {
-        return this.db.create<LowLevel.Image_Metadata, Image_MetadataNode<TActor>>('Image_Metadata', data, (db, fbb, ac) => new Image_MetadataNode(db, fbb, ac));
+      create: (data: Partial<IImage_Metadata>): ResolvedNode<Image_MetadataNode<TActor>, TEntityResolvers["Image_Metadata"], TGlobalResolvers> => {
+        return this.db.create<LowLevel.Image_Metadata, Image_MetadataNode<TActor>>(
+          'Image_Metadata',
+          data,
+          (db, fbb, ac) => new Image_MetadataNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<Image_MetadataNode<TActor>, TEntityResolvers["Image_Metadata"], TGlobalResolvers>;
       },
-      update: (id: string, data: Partial<IImage_Metadata>): Image_MetadataNode<TActor> => {
-        return this.db.update<LowLevel.Image_Metadata, Image_MetadataNode<TActor>>('Image_Metadata', id, data, (db, fbb, ac) => new Image_MetadataNode(db, fbb, ac));
+      update: (id: string, data: Partial<IImage_Metadata>): ResolvedNode<Image_MetadataNode<TActor>, TEntityResolvers["Image_Metadata"], TGlobalResolvers> => {
+        return this.db.update<LowLevel.Image_Metadata, Image_MetadataNode<TActor>>(
+          'Image_Metadata',
+          id,
+          data,
+          (db, fbb, ac) => new Image_MetadataNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<Image_MetadataNode<TActor>, TEntityResolvers["Image_Metadata"], TGlobalResolvers>;
       },
-      delete: async (id: string): Promise<void> => {
-        return this.db.delete('Image_Metadata', id);
-      }
+      delete: (id: string) => {
+        return this.db.delete('Image_Metadata', id, this.authContext);
+      },
     };
   }
 
   get images() {
     return {
-      get: async (id: string): Promise<ImageNode<TActor> | null> => {
-        return this.db.get<LowLevel.Image, ImageNode<TActor>>('Image', id, (db, fbb, ac) => new ImageNode(db, fbb, ac));
+      get: (id: string): Promise<ResolvedNode<ImageNode<TActor>, TEntityResolvers["Image"], TGlobalResolvers> | null> => {
+        return this.db.get<LowLevel.Image, ImageNode<TActor>>(
+          'Image',
+          id,
+          (db, fbb, ac) => new ImageNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as Promise<ResolvedNode<ImageNode<TActor>, TEntityResolvers["Image"], TGlobalResolvers> | null>;
       },
-      create: (data: Partial<IImage>): ImageNode<TActor> => {
-        return this.db.create<LowLevel.Image, ImageNode<TActor>>('Image', data, (db, fbb, ac) => new ImageNode(db, fbb, ac));
+      create: (data: Partial<IImage>): ResolvedNode<ImageNode<TActor>, TEntityResolvers["Image"], TGlobalResolvers> => {
+        return this.db.create<LowLevel.Image, ImageNode<TActor>>(
+          'Image',
+          data,
+          (db, fbb, ac) => new ImageNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<ImageNode<TActor>, TEntityResolvers["Image"], TGlobalResolvers>;
       },
-      update: (id: string, data: Partial<IImage>): ImageNode<TActor> => {
-        return this.db.update<LowLevel.Image, ImageNode<TActor>>('Image', id, data, (db, fbb, ac) => new ImageNode(db, fbb, ac));
+      update: (id: string, data: Partial<IImage>): ResolvedNode<ImageNode<TActor>, TEntityResolvers["Image"], TGlobalResolvers> => {
+        return this.db.update<LowLevel.Image, ImageNode<TActor>>(
+          'Image',
+          id,
+          data,
+          (db, fbb, ac) => new ImageNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<ImageNode<TActor>, TEntityResolvers["Image"], TGlobalResolvers>;
       },
-      delete: async (id: string): Promise<void> => {
-        return this.db.delete('Image', id);
-      }
+      delete: (id: string) => {
+        return this.db.delete('Image', id, this.authContext);
+      },
     };
   }
 
   get reactions() {
     return {
-      get: async (id: string): Promise<ReactionNode<TActor> | null> => {
-        return this.db.get<LowLevel.Reaction, ReactionNode<TActor>>('Reaction', id, (db, fbb, ac) => new ReactionNode(db, fbb, ac));
+      get: (id: string): Promise<ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers> | null> => {
+        return this.db.get<LowLevel.Reaction, ReactionNode<TActor>>(
+          'Reaction',
+          id,
+          (db, fbb, ac) => new ReactionNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as Promise<ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers> | null>;
       },
-      create: (data: Partial<IReaction>): ReactionNode<TActor> => {
-        return this.db.create<LowLevel.Reaction, ReactionNode<TActor>>('Reaction', data, (db, fbb, ac) => new ReactionNode(db, fbb, ac));
+      create: (data: Partial<IReaction>): ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers> => {
+        return this.db.create<LowLevel.Reaction, ReactionNode<TActor>>(
+          'Reaction',
+          data,
+          (db, fbb, ac) => new ReactionNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers>;
       },
-      update: (id: string, data: Partial<IReaction>): ReactionNode<TActor> => {
-        return this.db.update<LowLevel.Reaction, ReactionNode<TActor>>('Reaction', id, data, (db, fbb, ac) => new ReactionNode(db, fbb, ac));
+      update: (id: string, data: Partial<IReaction>): ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers> => {
+        return this.db.update<LowLevel.Reaction, ReactionNode<TActor>>(
+          'Reaction',
+          id,
+          data,
+          (db, fbb, ac) => new ReactionNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers>;
       },
-      delete: async (id: string): Promise<void> => {
-        return this.db.delete('Reaction', id);
-      }
+      delete: (id: string) => {
+        return this.db.delete('Reaction', id, this.authContext);
+      },
     };
   }
 
   get tags() {
     return {
-      get: async (id: string): Promise<TagNode<TActor> | null> => {
-        return this.db.get<LowLevel.Tag, TagNode<TActor>>('Tag', id, (db, fbb, ac) => new TagNode(db, fbb, ac));
+      get: (id: string): Promise<ResolvedNode<TagNode<TActor>, TEntityResolvers["Tag"], TGlobalResolvers> | null> => {
+        return this.db.get<LowLevel.Tag, TagNode<TActor>>(
+          'Tag',
+          id,
+          (db, fbb, ac) => new TagNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as Promise<ResolvedNode<TagNode<TActor>, TEntityResolvers["Tag"], TGlobalResolvers> | null>;
       },
-      create: (data: Partial<ITag>): TagNode<TActor> => {
-        return this.db.create<LowLevel.Tag, TagNode<TActor>>('Tag', data, (db, fbb, ac) => new TagNode(db, fbb, ac));
+      create: (data: Partial<ITag>): ResolvedNode<TagNode<TActor>, TEntityResolvers["Tag"], TGlobalResolvers> => {
+        return this.db.create<LowLevel.Tag, TagNode<TActor>>(
+          'Tag',
+          data,
+          (db, fbb, ac) => new TagNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<TagNode<TActor>, TEntityResolvers["Tag"], TGlobalResolvers>;
       },
-      update: (id: string, data: Partial<ITag>): TagNode<TActor> => {
-        return this.db.update<LowLevel.Tag, TagNode<TActor>>('Tag', id, data, (db, fbb, ac) => new TagNode(db, fbb, ac));
+      update: (id: string, data: Partial<ITag>): ResolvedNode<TagNode<TActor>, TEntityResolvers["Tag"], TGlobalResolvers> => {
+        return this.db.update<LowLevel.Tag, TagNode<TActor>>(
+          'Tag',
+          id,
+          data,
+          (db, fbb, ac) => new TagNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<TagNode<TActor>, TEntityResolvers["Tag"], TGlobalResolvers>;
       },
-      delete: async (id: string): Promise<void> => {
-        return this.db.delete('Tag', id);
-      }
+      delete: (id: string) => {
+        return this.db.delete('Tag', id, this.authContext);
+      },
     };
   }
 
   get postTags() {
     return {
-      get: async (id: string): Promise<PostTagNode<TActor> | null> => {
-        return this.db.get<LowLevel.PostTag, PostTagNode<TActor>>('PostTag', id, (db, fbb, ac) => new PostTagNode(db, fbb, ac));
+      get: (id: string): Promise<ResolvedNode<PostTagNode<TActor>, TEntityResolvers["PostTag"], TGlobalResolvers> | null> => {
+        return this.db.get<LowLevel.PostTag, PostTagNode<TActor>>(
+          'PostTag',
+          id,
+          (db, fbb, ac) => new PostTagNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as Promise<ResolvedNode<PostTagNode<TActor>, TEntityResolvers["PostTag"], TGlobalResolvers> | null>;
       },
-      create: (data: Partial<IPostTag>): PostTagNode<TActor> => {
-        return this.db.create<LowLevel.PostTag, PostTagNode<TActor>>('PostTag', data, (db, fbb, ac) => new PostTagNode(db, fbb, ac));
+      create: (data: Partial<IPostTag>): ResolvedNode<PostTagNode<TActor>, TEntityResolvers["PostTag"], TGlobalResolvers> => {
+        return this.db.create<LowLevel.PostTag, PostTagNode<TActor>>(
+          'PostTag',
+          data,
+          (db, fbb, ac) => new PostTagNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<PostTagNode<TActor>, TEntityResolvers["PostTag"], TGlobalResolvers>;
       },
-      update: (id: string, data: Partial<IPostTag>): PostTagNode<TActor> => {
-        return this.db.update<LowLevel.PostTag, PostTagNode<TActor>>('PostTag', id, data, (db, fbb, ac) => new PostTagNode(db, fbb, ac));
+      update: (id: string, data: Partial<IPostTag>): ResolvedNode<PostTagNode<TActor>, TEntityResolvers["PostTag"], TGlobalResolvers> => {
+        return this.db.update<LowLevel.PostTag, PostTagNode<TActor>>(
+          'PostTag',
+          id,
+          data,
+          (db, fbb, ac) => new PostTagNode<TActor>(db, fbb, ac),
+          this.authContext,
+        ) as ResolvedNode<PostTagNode<TActor>, TEntityResolvers["PostTag"], TGlobalResolvers>;
       },
-      delete: async (id: string): Promise<void> => {
-        return this.db.delete('PostTag', id);
-      }
+      delete: (id: string) => {
+        return this.db.delete('PostTag', id, this.authContext);
+      },
     };
   }
 }
 
-export function createDB<TActor>(config: {
-  globalResolvers: Record<string, Function>;
-  entityResolvers: Record<string, Record<string, Function>>;
+// The main database instance, created once
+class Database<
+  TGlobalResolvers extends ResolverMap,
+  TEntityResolvers extends Record<string, ResolverMap>
+> {
+  private db: ZgDatabase;
+
+  constructor(config: {
+    globalResolvers: TGlobalResolvers;
+    entityResolvers: TEntityResolvers;
+    auth: Record<string, any>;
+  }) {
+    this.db = new ZgDatabase(config);
+  }
+
+  createClient<TActor>(actor: TActor): ZgClient<TActor, TGlobalResolvers, TEntityResolvers> {
+    return new ZgClient(this.db, { actor });
+  }
+}
+
+export function createDB<
+  TActor,
+  const TGlobalResolvers extends ResolverMap,
+  const TEntityResolvers extends Record<string, ResolverMap>
+>(config: {
+  globalResolvers: TGlobalResolvers;
+  entityResolvers: TEntityResolvers;
   auth: Record<string, any>;
-}) {
-  const client = new ZgClient<TActor>();
-  // TODO: Attach runtime resolvers and auth config
-  return client;
+}): Database<TGlobalResolvers, TEntityResolvers> {
+  return new Database(config);
 }
