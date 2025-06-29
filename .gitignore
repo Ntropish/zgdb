@@ -10,3 +10,5 @@ dist
 .cursor
 
 temp-output
+
+src/schema/__generated__

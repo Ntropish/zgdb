@@ -46,9 +46,9 @@ content(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-author():string|null
-author(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-author(optionalEncoding?:any):string|Uint8Array|null {
+authorId():string|null
+authorId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+authorId(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
@@ -85,8 +85,8 @@ static addContent(builder:flatbuffers.Builder, contentOffset:flatbuffers.Offset)
   builder.addFieldOffset(2, contentOffset, 0);
 }
 
-static addAuthor(builder:flatbuffers.Builder, authorOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, authorOffset, 0);
+static addAuthorId(builder:flatbuffers.Builder, authorIdOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, authorIdOffset, 0);
 }
 
 static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
@@ -98,12 +98,12 @@ static endPost(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createPost(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, titleOffset:flatbuffers.Offset, contentOffset:flatbuffers.Offset, authorOffset:flatbuffers.Offset, createdAt:bigint):flatbuffers.Offset {
+static createPost(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset, titleOffset:flatbuffers.Offset, contentOffset:flatbuffers.Offset, authorIdOffset:flatbuffers.Offset, createdAt:bigint):flatbuffers.Offset {
   Post.startPost(builder);
   Post.addId(builder, idOffset);
   Post.addTitle(builder, titleOffset);
   Post.addContent(builder, contentOffset);
-  Post.addAuthor(builder, authorOffset);
+  Post.addAuthorId(builder, authorIdOffset);
   Post.addCreatedAt(builder, createdAt);
   return Post.endPost(builder);
 }

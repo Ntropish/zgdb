@@ -9,6 +9,7 @@ const ZOD_TO_FLATBUFFER_TYPE_MAP: Record<string, string> = {
   ZodNumber: "long", // Defaulting to long for numbers
   ZodBoolean: "bool",
   ZodDate: "long", // Dates are often stored as UNIX timestamps
+  ZodBigInt: "long", // BigInts are 64-bit integers
   ZodEnum: "string", // Enums can be represented as strings
   ZodLiteral: "string", // Literals can also be strings
   ZodUnion: "string", // Unions are complex, default to string for now

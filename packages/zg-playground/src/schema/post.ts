@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { EntityDef } from "@zgdb/generate";
 
-const PostSchema = z.object({
+export const PostSchema = z.object({
   id: z.string(),
   title: z.string(),
   content: z.string(),
-  author: z.string(),
-  createdAt: z.date(),
+  authorId: z.string(),
+  createdAt: z.bigint(),
 });
 
 export const PostDef: EntityDef = {
@@ -16,10 +16,9 @@ export const PostDef: EntityDef = {
   relationships: {
     author: {
       entity: "User",
-      field: "author",
       cardinality: "one",
-      description: "The user who wrote the post.",
       required: true,
+      field: "authorId",
     },
     comments: {
       entity: "Comment",
@@ -46,7 +45,7 @@ export const PostDef: EntityDef = {
   },
   indexes: [
     {
-      on: ["author", "createdAt"],
+      on: ["authorId", "createdAt"],
       description:
         "Index to efficiently query a user's posts, sorted by creation date.",
     },

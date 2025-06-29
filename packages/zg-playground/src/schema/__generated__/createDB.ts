@@ -14,7 +14,7 @@ export interface IPost {
   id: string;
   title: string;
   content: string;
-  author: string;
+  authorId: string;
   createdAt: bigint;
 }
 
@@ -122,8 +122,8 @@ export class PostNode<TActor> extends ZgBaseNode<LowLevel.Post, TActor> {
     return this.fbb.content();
   }
 
-  get author(): string | null {
-    return this.fbb.author();
+  get authorId(): string | null {
+    return this.fbb.authorId();
   }
 
   get createdAt(): bigint {
