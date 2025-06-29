@@ -12,14 +12,17 @@ import { compare } from "uint8arrays/compare";
 export class Cursor {
   private readonly tree: ProllyTree;
   private readonly nodeManager: NodeManager;
+  private readonly rootNode: NodeProxy;
 
   private path: NodeProxy[] = [];
   private index: number = -1;
   private _current: KeyValuePair | null = null;
 
-  constructor(tree: ProllyTree) {
+  constructor(tree: ProllyTree, nodeManager: NodeManager, rootNode: NodeProxy) {
     this.tree = tree;
-    this.nodeManager = tree.nodeManager;
+    this.nodeManager = nodeManager;
+    this.rootNode = rootNode;
+    this.path = [this.rootNode];
   }
 
   get current(): KeyValuePair | null {
@@ -29,8 +32,8 @@ export class Cursor {
   // #region Async Methods
 
   async first(): Promise<KeyValuePair | null> {
-    this.path = [this.tree.rootNode];
-    let currentNode = this.tree.rootNode;
+    this.path = [this.rootNode];
+    let currentNode = this.rootNode;
     while (!currentNode.isLeaf()) {
       const firstChildAddress = (currentNode as InternalNodeProxy).getBranch(
         0
@@ -135,8 +138,8 @@ export class Cursor {
   // #region Sync Methods
 
   firstSync(): KeyValuePair | null {
-    this.path = [this.tree.rootNode];
-    let currentNode = this.tree.rootNode;
+    this.path = [this.rootNode];
+    let currentNode = this.rootNode;
     while (!currentNode.isLeaf()) {
       const firstChildAddress = (currentNode as InternalNodeProxy).getBranch(
         0

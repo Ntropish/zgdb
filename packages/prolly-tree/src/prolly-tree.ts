@@ -63,12 +63,11 @@ export class ProllyTree {
     while (!isLeafNodeProxy(current)) {
       const internalNode = current as InternalNodeProxy;
       let index = internalNode.findChildIndex(key);
-      // If the key is greater than all keys in the node, descend into the rightmost child.
       if (index === internalNode.length) {
         index = internalNode.length - 1;
       }
       const branch = internalNode.getBranch(index);
-      if (!branch.address) {
+      if (!branch?.address) {
         throw new Error(`Failed to find address for child index: ${index}`);
       }
       const nextAddress = branch.address;
@@ -89,12 +88,11 @@ export class ProllyTree {
     while (!isLeafNodeProxy(current)) {
       const internalNode = current as InternalNodeProxy;
       let index = internalNode.findChildIndex(key);
-      // If the key is greater than all keys in the node, descend into the rightmost child.
       if (index === internalNode.length) {
         index = internalNode.length - 1;
       }
       const branch = internalNode.getBranch(index);
-      if (!branch.address) {
+      if (!branch?.address) {
         throw new Error(`Failed to find address for child index: ${index}`);
       }
       const nextAddress = branch.address;
@@ -190,42 +188,62 @@ export class ProllyTree {
     const path = await this.findPathToLeaf(key);
     const leaf = path[path.length - 1] as LeafNodeProxy;
 
-    const originalLeafAddress = await this.blockManager.hashFn(leaf.bytes);
-
     const { newAddress, newBranches } = await this.nodeManager._put(
       leaf,
       key,
       value
     );
 
+    const originalLeafAddress = this.blockManager.hashFnSync(leaf.bytes);
     if (compare(originalLeafAddress, newAddress) === 0 && !newBranches) {
       // no change
       return;
     }
 
-    let branchesToPropagate: Branch[] | undefined;
-    if (newBranches) {
-      branchesToPropagate = newBranches;
-    } else {
-      // The leaf was modified without splitting. We need to create a single branch to represent it for propagation.
-      const newLeaf = (await this.nodeManager.getNode(
-        newAddress
-      )) as LeafNodeProxy;
-      const maxKey = newLeaf.getPair(newLeaf.length - 1).key;
-      branchesToPropagate = [{ key: maxKey, address: newAddress }];
+    // Handle root-level changes
+    if (path.length === 1) {
+      if (newBranches) {
+        // Root leaf was split, create a new internal node as root
+        const { node: newRoot } = await this.nodeManager.createInternalNode(
+          newBranches
+        );
+        this.rootNode = newRoot;
+      } else {
+        // Root leaf was modified but not split
+        const newRoot = await this.nodeManager.getNode(newAddress);
+        if (!newRoot) throw new Error("Could not find new root node");
+        this.rootNode = newRoot;
+      }
+      return;
     }
 
-    let currentAddress = newAddress;
-
     // Propagate changes up the tree
+    let branchesToPropagate = newBranches;
+    let addressToPropagate = newAddress;
+
     for (let i = path.length - 2; i >= 0; i--) {
-      if (!branchesToPropagate) {
-        // This should not happen if the logic is correct, but as a safeguard:
-        // If there are no more branches to propagate, we can stop.
-        break;
-      }
       const parent = path[i] as InternalNodeProxy;
-      const oldChildAddress = await this.blockManager.hashFn(path[i + 1].bytes);
+      const oldChildAddress = this.blockManager.hashFnSync(path[i + 1].bytes);
+
+      if (!branchesToPropagate) {
+        // The child node was modified without splitting.
+        // We need to create a single branch to represent it for propagation.
+        const updatedChildNode = await this.nodeManager.getNode(
+          addressToPropagate
+        );
+        if (!updatedChildNode)
+          throw new Error("Could not find updated child node for propagation");
+
+        const maxKey = updatedChildNode.isLeaf()
+          ? (updatedChildNode as LeafNodeProxy).getPair(
+              (updatedChildNode as LeafNodeProxy).length - 1
+            ).key
+          : (updatedChildNode as InternalNodeProxy).getBranch(
+              (updatedChildNode as InternalNodeProxy).length - 1
+            ).key;
+
+        branchesToPropagate = [{ key: maxKey, address: addressToPropagate }];
+      }
 
       const result = await this.nodeManager.updateChild(
         parent,
@@ -233,34 +251,35 @@ export class ProllyTree {
         branchesToPropagate
       );
 
-      currentAddress = result.newAddress;
+      addressToPropagate = result.newAddress;
       branchesToPropagate = result.newBranches;
     }
 
-    let newRootNode;
-    // If a split propagated all the way to the root, create a new root from the resulting branches
+    // If a split propagated all the way to the root, create a new root
     if (branchesToPropagate) {
       const { node } = await this.nodeManager.createInternalNode(
         branchesToPropagate
       );
-      newRootNode = node;
+      this.rootNode = node;
     } else {
       // Otherwise, the new root is the (potentially updated) node at the top of the path
-      newRootNode = await this.nodeManager.getNode(currentAddress);
-      if (!newRootNode) {
-        throw new Error("Could not find new root node");
+      const newRoot = await this.nodeManager.getNode(addressToPropagate);
+      if (!newRoot) {
+        throw new Error(
+          `Failed to find new root node at address: ${addressToPropagate}`
+        );
       }
+      this.rootNode = newRoot;
     }
-    this.rootNode = newRootNode;
   }
 
   public createCursor(): Cursor {
-    return new Cursor(this);
+    return new Cursor(this, this.nodeManager, this.rootNode);
   }
 
   async print(): Promise<string> {
-    const treeStructure = await this.printNode(this.rootNode);
-    return JSON.stringify(treeStructure, null, 2);
+    const rootData = await this.printNode(this.rootNode);
+    return JSON.stringify(rootData, null, 2);
   }
 
   private async printNode(node: NodeProxy): Promise<any> {

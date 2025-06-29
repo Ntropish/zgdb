@@ -26,12 +26,11 @@ describe("ProllyTree Cursor", () => {
     keys: string[],
     values: string[]
   ): Promise<ProllyTree> {
-    let newTree = await ProllyTree.create(blockManager);
+    const tree = await ProllyTree.create(blockManager);
     for (let i = 0; i < keys.length; i++) {
-      const { tree: t } = await newTree.put(S(keys[i]), S(values[i]));
-      newTree = t;
+      await tree.put(S(keys[i]), S(values[i]));
     }
-    return newTree;
+    return tree;
   }
 
   beforeEach(async () => {
@@ -41,6 +40,11 @@ describe("ProllyTree Cursor", () => {
         ...defaultConfiguration.treeDefinition,
         targetFanout: 4,
         minFanout: 2,
+        boundaryChecker: {
+          type: "prolly-v1",
+          bits: 1, // High probability of splitting
+          pattern: 0b1,
+        },
       },
     };
     blockManager = new BlockManager(config);

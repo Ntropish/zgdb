@@ -1,9 +1,12 @@
 import { Configuration } from "./configuration.js";
-import { KeyValuePair, BranchPair } from "./node-proxy.js";
+import { KeyValuePair, Branch } from "./node-proxy.js";
 import { sha256 } from "@noble/hashes/sha256";
 import { bytesToNumber } from "./utils.js";
+import { compare } from "uint8arrays/compare";
+import { ProllyTree } from "./prolly-tree.js";
+import { NodeProxy, LeafNodeProxy } from "./node-proxy.js";
 
-function isKeyValuePair(item: KeyValuePair | BranchPair): item is KeyValuePair {
+function isKeyValuePair(item: KeyValuePair | Branch): item is KeyValuePair {
   return (item as KeyValuePair).value !== undefined;
 }
 
@@ -24,7 +27,7 @@ async function createBoundaryTest(config: Configuration) {
   throw new Error(`Unsupported boundary checker type: ${boundaryChecker.type}`);
 }
 
-export async function nodeChunker<T extends KeyValuePair | BranchPair>(
+export async function nodeChunker<T extends KeyValuePair | Branch>(
   items: T[],
   config: Configuration
 ): Promise<T[][]> {
