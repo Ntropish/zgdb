@@ -121,4 +121,102 @@ describe("NodeProxy", () => {
       expect(isLeafNodeProxy(proxy)).toBe(false);
     });
   });
+
+  describe("Heavy Duty Tests", () => {
+    it("Exercise 1: The 'Empty and Full' Symphony", () => {
+      // Test 1: Empty Leaf Node
+      const emptyLeafBuffer = createLeafNodeBuffer([]);
+      const emptyLeafProxy = new LeafNodeProxy(emptyLeafBuffer);
+      expect(emptyLeafProxy.isLeaf).toBe(true);
+      expect(emptyLeafProxy.numEntries).toBe(0);
+      expect(emptyLeafProxy.entryCount).toBe(0);
+
+      // Test 2: Full Leaf Node with varied data
+      const largeLeafPairs: KeyValuePair[] = Array.from(
+        { length: 100 },
+        (_, i) => ({
+          key: fromString(`key${i.toString().padStart(3, "0")}`),
+          value: new Uint8Array(i * 10).fill(i),
+        })
+      );
+      largeLeafPairs.push({ key: fromString(""), value: fromString("empty") }); // empty key
+      largeLeafPairs.sort((a, b) => compare(a.key, b.key));
+
+      const largeLeafBuffer = createLeafNodeBuffer(largeLeafPairs);
+      const largeLeafProxy = new LeafNodeProxy(largeLeafBuffer);
+      expect(largeLeafProxy.isLeaf).toBe(true);
+      expect(largeLeafProxy.numEntries).toBe(101);
+      expect(largeLeafProxy.entryCount).toBe(101);
+      const entry = largeLeafProxy.getEntry(50);
+      expect(compare(entry.key, fromString("key049"))).toBe(0); // offset by empty key sort
+      expect(entry.value.length).toBe(49 * 10);
+    });
+
+    it("Exercise 2: The 'Binary Search Ballet'", () => {
+      const balletKeys: KeyValuePair[] = Array.from(
+        { length: 100 },
+        (_, i) => ({
+          key: fromString(`key${i.toString().padStart(2, "0")}`),
+          value: fromString(`${i}`),
+        })
+      );
+      const balletBuffer = createLeafNodeBuffer(balletKeys);
+      const balletProxy = new LeafNodeProxy(balletBuffer);
+
+      // Find first, middle, last
+      expect(balletProxy.findEntryIndex(fromString("key00"))).toBe(0);
+      expect(balletProxy.findEntryIndex(fromString("key50"))).toBe(50);
+      expect(balletProxy.findEntryIndex(fromString("key99"))).toBe(99);
+
+      // Find keys that don't exist
+      expect(balletProxy.findEntryIndex(fromString("a"))).toBe(-1); // Before all
+      expect(balletProxy.findEntryIndex(fromString("key50a"))).toBe(-52); // Insertion point after key50
+      expect(balletProxy.findEntryIndex(fromString("z"))).toBe(-101); // After all
+    });
+
+    it("Exercise 3: The 'UTF-8 Gauntlet'", () => {
+      const utf8Pairs: KeyValuePair[] = [
+        { key: fromString("a-key"), value: fromString("ascii") },
+        { key: fromString("🔑-key"), value: fromString("emoji") },
+        { key: fromString("ключ-key"), value: fromString("cyrillic") },
+        { key: fromString("鍵-key"), value: fromString("japanese") },
+      ].sort((a, b) => compare(a.key, b.key));
+
+      const utf8Buffer = createLeafNodeBuffer(utf8Pairs);
+      const utf8Proxy = new LeafNodeProxy(utf8Buffer);
+
+      expect(utf8Proxy.numEntries).toBe(4);
+      const emojiIndex = utf8Proxy.findEntryIndex(fromString("🔑-key"));
+      expect(emojiIndex).toBeGreaterThan(-1);
+      const entry = utf8Proxy.getEntry(emojiIndex);
+      expect(compare(entry.value, fromString("emoji"))).toBe(0);
+    });
+
+    it("Exercise 4: The 'Maximum Payload' Stress Test", () => {
+      // Large values
+      const largeValuePairs: KeyValuePair[] = [
+        { key: fromString("key1"), value: new Uint8Array(10_000).fill(1) },
+        { key: fromString("key2"), value: new Uint8Array(20_000).fill(2) },
+      ];
+      const largeValueBuffer = createLeafNodeBuffer(largeValuePairs);
+      const largeValueProxy = new LeafNodeProxy(largeValueBuffer);
+      expect(largeValueProxy.numEntries).toBe(2);
+      const val2 = largeValueProxy.getEntry(1).value;
+      expect(val2.length).toBe(20_000);
+      expect(val2[0]).toBe(2);
+
+      // Large number of entries
+      const manyEntriesPairs: KeyValuePair[] = Array.from(
+        { length: 500 },
+        (_, i) => ({
+          key: fromString(`k${i}`),
+          value: fromString(`v${i}`),
+        })
+      );
+      const manyEntriesBuffer = createLeafNodeBuffer(manyEntriesPairs);
+      const manyEntriesProxy = new LeafNodeProxy(manyEntriesBuffer);
+      expect(manyEntriesProxy.numEntries).toBe(500);
+      expect(manyEntriesProxy.findEntryIndex(fromString("k357"))).toBe(357);
+    });
+  });
 });
