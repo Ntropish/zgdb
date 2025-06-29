@@ -82,7 +82,7 @@ describe("ZG Client: Resolvers", () => {
     });
     // 'excerpt' should now be strongly typed
     expect(post.excerpt).toBe(
-      "This is the content of the post which is quite lo"
+      "This is the content of the post which is quite lon"
     );
   });
 

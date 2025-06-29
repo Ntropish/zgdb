@@ -72,7 +72,12 @@ export class ZgDatabase {
   async get<T extends Table, TNode extends ZgBaseNode<T>>(
     entityName: string,
     id: string,
-    nodeFactory: (db: ZgDatabase, fbb: T, ac: ZgAuthContext | null) => TNode
+    nodeFactory: (
+      db: ZgDatabase,
+      fbb: T,
+      ac: ZgAuthContext<any> | null
+    ) => TNode,
+    authContext: ZgAuthContext | null
   ): Promise<TNode | null> {
     console.log(`Getting ${entityName} with id ${id}`);
     const data = this.store.get(`${entityName}:${id}`);
@@ -82,7 +87,7 @@ export class ZgDatabase {
     const mockFbb = new Proxy({} as any, {
       get: (_, prop: string) => () => data[prop],
     }) as T;
-    const node = nodeFactory(this, mockFbb, null);
+    const node = nodeFactory(this, mockFbb, authContext);
     return this._createNodeProxy(node);
   }
 
@@ -94,7 +99,12 @@ export class ZgDatabase {
   create<T extends Table, TNode extends ZgBaseNode<T>>(
     entityName: string,
     data: any,
-    nodeFactory: (db: ZgDatabase, fbb: T, ac: ZgAuthContext | null) => TNode
+    nodeFactory: (
+      db: ZgDatabase,
+      fbb: T,
+      ac: ZgAuthContext<any> | null
+    ) => TNode,
+    authContext: ZgAuthContext | null
   ): TNode {
     console.log(`Creating ${entityName} with data`, data);
     if (!data.id) throw new Error("Mock DB requires data to have an id");
@@ -111,7 +121,7 @@ export class ZgDatabase {
     const mockFbb = new Proxy({} as any, {
       get: (_, prop: string) => () => data[prop],
     }) as T;
-    const node = nodeFactory(this, mockFbb, null);
+    const node = nodeFactory(this, mockFbb, authContext);
     return this._createNodeProxy(node);
   }
 
@@ -119,7 +129,12 @@ export class ZgDatabase {
     entityName: string,
     id: string,
     data: any,
-    nodeFactory: (db: ZgDatabase, fbb: T, ac: ZgAuthContext | null) => TNode
+    nodeFactory: (
+      db: ZgDatabase,
+      fbb: T,
+      ac: ZgAuthContext<any> | null
+    ) => TNode,
+    authContext: ZgAuthContext | null
   ): TNode {
     console.log(`Updating ${entityName} with id ${id} and data`, data);
     const key = `${entityName}:${id}`;
@@ -136,11 +151,15 @@ export class ZgDatabase {
     const mockFbb = new Proxy({} as any, {
       get: (_, prop: string) => () => updated[prop],
     }) as T;
-    const node = nodeFactory(this, mockFbb, null);
+    const node = nodeFactory(this, mockFbb, authContext);
     return this._createNodeProxy(node);
   }
 
-  async delete(entityName: string, id: string): Promise<void> {
+  async delete(
+    entityName: string,
+    id: string,
+    authContext: ZgAuthContext | null
+  ): Promise<void> {
     console.log(`Deleting ${entityName} with id ${id}`);
     this.store.delete(`${entityName}:${id}`);
   }
