@@ -125,6 +125,150 @@ export class ProllyTree {
     return pair ? pair[1] : undefined;
   }
 
+  public async *scan(
+    startKey: Uint8Array,
+    endKey?: Uint8Array
+  ): AsyncGenerator<[Uint8Array, Uint8Array]> {
+    const path = await this.findPathToLeaf(startKey);
+    let currentLeaf = path[path.length - 1] as LeafNode;
+
+    let pairIndex = 0;
+    if (currentLeaf.pairs.length > 0) {
+      pairIndex = currentLeaf.pairs.findIndex(
+        ([k]) => compare(k, startKey) >= 0
+      );
+      if (pairIndex === -1) {
+        pairIndex = currentLeaf.pairs.length;
+      }
+    }
+
+    while (currentLeaf) {
+      for (let i = pairIndex; i < currentLeaf.pairs.length; i++) {
+        const [key, value] = currentLeaf.pairs[i];
+        if (endKey && compare(key, endKey) > 0) {
+          return;
+        }
+        yield [key, value];
+      }
+
+      pairIndex = 0;
+      let foundNextLeaf = false;
+
+      while (path.length > 1) {
+        const childNode = path.pop()!;
+        const parent = path[path.length - 1];
+        if (parent.isLeaf) {
+          // Should not happen, root is leaf and we are done
+          break;
+        }
+        const internalParent = parent as InternalNode;
+
+        const childAddress = childNode.address!;
+        const childIndex = internalParent.children.findIndex(
+          (addr) => compare(addr, childAddress) === 0
+        );
+
+        if (childIndex < internalParent.children.length - 1) {
+          let nextNodeAddress = internalParent.children[childIndex + 1];
+          let nextNode = await this.nodeManager.getNode(nextNodeAddress);
+          if (!nextNode)
+            throw new Error(`Could not find node at ${nextNodeAddress}`);
+          path.push(nextNode);
+
+          while (!nextNode.isLeaf) {
+            const internal = nextNode as InternalNode;
+            if (internal.children.length === 0) break;
+            nextNode = await this.nodeManager.getNode(internal.children[0]);
+            if (!nextNode) throw new Error("Failed to traverse down to leaf");
+            path.push(nextNode);
+          }
+
+          if (nextNode.isLeaf) {
+            currentLeaf = nextNode as LeafNode;
+            foundNextLeaf = true;
+            break;
+          }
+        }
+      }
+
+      if (!foundNextLeaf) {
+        break;
+      }
+    }
+  }
+
+  public *scanSync(
+    startKey: Uint8Array,
+    endKey?: Uint8Array
+  ): Generator<[Uint8Array, Uint8Array]> {
+    const path = this.findPathToLeafSync(startKey);
+    let currentLeaf = path[path.length - 1] as LeafNode;
+
+    let pairIndex = 0;
+    if (currentLeaf.pairs.length > 0) {
+      pairIndex = currentLeaf.pairs.findIndex(
+        ([k]) => compare(k, startKey) >= 0
+      );
+      if (pairIndex === -1) {
+        pairIndex = currentLeaf.pairs.length;
+      }
+    }
+
+    while (currentLeaf) {
+      for (let i = pairIndex; i < currentLeaf.pairs.length; i++) {
+        const [key, value] = currentLeaf.pairs[i];
+        if (endKey && compare(key, endKey) > 0) {
+          return;
+        }
+        yield [key, value];
+      }
+
+      pairIndex = 0;
+      let foundNextLeaf = false;
+
+      while (path.length > 1) {
+        const childNode = path.pop()!;
+        const parent = path[path.length - 1];
+        if (parent.isLeaf) {
+          // Should not happen, root is leaf and we are done
+          break;
+        }
+        const internalParent = parent as InternalNode;
+
+        const childAddress = childNode.address!;
+        const childIndex = internalParent.children.findIndex(
+          (addr) => compare(addr, childAddress) === 0
+        );
+
+        if (childIndex < internalParent.children.length - 1) {
+          let nextNodeAddress = internalParent.children[childIndex + 1];
+          let nextNode = this.nodeManager.getNodeSync(nextNodeAddress);
+          if (!nextNode)
+            throw new Error(`Could not find node at ${nextNodeAddress}`);
+          path.push(nextNode);
+
+          while (!nextNode.isLeaf) {
+            const internal = nextNode as InternalNode;
+            if (internal.children.length === 0) break;
+            nextNode = this.nodeManager.getNodeSync(internal.children[0]);
+            if (!nextNode) throw new Error("Failed to traverse down to leaf");
+            path.push(nextNode);
+          }
+
+          if (nextNode.isLeaf) {
+            currentLeaf = nextNode as LeafNode;
+            foundNextLeaf = true;
+            break;
+          }
+        }
+      }
+
+      if (!foundNextLeaf) {
+        break;
+      }
+    }
+  }
+
   public async put(
     key: Uint8Array,
     value: Uint8Array
