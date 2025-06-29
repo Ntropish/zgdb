@@ -10,6 +10,7 @@ import {
   createInternalNodeBuffer,
   BranchPair,
   Address,
+  isLeafNodeProxy,
 } from "./node-proxy.js";
 
 export class NodeManager {
@@ -146,8 +147,11 @@ export class NodeManager {
     newAddress: Address;
     split: { key: Uint8Array; address: Address };
   }> {
-    if (node.isLeaf()) {
-      const pairs = node.getAllPairs();
+    if (isLeafNodeProxy(node)) {
+      const pairs: KeyValuePair[] = [];
+      for (let i = 0; i < node.keysLength; i++) {
+        pairs.push(node.getPair(i));
+      }
       const mid = Math.ceil(pairs.length / 2);
       const leftPairs = pairs.slice(0, mid);
       const rightPairs = pairs.slice(mid);
@@ -166,8 +170,6 @@ export class NodeManager {
       const allBranches: BranchPair[] = [];
       for (let i = 0; i < internalNode.addressesLength; i++) {
         const address = internalNode.getAddress(i)!;
-        // The key for the *rightmost* pointer is not stored, it's implicit.
-        // So we have N addresses but N-1 keys.
         const key =
           i < internalNode.keysLength
             ? internalNode.getKey(i)!
@@ -179,10 +181,8 @@ export class NodeManager {
       const leftBranches = allBranches.slice(0, mid);
       const rightBranches = allBranches.slice(mid);
 
-      // The split key is the first key of the new right-hand node.
-      // We need to fetch this from the actual child node.
-      const firstRightChildNode = await this.getNode(rightBranches[0].address);
-      const splitKey = (await firstRightChildNode?.getFirstKey())!;
+      const splitKey = leftBranches[leftBranches.length - 1].key;
+      leftBranches[leftBranches.length - 1].key = new Uint8Array();
 
       const { address: leftAddress } = await this.createInternalNode(
         leftBranches
@@ -206,7 +206,10 @@ export class NodeManager {
     newAddress: Address;
     split?: { key: Uint8Array; address: Address };
   }> {
-    const pairs = node.getAllPairs();
+    const pairs: KeyValuePair[] = [];
+    for (let i = 0; i < node.keysLength; i++) {
+      pairs.push(node.getPair(i));
+    }
     const { found, index } = node.findKeyIndex(key);
 
     if (found) {

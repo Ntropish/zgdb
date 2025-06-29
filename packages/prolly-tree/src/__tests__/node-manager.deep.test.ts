@@ -7,17 +7,16 @@ import {
   KeyValuePair,
   InternalNodeProxy,
   LeafNodeProxy,
-  createInternalNodeBuffer,
   isLeafNodeProxy,
+  BranchPair,
 } from "../node-proxy.js";
-import { Configuration } from "../configuration.js";
+import { Configuration, defaultConfiguration } from "../configuration.js";
 import { fromString } from "uint8arrays/from-string";
 import { faker } from "@faker-js/faker";
-import { compare } from "uint8arrays/compare";
 import { sampleSize } from "lodash-es";
+import { sha256 } from "@noble/hashes/sha256";
 
 // A helper to find the path from the root to the correct leaf for a given key.
-// This simulates the traversal logic that a tree implementation would use.
 async function findPathToLeaf(
   nodeManager: NodeManager,
   rootAddress: Address,
@@ -31,8 +30,9 @@ async function findPathToLeaf(
   while (!isLeafNodeProxy(current)) {
     const internalNode = current as InternalNodeProxy;
     const childIndex = internalNode.findChildIndex(key);
-
-    const nextAddress = internalNode.getBranch(childIndex).address;
+    const nextAddress = internalNode.getAddress(childIndex);
+    if (!nextAddress)
+      throw new Error(`Failed to find address for child index: ${childIndex}`);
 
     current = await nodeManager.getNode(nextAddress);
     if (!current)
@@ -48,20 +48,20 @@ describe("NodeManager Deep Tests", () => {
   const MANUSCRIPT_COUNT = 500;
 
   beforeEach(() => {
-    // The config object is now implicitly created by the BlockManager
-    blockManager = new BlockManager({
+    const config: Configuration = {
+      ...defaultConfiguration,
       treeDefinition: {
-        targetFanout: 8, // Use a smaller fanout to trigger more splits
+        targetFanout: 8,
         minFanout: 4,
       },
       hashingAlgorithm: "sha2-256",
-    });
-    nodeManager = new NodeManager(blockManager, blockManager.config);
+    };
+    blockManager = new BlockManager(config);
+    nodeManager = new NodeManager(blockManager, config);
   });
 
   it("The Librarian of Babels Index: should handle mass insertions and updates", async () => {
-    // 1. Generate Manuscripts
-    const manuscripts = new Array(MANUSCRIPT_COUNT).fill(0).map(() => ({
+    const manuscripts = Array.from({ length: MANUSCRIPT_COUNT }, () => ({
       id: faker.string.uuid(),
       content: faker.lorem.paragraph(),
     }));
@@ -70,7 +70,6 @@ describe("NodeManager Deep Tests", () => {
       value: fromString(m.content),
     }));
 
-    // 2. Insert all manuscripts, simulating the tree's growth
     let { address: rootAddress } = await nodeManager.createLeafNode([]);
 
     for (const data of manuscriptData) {
@@ -83,10 +82,9 @@ describe("NodeManager Deep Tests", () => {
         data.value
       );
 
-      // Propagate splits up the tree
       for (let i = path.length - 2; i >= 0; i--) {
         const parent = path[i] as InternalNodeProxy;
-        const oldChildAddress = blockManager.hashFn(path[i + 1].bytes);
+        const oldChildAddress = await blockManager.hashFn(path[i + 1].bytes);
         const result = await nodeManager.updateChild(
           parent,
           oldChildAddress,
@@ -97,36 +95,29 @@ describe("NodeManager Deep Tests", () => {
         split = result.split;
       }
 
-      // If a split propagates all the way to the root, create a new root
       if (split) {
-        // This is a simplified root creation. A real tree would need to handle subtree entry counts.
-        const newRootBytes = createInternalNodeBuffer(
-          [
-            { key: split.key, address: currentAddress },
-            { key: new Uint8Array(), address: split.address },
-          ],
-          leaf.entryCount * 2
-        ); // Placeholder entry count
-        rootAddress = await blockManager.put(newRootBytes);
+        const { address } = await nodeManager.createInternalNode([
+          { key: split.key, address: currentAddress },
+          { key: new Uint8Array(), address: split.address },
+        ]);
+        rootAddress = address;
       } else {
         rootAddress = currentAddress;
       }
     }
 
-    // 3. Verify all manuscripts are retrievable
     for (const data of manuscriptData) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
       const leaf = path[path.length - 1] as LeafNodeProxy;
-      const foundIndex = leaf.findEntryIndex(data.key);
-      expect(foundIndex).toBeGreaterThanOrEqual(0);
-      const foundPair = leaf.getEntry(foundIndex);
+      const { found, index } = leaf.findKeyIndex(data.key);
+      expect(found).toBe(true);
+      const foundPair = leaf.getPair(index);
       expect(foundPair.value).toEqual(data.value);
     }
 
-    // 4. Update a random subset of manuscripts
     const manuscriptsToUpdate = sampleSize(manuscriptData, 50).map((m) => ({
       ...m,
-      value: fromString(faker.lorem.sentence()), // new, shorter content
+      value: fromString(faker.lorem.sentence()),
     }));
     const updatedIds = new Set(
       manuscriptsToUpdate.map((m) => m.key.toString())
@@ -144,7 +135,7 @@ describe("NodeManager Deep Tests", () => {
 
       for (let i = path.length - 2; i >= 0; i--) {
         const parent = path[i] as InternalNodeProxy;
-        const oldChildAddress = blockManager.hashFn(path[i + 1].bytes);
+        const oldChildAddress = await blockManager.hashFn(path[i + 1].bytes);
         const result = await nodeManager.updateChild(
           parent,
           oldChildAddress,
@@ -156,26 +147,22 @@ describe("NodeManager Deep Tests", () => {
       }
 
       if (split) {
-        const newRootBytes = createInternalNodeBuffer(
-          [
-            { key: split.key, address: currentAddress },
-            { key: new Uint8Array(), address: split.address },
-          ],
-          leaf.entryCount * 2
-        ); // Placeholder entry count
-        rootAddress = await blockManager.put(newRootBytes);
+        const { address } = await nodeManager.createInternalNode([
+          { key: split.key, address: currentAddress },
+          { key: new Uint8Array(), address: split.address },
+        ]);
+        rootAddress = address;
       } else {
         rootAddress = currentAddress;
       }
     }
 
-    // 5. Verify updated manuscripts and a sample of truly unchanged ones
     for (const data of manuscriptsToUpdate) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
       const leaf = path[path.length - 1] as LeafNodeProxy;
-      const foundIndex = leaf.findEntryIndex(data.key);
-      expect(foundIndex).toBeGreaterThanOrEqual(0);
-      const foundPair = leaf.getEntry(foundIndex);
+      const { found, index } = leaf.findKeyIndex(data.key);
+      expect(found).toBe(true);
+      const foundPair = leaf.getPair(index);
       expect(foundPair.value).toEqual(data.value);
     }
 
@@ -185,9 +172,9 @@ describe("NodeManager Deep Tests", () => {
     for (const data of sampleSize(unchangedManuscripts, 50)) {
       const path = await findPathToLeaf(nodeManager, rootAddress, data.key);
       const leaf = path[path.length - 1] as LeafNodeProxy;
-      const foundIndex = leaf.findEntryIndex(data.key);
-      expect(foundIndex).toBeGreaterThanOrEqual(0);
-      const foundPair = leaf.getEntry(foundIndex);
+      const { found, index } = leaf.findKeyIndex(data.key);
+      expect(found).toBe(true);
+      const foundPair = leaf.getPair(index);
       expect(foundPair.value).toEqual(data.value);
     }
   });
