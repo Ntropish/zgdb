@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
-      name: "@zgdb/hlc",
+      name: "@zgdb/prolly-tree",
       fileName: "index",
       formats: ["es", "cjs"],
     },

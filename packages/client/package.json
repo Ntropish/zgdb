@@ -5,6 +5,7 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "type": "module",
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -20,7 +21,8 @@
     "build": "vite build"
   },
   "dependencies": {
-    "flatbuffers": "^2.0.0"
+    "flatbuffers": "^2.0.0",
+    "@zgdb/prolly-tree": "workspace:*"
   },
   "devDependencies": {
     "@vitest/ui": "^3.2.4",

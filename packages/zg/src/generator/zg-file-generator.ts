@@ -1,4 +1,4 @@
-import { NormalizedSchema } from "../parser/types.js";
+import { NormalizedSchema, Relationship } from "../parser/types.js";
 import { topologicalSort } from "./topological-sort.js";
 import { execSync } from "child_process";
 import { GeneratorConfig } from "./types.js";
@@ -39,7 +39,32 @@ function generateNodeClass(schema: NormalizedSchema): string {
     })
     .join("\n\n");
 
-  // TODO: Add relationship accessors
+  const relationships = (schema.relationships ?? [])
+    .filter(
+      (rel): rel is Relationship =>
+        !("type" in rel && rel.type === "polymorphic")
+    )
+    .map((rel) => {
+      const relSchemaName = rel.node;
+      const relNodeName = `${relSchemaName}Node<TActor>`;
+      const foreignKeyField = `${rel.name}Id`;
+      const resolvedNodeType = `ResolvedNode<${relNodeName}, TEntityResolvers["${relSchemaName}"], TGlobalResolvers>`;
+      return `  get ${rel.name}(): ${resolvedNodeType} | null {
+    const id = this.fbb.${foreignKeyField}();
+    if (!id) {
+      return null;
+    }
+    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
+    return this.db.get<LowLevel.${relSchemaName}, ${relNodeName}>(
+      '${relSchemaName}',
+      id,
+      (db, fbb, ac) => new ${relNodeName}(db, fbb, ac),
+      (bb) => LowLevel.${relSchemaName}.getRootAs${relSchemaName}(bb),
+      this.authContext
+    ) as ${resolvedNodeType} | null;
+  }`;
+    })
+    .join("\n\n");
 
   return `export class ${schema.name}Node<TActor> extends ZgBaseNode<LowLevel.${schema.name}, TActor> {
   constructor(
@@ -54,7 +79,7 @@ function generateNodeClass(schema: NormalizedSchema): string {
 ${fields}
 
   // --- Relationships ---
-  // (to be implemented)
+${relationships}
 }`;
 }
 
@@ -66,36 +91,68 @@ function generateDbAccessors(schema: NormalizedSchema): string {
   // Helper type for this specific accessor
   const resolvedNodeType = `ResolvedNode<${nodeName}, TEntityResolvers["${schema.name}"], TGlobalResolvers>`;
 
+  const createArgs = schema.fields
+    .map((f) => `${f.name}: ${mapTsType(f.type)}`)
+    .join(", ");
+  const createInputType = `{ ${createArgs} }`;
+
+  const stringFields = schema.fields.filter((f) => f.type === "string");
+  const otherFields = schema.fields.filter((f) => f.type !== "string");
+
+  const createStrings = stringFields
+    .map(
+      (f) => `    const ${f.name}Offset = builder.createString(data.${f.name});`
+    )
+    .join("\n");
+  const createParams = schema.fields
+    .map((f) => {
+      if (f.type === "string") {
+        return `${f.name}Offset`;
+      }
+      return `data.${f.name}`;
+    })
+    .join(", ");
+
   return `
   get ${schemaNameLower}s() {
     return {
-      get: (id: string): Promise<${resolvedNodeType} | null> => {
+      get: (id: string): ${resolvedNodeType} | null => {
         return this.db.get<LowLevel.${schema.name}, ${nodeName}>(
           '${schema.name}',
           id,
           (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
+          (bb) => LowLevel.${schema.name}.getRootAs${schema.name}(bb),
           this.authContext,
-        ) as Promise<${resolvedNodeType} | null>;
+        ) as ${resolvedNodeType} | null;
       },
-      create: (data: Partial<I${schema.name}>): ${resolvedNodeType} => {
+      create: (data: ${createInputType}): ${resolvedNodeType} => {
+        const builder = new Builder(1024);
+        
+${createStrings}
+        
+        const entityOffset = LowLevel.${schema.name}.create${schema.name}(builder, ${createParams});
+        builder.finish(entityOffset);
+        
+        const buffer = builder.asUint8Array();
+        
+        if (!data.id || typeof data.id !== 'string') {
+          throw new Error("The 'id' field is required and must be a string to create an entity.");
+        }
+
         return this.db.create<LowLevel.${schema.name}, ${nodeName}>(
           '${schema.name}',
-          data,
+          data.id,
+          buffer,
           (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
+          (bb) => LowLevel.${schema.name}.getRootAs${schema.name}(bb),
           this.authContext,
         ) as ${resolvedNodeType};
       },
-      update: (id: string, data: Partial<I${schema.name}>): ${resolvedNodeType} => {
-        return this.db.update<LowLevel.${schema.name}, ${nodeName}>(
-          '${schema.name}',
-          id,
-          data,
-          (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
-          this.authContext,
-        ) as ${resolvedNodeType};
-      },
-      delete: (id: string) => {
-        return this.db.delete('${schema.name}', id, this.authContext);
+      update: (id: string, data: Partial<${createInputType}>): ${resolvedNodeType} => {
+        // Update is more complex: it requires getting the old buffer,
+        // parsing it, creating a new buffer with the merged data,
+        // and then writing it back. This is a placeholder.
+        throw new Error("Update is not implemented yet.");
       },
     };
   }`;
@@ -115,6 +172,7 @@ export function generateZgFile(
   return `// Generated by ZG. Do not edit.
 import { ZgDatabase, ZgBaseNode, ZgAuthContext } from '@zgdb/client';
 import * as LowLevel from './schema${importExt}';
+import { Builder, ByteBuffer } from 'flatbuffers';
 
 // --- Helper Types ---
 type ResolverFn = (context: any) => any;

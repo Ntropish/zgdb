@@ -1,6 +1,10 @@
 // The high-level ZG client runtime will be implemented here.
 
-import { Table } from "flatbuffers";
+import { BlockManager, ProllyTree } from "@zgdb/prolly-tree";
+import { Table, ByteBuffer } from "flatbuffers";
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 export type ZgAuthContext<TActor = any> = {
   actor: TActor;
@@ -16,15 +20,19 @@ export class ZgBaseNode<T extends Table, TActor = any> {
   ) {}
 }
 
-// The ZgDatabase class is a placeholder for the actual storage engine.
-// In a real application, this would interact with a database like Prolly Trees.
+// The ZgDatabase class is the storage engine.
 export class ZgDatabase {
-  private store = new Map<string, any>();
+  private tree: ProllyTree;
   private config: any;
 
+  private static textToKey(text: string): Uint8Array {
+    return encoder.encode(text);
+  }
+
   constructor(options?: any) {
-    // In the future, options could contain storage paths, etc.
     this.config = options;
+    const blockManager = new BlockManager();
+    this.tree = ProllyTree.createSync(blockManager);
   }
 
   private _getNodeName(node: ZgBaseNode<any, any>): string {
@@ -69,7 +77,7 @@ export class ZgDatabase {
     });
   }
 
-  async get<T extends Table, TNode extends ZgBaseNode<T>>(
+  get<T extends Table, TNode extends ZgBaseNode<T>>(
     entityName: string,
     id: string,
     nodeFactory: (
@@ -77,91 +85,62 @@ export class ZgDatabase {
       fbb: T,
       ac: ZgAuthContext<any> | null
     ) => TNode,
+    getRootAs: (byteBuffer: ByteBuffer) => T,
     authContext: ZgAuthContext | null
-  ): Promise<TNode | null> {
-    console.log(`Getting ${entityName} with id ${id}`);
-    const data = this.store.get(`${entityName}:${id}`);
+  ): TNode | null {
+    const key = ZgDatabase.textToKey(`${entityName}:${id}`);
+    const data = this.tree.getSync(key);
     if (!data) {
       return null;
     }
-    const mockFbb = new Proxy({} as any, {
-      get: (_, prop: string) => () => data[prop],
-    }) as T;
-    const node = nodeFactory(this, mockFbb, authContext);
+    const byteBuffer = new ByteBuffer(data);
+    const table = getRootAs(byteBuffer);
+    const node = nodeFactory(this, table, authContext);
     return this._createNodeProxy(node);
-  }
-
-  async getRaw(entityName: string, id: string): Promise<any | null> {
-    console.log(`Getting raw ${entityName} with id ${id}`);
-    return this.store.get(`${entityName}:${id}`) ?? null;
   }
 
   create<T extends Table, TNode extends ZgBaseNode<T>>(
     entityName: string,
-    data: any,
+    id: string,
+    data: Uint8Array,
     nodeFactory: (
       db: ZgDatabase,
       fbb: T,
       ac: ZgAuthContext<any> | null
     ) => TNode,
+    getRootAs: (byteBuffer: ByteBuffer) => T,
     authContext: ZgAuthContext | null
   ): TNode {
-    console.log(`Creating ${entityName} with data`, data);
-    if (!data.id) throw new Error("Mock DB requires data to have an id");
-    this.store.set(`${entityName}:${data.id}`, data);
+    const key = ZgDatabase.textToKey(`${entityName}:${id}`);
+    const { tree: newTree } = this.tree.putSync(key, data);
+    this.tree = newTree;
 
-    // Fire-and-forget persistence
-    (async () => {
-      // In a real implementation, this would serialize `data` to a Flatbuffer
-      // and write it to the Prolly Tree store.
-      // For the mock, we can just log it.
-      console.log(`(Background) Persisting ${entityName}:${data.id}`);
-    })();
-
-    const mockFbb = new Proxy({} as any, {
-      get: (_, prop: string) => () => data[prop],
-    }) as T;
-    const node = nodeFactory(this, mockFbb, authContext);
+    const byteBuffer = new ByteBuffer(data);
+    const table = getRootAs(byteBuffer);
+    const node = nodeFactory(this, table, authContext);
     return this._createNodeProxy(node);
   }
 
   update<T extends Table, TNode extends ZgBaseNode<T>>(
     entityName: string,
     id: string,
-    data: any,
+    data: Uint8Array,
     nodeFactory: (
       db: ZgDatabase,
       fbb: T,
       ac: ZgAuthContext<any> | null
     ) => TNode,
+    getRootAs: (byteBuffer: ByteBuffer) => T,
     authContext: ZgAuthContext | null
   ): TNode {
-    console.log(`Updating ${entityName} with id ${id} and data`, data);
-    const key = `${entityName}:${id}`;
-    const existing = this.store.get(key);
-    if (!existing) throw new Error(`Record not found for update: ${key}`);
-    const updated = { ...existing, ...data };
-    this.store.set(key, updated);
+    const key = ZgDatabase.textToKey(`${entityName}:${id}`);
+    const { tree: newTree } = this.tree.putSync(key, data);
+    this.tree = newTree;
 
-    // Fire-and-forget persistence
-    (async () => {
-      console.log(`(Background) Persisting update for ${entityName}:${id}`);
-    })();
-
-    const mockFbb = new Proxy({} as any, {
-      get: (_, prop: string) => () => updated[prop],
-    }) as T;
-    const node = nodeFactory(this, mockFbb, authContext);
+    const byteBuffer = new ByteBuffer(data);
+    const table = getRootAs(byteBuffer);
+    const node = nodeFactory(this, table, authContext);
     return this._createNodeProxy(node);
-  }
-
-  async delete(
-    entityName: string,
-    id: string,
-    authContext: ZgAuthContext | null
-  ): Promise<void> {
-    console.log(`Deleting ${entityName} with id ${id}`);
-    this.store.delete(`${entityName}:${id}`);
   }
 }
 
