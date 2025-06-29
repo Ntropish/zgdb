@@ -126,6 +126,14 @@ export class NodeManager {
       });
     }
 
+    // Ensure branches are sorted by key to maintain B-tree properties
+    newBranches.sort((a, b) => {
+      // The rightmost branch has an empty key and should always be last.
+      if (a.key.length === 0) return 1;
+      if (b.key.length === 0) return -1;
+      return compare(a.key, b.key);
+    });
+
     const { address: newAddress, node: newNode } =
       await this.createInternalNode(
         newBranches.slice(0, -1),
@@ -167,7 +175,7 @@ export class NodeManager {
     } else {
       const internal = node as InternalNodeProxy;
       const mid = Math.ceil(internal.numBranches / 2);
-      const splitKey = internal.getBranch(mid - 1).key;
+      const splitKey = internal.getBranch(mid).key;
 
       const allBranches: BranchPair[] = [];
       for (let i = 0; i < internal.numBranches; i++) {

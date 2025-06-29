@@ -163,9 +163,8 @@ export class ProllyTree {
           while (!isLeafNodeProxy(nextNode)) {
             const internal = nextNode as InternalNodeProxy;
             if (internal.numBranches === 0) break;
-            nextNode = await this.nodeManager.getNode(
-              internal.getBranch(0).address
-            );
+            nextNodeAddress = internal.getBranch(0).address;
+            nextNode = await this.nodeManager.getNode(nextNodeAddress);
             if (!nextNode) throw new Error("Failed to traverse down to leaf");
             path.push(nextNode);
           }
@@ -242,9 +241,8 @@ export class ProllyTree {
           while (!isLeafNodeProxy(nextNode)) {
             const internal = nextNode as InternalNodeProxy;
             if (internal.numBranches === 0) break;
-            nextNode = this.nodeManager.getNodeSync(
-              internal.getBranch(0).address
-            );
+            nextNodeAddress = internal.getBranch(0).address;
+            nextNode = this.nodeManager.getNodeSync(nextNodeAddress);
             if (!nextNode) throw new Error("Failed to traverse down to leaf");
             path.push(nextNode);
           }
