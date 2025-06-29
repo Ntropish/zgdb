@@ -87,15 +87,15 @@ export interface IPostTag {
 }
 
 // --- Create Input Types ---
-export type UserCreateInput = { id: string, publicKey: string, displayName: string, avatarUrl: string };
-export type PostCreateInput = { id: string, title: string, content: string, authorId: string, createdAt: bigint };
-export type CommentCreateInput = { id: string, content: string, authorId: string, postId: string, createdAt: bigint };
-export type FollowCreateInput = { id: string, followerId: string, followingId: string, createdAt: bigint };
-export type Image_MetadataCreateInput = { width: bigint, height: bigint, format: string, createdAt: bigint };
-export type ImageCreateInput = { id: string, url: string, fartCount: bigint, altText: string, metadata: any, postId: string, userId: string };
-export type ReactionCreateInput = { id: string, type: string, authorId: string, targetId: string, targetType: string };
-export type TagCreateInput = { id: string, name: string };
-export type PostTagCreateInput = { id: string, postId: string, tagId: string };
+export type CreateUserInput = { publicKey: string, displayName: string, avatarUrl: string };
+export type CreatePostInput = { title: string, content: string, authorId: string, createdAt: bigint };
+export type CreateCommentInput = { content: string, authorId: string, postId: string, createdAt: bigint };
+export type CreateFollowInput = { followerId: string, followingId: string, createdAt: bigint };
+export type CreateImage_MetadataInput = { width: bigint, height: bigint, format: string, createdAt: bigint };
+export type CreateImageInput = { url: string, fartCount: bigint, altText: string, metadata: any, postId: string, userId: string };
+export type CreateReactionInput = { type: string, authorId: string, targetId: string, targetType: string };
+export type CreateTagInput = { name: string };
+export type CreatePostTagInput = { postId: string, tagId: string };
 
 // --- Node Classes ---
 export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
@@ -125,14 +125,14 @@ export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
         }
 
         const builder = new Builder(1024);
-        const data = { id: (prop === 'id') ? value : target.fbb.id(), publicKey: (prop === 'publicKey') ? value : target.fbb.public_key(), displayName: (prop === 'displayName') ? value : target.fbb.display_name(), avatarUrl: (prop === 'avatarUrl') ? value : target.fbb.avatar_url() };
+        const data = { avatarUrl: (prop === 'avatarUrl') ? value : target.fbb.avatarUrl(), displayName: (prop === 'displayName') ? value : target.fbb.displayName(), id: (prop === 'id') ? value : target.fbb.id(), publicKey: (prop === 'publicKey') ? value : target.fbb.publicKey() };
         
+    const avatarUrlOffset = data.avatarUrl ? builder.createString(data.avatarUrl) : 0;
+    const displayNameOffset = data.displayName ? builder.createString(data.displayName) : 0;
     const idOffset = data.id ? builder.createString(data.id) : 0;
     const publicKeyOffset = data.publicKey ? builder.createString(data.publicKey) : 0;
-    const displayNameOffset = data.displayName ? builder.createString(data.displayName) : 0;
-    const avatarUrlOffset = data.avatarUrl ? builder.createString(data.avatarUrl) : 0;
         
-        const entityOffset = UserFB.User.createUser(builder, idOffset, publicKeyOffset, displayNameOffset, avatarUrlOffset);
+        const entityOffset = UserFB.User.createUser(builder, avatarUrlOffset, displayNameOffset, idOffset, publicKeyOffset);
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
@@ -156,15 +156,15 @@ export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
   }
 
   get publicKey(): string | null {
-    return this.fbb.public_key();
+    return this.fbb.publicKey();
   }
 
   get displayName(): string | null {
-    return this.fbb.display_name();
+    return this.fbb.displayName();
   }
 
   get avatarUrl(): string | null {
-    return this.fbb.avatar_url();
+    return this.fbb.avatarUrl();
   }
 
   // --- Relationships ---
@@ -174,7 +174,7 @@ export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
     // TODO: This is inefficient. We should use an index.
     return allNodes.filter(n => {
       const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.author_id();
+      const fkValue = remoteNode.fbb.authorId();
       return fkValue === this.id;
     });
   }
@@ -185,7 +185,7 @@ export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
     // TODO: This is inefficient. We should use an index.
     return allNodes.filter(n => {
       const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.author_id();
+      const fkValue = remoteNode.fbb.authorId();
       return fkValue === this.id;
     });
   }
@@ -196,7 +196,7 @@ export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
     // TODO: This is inefficient. We should use an index.
     return allNodes.filter(n => {
       const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.author_id();
+      const fkValue = remoteNode.fbb.authorId();
       return fkValue === this.id;
     });
   }
@@ -207,7 +207,7 @@ export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
     // TODO: This is inefficient. We should use an index.
     return allNodes.filter(n => {
       const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.follower_id();
+      const fkValue = remoteNode.fbb.followerId();
       return fkValue === this.id;
     });
   }
@@ -218,7 +218,7 @@ export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
     // TODO: This is inefficient. We should use an index.
     return allNodes.filter(n => {
       const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.following_id();
+      const fkValue = remoteNode.fbb.followingId();
       return fkValue === this.id;
     });
   }
@@ -251,14 +251,14 @@ export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
         }
 
         const builder = new Builder(1024);
-        const data = { id: (prop === 'id') ? value : target.fbb.id(), title: (prop === 'title') ? value : target.fbb.title(), content: (prop === 'content') ? value : target.fbb.content(), authorId: (prop === 'authorId') ? value : target.fbb.author_id(), createdAt: (prop === 'createdAt') ? value : target.fbb.created_at() };
+        const data = { authorId: (prop === 'authorId') ? value : target.fbb.authorId(), content: (prop === 'content') ? value : target.fbb.content(), createdAt: (prop === 'createdAt') ? value : target.fbb.createdAt(), id: (prop === 'id') ? value : target.fbb.id(), title: (prop === 'title') ? value : target.fbb.title() };
         
+    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
+    const contentOffset = data.content ? builder.createString(data.content) : 0;
     const idOffset = data.id ? builder.createString(data.id) : 0;
     const titleOffset = data.title ? builder.createString(data.title) : 0;
-    const contentOffset = data.content ? builder.createString(data.content) : 0;
-    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
         
-        const entityOffset = PostFB.Post.createPost(builder, idOffset, titleOffset, contentOffset, authorIdOffset, data.createdAt);
+        const entityOffset = PostFB.Post.createPost(builder, authorIdOffset, contentOffset, data.createdAt, idOffset, titleOffset);
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
@@ -290,16 +290,16 @@ export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
   }
 
   get authorId(): string | null {
-    return this.fbb.author_id();
+    return this.fbb.authorId();
   }
 
   get createdAt(): bigint {
-    return this.fbb.created_at();
+    return this.fbb.createdAt();
   }
 
   // --- Relationships ---
   get author(): UserNode<TActor> | null {
-    const id = this.fbb.author_id();
+    const id = this.fbb.authorId();
     if (!id) return null;
     return this.db.get(
       'User',
@@ -316,7 +316,7 @@ export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
     // TODO: This is inefficient. We should use an index.
     return allNodes.filter(n => {
       const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.post_id();
+      const fkValue = remoteNode.fbb.postId();
       return fkValue === this.id;
     });
   }
@@ -327,7 +327,7 @@ export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
     // TODO: This is inefficient. We should use an index.
     return allNodes.filter(n => {
       const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.post_id();
+      const fkValue = remoteNode.fbb.postId();
       return fkValue === this.id;
     });
   }
@@ -338,7 +338,7 @@ export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
     // TODO: This is inefficient. We should use an index.
     return allNodes.filter(n => {
       const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.target_id();
+      const fkValue = remoteNode.fbb.targetId();
       return fkValue === this.id;
     });
   }
@@ -371,14 +371,14 @@ export class CommentNode<TActor> extends ZgBaseNode<CommentFB.Comment, TActor> {
         }
 
         const builder = new Builder(1024);
-        const data = { id: (prop === 'id') ? value : target.fbb.id(), content: (prop === 'content') ? value : target.fbb.content(), authorId: (prop === 'authorId') ? value : target.fbb.author_id(), postId: (prop === 'postId') ? value : target.fbb.post_id(), createdAt: (prop === 'createdAt') ? value : target.fbb.created_at() };
+        const data = { authorId: (prop === 'authorId') ? value : target.fbb.authorId(), content: (prop === 'content') ? value : target.fbb.content(), createdAt: (prop === 'createdAt') ? value : target.fbb.createdAt(), id: (prop === 'id') ? value : target.fbb.id(), postId: (prop === 'postId') ? value : target.fbb.postId() };
         
-    const idOffset = data.id ? builder.createString(data.id) : 0;
-    const contentOffset = data.content ? builder.createString(data.content) : 0;
     const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
+    const contentOffset = data.content ? builder.createString(data.content) : 0;
+    const idOffset = data.id ? builder.createString(data.id) : 0;
     const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
         
-        const entityOffset = CommentFB.Comment.createComment(builder, idOffset, contentOffset, authorIdOffset, postIdOffset, data.createdAt);
+        const entityOffset = CommentFB.Comment.createComment(builder, authorIdOffset, contentOffset, data.createdAt, idOffset, postIdOffset);
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
@@ -406,20 +406,20 @@ export class CommentNode<TActor> extends ZgBaseNode<CommentFB.Comment, TActor> {
   }
 
   get authorId(): string | null {
-    return this.fbb.author_id();
+    return this.fbb.authorId();
   }
 
   get postId(): string | null {
-    return this.fbb.post_id();
+    return this.fbb.postId();
   }
 
   get createdAt(): bigint {
-    return this.fbb.created_at();
+    return this.fbb.createdAt();
   }
 
   // --- Relationships ---
   get author(): UserNode<TActor> | null {
-    const id = this.fbb.author_id();
+    const id = this.fbb.authorId();
     if (!id) return null;
     return this.db.get(
       'User',
@@ -431,7 +431,7 @@ export class CommentNode<TActor> extends ZgBaseNode<CommentFB.Comment, TActor> {
   }
 
   get post(): PostNode<TActor> | null {
-    const id = this.fbb.post_id();
+    const id = this.fbb.postId();
     if (!id) return null;
     return this.db.get(
       'Post',
@@ -448,7 +448,7 @@ export class CommentNode<TActor> extends ZgBaseNode<CommentFB.Comment, TActor> {
     // TODO: This is inefficient. We should use an index.
     return allNodes.filter(n => {
       const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.target_id();
+      const fkValue = remoteNode.fbb.targetId();
       return fkValue === this.id;
     });
   }
@@ -481,13 +481,13 @@ export class FollowNode<TActor> extends ZgBaseNode<FollowFB.Follow, TActor> {
         }
 
         const builder = new Builder(1024);
-        const data = { id: (prop === 'id') ? value : target.fbb.id(), followerId: (prop === 'followerId') ? value : target.fbb.follower_id(), followingId: (prop === 'followingId') ? value : target.fbb.following_id(), createdAt: (prop === 'createdAt') ? value : target.fbb.created_at() };
+        const data = { createdAt: (prop === 'createdAt') ? value : target.fbb.createdAt(), followerId: (prop === 'followerId') ? value : target.fbb.followerId(), followingId: (prop === 'followingId') ? value : target.fbb.followingId(), id: (prop === 'id') ? value : target.fbb.id() };
         
-    const idOffset = data.id ? builder.createString(data.id) : 0;
     const followerIdOffset = data.followerId ? builder.createString(data.followerId) : 0;
     const followingIdOffset = data.followingId ? builder.createString(data.followingId) : 0;
+    const idOffset = data.id ? builder.createString(data.id) : 0;
         
-        const entityOffset = FollowFB.Follow.createFollow(builder, idOffset, followerIdOffset, followingIdOffset, data.createdAt);
+        const entityOffset = FollowFB.Follow.createFollow(builder, data.createdAt, followerIdOffset, followingIdOffset, idOffset);
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
@@ -511,20 +511,20 @@ export class FollowNode<TActor> extends ZgBaseNode<FollowFB.Follow, TActor> {
   }
 
   get followerId(): string | null {
-    return this.fbb.follower_id();
+    return this.fbb.followerId();
   }
 
   get followingId(): string | null {
-    return this.fbb.following_id();
+    return this.fbb.followingId();
   }
 
   get createdAt(): bigint {
-    return this.fbb.created_at();
+    return this.fbb.createdAt();
   }
 
   // --- Relationships ---
   get follower(): UserNode<TActor> | null {
-    const id = this.fbb.follower_id();
+    const id = this.fbb.followerId();
     if (!id) return null;
     return this.db.get(
       'User',
@@ -536,7 +536,7 @@ export class FollowNode<TActor> extends ZgBaseNode<FollowFB.Follow, TActor> {
   }
 
   get following(): UserNode<TActor> | null {
-    const id = this.fbb.following_id();
+    const id = this.fbb.followingId();
     if (!id) return null;
     return this.db.get(
       'User',
@@ -575,11 +575,11 @@ export class Image_MetadataNode<TActor> extends ZgBaseNode<Image_MetadataFB.Imag
         }
 
         const builder = new Builder(1024);
-        const data = { width: (prop === 'width') ? value : target.fbb.width(), height: (prop === 'height') ? value : target.fbb.height(), format: (prop === 'format') ? value : target.fbb.format(), createdAt: (prop === 'createdAt') ? value : target.fbb.created_at() };
+        const data = { createdAt: (prop === 'createdAt') ? value : target.fbb.createdAt(), format: (prop === 'format') ? value : target.fbb.format(), height: (prop === 'height') ? value : target.fbb.height(), width: (prop === 'width') ? value : target.fbb.width() };
         
     const formatOffset = data.format ? builder.createString(data.format) : 0;
         
-        const entityOffset = Image_MetadataFB.Image_Metadata.createImage_Metadata(builder, data.width, data.height, formatOffset, data.createdAt);
+        const entityOffset = Image_MetadataFB.Image_Metadata.createImage_Metadata(builder, data.createdAt, formatOffset, data.height, data.width);
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
@@ -611,7 +611,7 @@ export class Image_MetadataNode<TActor> extends ZgBaseNode<Image_MetadataFB.Imag
   }
 
   get createdAt(): bigint {
-    return this.fbb.created_at();
+    return this.fbb.createdAt();
   }
 
   // --- Relationships ---
@@ -645,15 +645,15 @@ export class ImageNode<TActor> extends ZgBaseNode<ImageFB.Image, TActor> {
         }
 
         const builder = new Builder(1024);
-        const data = { id: (prop === 'id') ? value : target.fbb.id(), url: (prop === 'url') ? value : target.fbb.url(), fartCount: (prop === 'fartCount') ? value : target.fbb.fart_count(), altText: (prop === 'altText') ? value : target.fbb.alt_text(), metadata: (prop === 'metadata') ? value : target.fbb.metadata(), postId: (prop === 'postId') ? value : target.fbb.post_id(), userId: (prop === 'userId') ? value : target.fbb.user_id() };
+        const data = { altText: (prop === 'altText') ? value : target.fbb.altText(), fartCount: (prop === 'fartCount') ? value : target.fbb.fartCount(), id: (prop === 'id') ? value : target.fbb.id(), metadata: (prop === 'metadata') ? value : target.fbb.metadata(), postId: (prop === 'postId') ? value : target.fbb.postId(), url: (prop === 'url') ? value : target.fbb.url(), userId: (prop === 'userId') ? value : target.fbb.userId() };
         
-    const idOffset = data.id ? builder.createString(data.id) : 0;
-    const urlOffset = data.url ? builder.createString(data.url) : 0;
     const altTextOffset = data.altText ? builder.createString(data.altText) : 0;
+    const idOffset = data.id ? builder.createString(data.id) : 0;
     const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
+    const urlOffset = data.url ? builder.createString(data.url) : 0;
     const userIdOffset = data.userId ? builder.createString(data.userId) : 0;
         
-        const entityOffset = ImageFB.Image.createImage(builder, idOffset, urlOffset, data.fartCount, altTextOffset, data.metadata, postIdOffset, userIdOffset);
+        const entityOffset = ImageFB.Image.createImage(builder, altTextOffset, data.fartCount, idOffset, data.metadata, postIdOffset, urlOffset, userIdOffset);
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
@@ -681,11 +681,11 @@ export class ImageNode<TActor> extends ZgBaseNode<ImageFB.Image, TActor> {
   }
 
   get fartCount(): bigint {
-    return this.fbb.fart_count();
+    return this.fbb.fartCount();
   }
 
   get altText(): string | null {
-    return this.fbb.alt_text();
+    return this.fbb.altText();
   }
 
   get metadata(): any {
@@ -693,16 +693,16 @@ export class ImageNode<TActor> extends ZgBaseNode<ImageFB.Image, TActor> {
   }
 
   get postId(): string | null {
-    return this.fbb.post_id();
+    return this.fbb.postId();
   }
 
   get userId(): string | null {
-    return this.fbb.user_id();
+    return this.fbb.userId();
   }
 
   // --- Relationships ---
   get post(): PostNode<TActor> | null {
-    const id = this.fbb.post_id();
+    const id = this.fbb.postId();
     if (!id) return null;
     return this.db.get(
       'Post',
@@ -714,7 +714,7 @@ export class ImageNode<TActor> extends ZgBaseNode<ImageFB.Image, TActor> {
   }
 
   get user(): UserNode<TActor> | null {
-    const id = this.fbb.user_id();
+    const id = this.fbb.userId();
     if (!id) return null;
     return this.db.get(
       'User',
@@ -753,15 +753,15 @@ export class ReactionNode<TActor> extends ZgBaseNode<ReactionFB.Reaction, TActor
         }
 
         const builder = new Builder(1024);
-        const data = { id: (prop === 'id') ? value : target.fbb.id(), type: (prop === 'type') ? value : target.fbb.type(), authorId: (prop === 'authorId') ? value : target.fbb.author_id(), targetId: (prop === 'targetId') ? value : target.fbb.target_id(), targetType: (prop === 'targetType') ? value : target.fbb.target_type() };
+        const data = { authorId: (prop === 'authorId') ? value : target.fbb.authorId(), id: (prop === 'id') ? value : target.fbb.id(), targetId: (prop === 'targetId') ? value : target.fbb.targetId(), targetType: (prop === 'targetType') ? value : target.fbb.targetType(), type: (prop === 'type') ? value : target.fbb.type() };
         
-    const idOffset = data.id ? builder.createString(data.id) : 0;
-    const typeOffset = data.type ? builder.createString(data.type) : 0;
     const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
+    const idOffset = data.id ? builder.createString(data.id) : 0;
     const targetIdOffset = data.targetId ? builder.createString(data.targetId) : 0;
     const targetTypeOffset = data.targetType ? builder.createString(data.targetType) : 0;
+    const typeOffset = data.type ? builder.createString(data.type) : 0;
         
-        const entityOffset = ReactionFB.Reaction.createReaction(builder, idOffset, typeOffset, authorIdOffset, targetIdOffset, targetTypeOffset);
+        const entityOffset = ReactionFB.Reaction.createReaction(builder, authorIdOffset, idOffset, targetIdOffset, targetTypeOffset, typeOffset);
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
@@ -789,20 +789,20 @@ export class ReactionNode<TActor> extends ZgBaseNode<ReactionFB.Reaction, TActor
   }
 
   get authorId(): string | null {
-    return this.fbb.author_id();
+    return this.fbb.authorId();
   }
 
   get targetId(): string | null {
-    return this.fbb.target_id();
+    return this.fbb.targetId();
   }
 
   get targetType(): string | null {
-    return this.fbb.target_type();
+    return this.fbb.targetType();
   }
 
   // --- Relationships ---
   get author(): UserNode<TActor> | null {
-    const id = this.fbb.author_id();
+    const id = this.fbb.authorId();
     if (!id) return null;
     return this.db.get(
       'User',
@@ -904,7 +904,7 @@ export class PostTagNode<TActor> extends ZgBaseNode<PostTagFB.PostTag, TActor> {
         }
 
         const builder = new Builder(1024);
-        const data = { id: (prop === 'id') ? value : target.fbb.id(), postId: (prop === 'postId') ? value : target.fbb.post_id(), tagId: (prop === 'tagId') ? value : target.fbb.tag_id() };
+        const data = { id: (prop === 'id') ? value : target.fbb.id(), postId: (prop === 'postId') ? value : target.fbb.postId(), tagId: (prop === 'tagId') ? value : target.fbb.tagId() };
         
     const idOffset = data.id ? builder.createString(data.id) : 0;
     const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
@@ -934,16 +934,16 @@ export class PostTagNode<TActor> extends ZgBaseNode<PostTagFB.PostTag, TActor> {
   }
 
   get postId(): string | null {
-    return this.fbb.post_id();
+    return this.fbb.postId();
   }
 
   get tagId(): string | null {
-    return this.fbb.tag_id();
+    return this.fbb.tagId();
   }
 
   // --- Relationships ---
   get post(): PostNode<TActor> | null {
-    const id = this.fbb.post_id();
+    const id = this.fbb.postId();
     if (!id) return null;
     return this.db.get(
       'Post',
@@ -955,7 +955,7 @@ export class PostTagNode<TActor> extends ZgBaseNode<PostTagFB.PostTag, TActor> {
   }
 
   get tag(): TagNode<TActor> | null {
-    const id = this.fbb.tag_id();
+    const id = this.fbb.tagId();
     if (!id) return null;
     return this.db.get(
       'Tag',
@@ -968,288 +968,489 @@ export class PostTagNode<TActor> extends ZgBaseNode<PostTagFB.PostTag, TActor> {
 }
 
 // --- Collection Classes ---
+export class UserCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
 
-export class UserCollection<TActor> extends EntityCollection<UserNode<TActor>> {
+    get collectionName(): string {
+      return 'User';
+    }
 
-  create(data: UserCreateInput): UserNode<TActor> {
-    const builder = new Builder(1024);
-    
+    create(data: CreateUserInput): UserNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const avatarUrlOffset = data.avatarUrl ? builder.createString(data.avatarUrl) : 0;
+    const displayNameOffset = data.displayName ? builder.createString(data.displayName) : 0;
     const idOffset = data.id ? builder.createString(data.id) : 0;
     const publicKeyOffset = data.publicKey ? builder.createString(data.publicKey) : 0;
-    const displayNameOffset = data.displayName ? builder.createString(data.displayName) : 0;
-    const avatarUrlOffset = data.avatarUrl ? builder.createString(data.avatarUrl) : 0;
-    
-    const entityOffset = UserFB.User.createUser(builder, idOffset, publicKeyOffset, displayNameOffset, avatarUrlOffset);
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
+      
+
+      UserFB.User.startUser(builder);
+      
+      UserFB.User.addAvatarUrl(builder, avatarUrlOffset ?? 0);
+    UserFB.User.addDisplayName(builder, displayNameOffset ?? 0);
+    UserFB.User.addId(builder, idOffset ?? 0);
+    UserFB.User.addPublicKey(builder, publicKeyOffset ?? 0);
+
+      const entityOffset = UserFB.User.endUser(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = UserFB.User.getRootAsUser(new ByteBuffer(buffer));
+
+      return new UserNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
     }
 
-    return this.db.create(
-      'User',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
+    *[Symbol.iterator](): Generator<UserNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = UserFB.User.getRootAsUser(new ByteBuffer(buffer));
+        yield new UserNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
   }
-}
 
+export class PostCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
 
+    get collectionName(): string {
+      return 'Post';
+    }
 
-export class PostCollection<TActor> extends EntityCollection<PostNode<TActor>> {
-
-  create(data: PostCreateInput): PostNode<TActor> {
-    const builder = new Builder(1024);
-    
+    create(data: CreatePostInput): PostNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
+    const contentOffset = data.content ? builder.createString(data.content) : 0;
     const idOffset = data.id ? builder.createString(data.id) : 0;
     const titleOffset = data.title ? builder.createString(data.title) : 0;
-    const contentOffset = data.content ? builder.createString(data.content) : 0;
-    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
-    
-    const entityOffset = PostFB.Post.createPost(builder, idOffset, titleOffset, contentOffset, authorIdOffset, BigInt(data.createdAt ?? 0));
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
+      
+
+      PostFB.Post.startPost(builder);
+      
+      PostFB.Post.addAuthorId(builder, authorIdOffset ?? 0);
+    PostFB.Post.addContent(builder, contentOffset ?? 0);
+    PostFB.Post.addCreatedAt(builder, data.createdAt ?? null);
+    PostFB.Post.addId(builder, idOffset ?? 0);
+    PostFB.Post.addTitle(builder, titleOffset ?? 0);
+
+      const entityOffset = PostFB.Post.endPost(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = PostFB.Post.getRootAsPost(new ByteBuffer(buffer));
+
+      return new PostNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
     }
 
-    return this.db.create(
-      'Post',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
+    *[Symbol.iterator](): Generator<PostNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = PostFB.Post.getRootAsPost(new ByteBuffer(buffer));
+        yield new PostNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
   }
-}
 
+export class CommentCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
 
+    get collectionName(): string {
+      return 'Comment';
+    }
 
-export class CommentCollection<TActor> extends EntityCollection<CommentNode<TActor>> {
-
-  create(data: CommentCreateInput): CommentNode<TActor> {
-    const builder = new Builder(1024);
-    
-    const idOffset = data.id ? builder.createString(data.id) : 0;
+    create(data: CreateCommentInput): CommentNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
     const contentOffset = data.content ? builder.createString(data.content) : 0;
-    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
+    const idOffset = data.id ? builder.createString(data.id) : 0;
     const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
-    
-    const entityOffset = CommentFB.Comment.createComment(builder, idOffset, contentOffset, authorIdOffset, postIdOffset, BigInt(data.createdAt ?? 0));
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
+      
+
+      CommentFB.Comment.startComment(builder);
+      
+      CommentFB.Comment.addAuthorId(builder, authorIdOffset ?? 0);
+    CommentFB.Comment.addContent(builder, contentOffset ?? 0);
+    CommentFB.Comment.addCreatedAt(builder, data.createdAt ?? null);
+    CommentFB.Comment.addId(builder, idOffset ?? 0);
+    CommentFB.Comment.addPostId(builder, postIdOffset ?? 0);
+
+      const entityOffset = CommentFB.Comment.endComment(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = CommentFB.Comment.getRootAsComment(new ByteBuffer(buffer));
+
+      return new CommentNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
     }
 
-    return this.db.create(
-      'Comment',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
+    *[Symbol.iterator](): Generator<CommentNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = CommentFB.Comment.getRootAsComment(new ByteBuffer(buffer));
+        yield new CommentNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
   }
-}
 
+export class FollowCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
 
+    get collectionName(): string {
+      return 'Follow';
+    }
 
-export class FollowCollection<TActor> extends EntityCollection<FollowNode<TActor>> {
-
-  create(data: FollowCreateInput): FollowNode<TActor> {
-    const builder = new Builder(1024);
-    
-    const idOffset = data.id ? builder.createString(data.id) : 0;
-    const followerIdOffset = data.followerId ? builder.createString(data.followerId) : 0;
+    create(data: CreateFollowInput): FollowNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const followerIdOffset = data.followerId ? builder.createString(data.followerId) : 0;
     const followingIdOffset = data.followingId ? builder.createString(data.followingId) : 0;
-    
-    const entityOffset = FollowFB.Follow.createFollow(builder, idOffset, followerIdOffset, followingIdOffset, BigInt(data.createdAt ?? 0));
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
-    }
-
-    return this.db.create(
-      'Follow',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
-  }
-}
-
-
-
-export class Image_MetadataCollection<TActor> extends EntityCollection<Image_MetadataNode<TActor>> {
-
-  create(data: Image_MetadataCreateInput): Image_MetadataNode<TActor> {
-    const builder = new Builder(1024);
-    
-    const formatOffset = data.format ? builder.createString(data.format) : 0;
-    
-    const entityOffset = Image_MetadataFB.Image_Metadata.createImage_Metadata(builder, BigInt(data.width ?? 0), BigInt(data.height ?? 0), formatOffset, BigInt(data.createdAt ?? 0));
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
-    }
-
-    return this.db.create(
-      'Image_Metadata',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
-  }
-}
-
-
-
-export class ImageCollection<TActor> extends EntityCollection<ImageNode<TActor>> {
-
-  create(data: ImageCreateInput): ImageNode<TActor> {
-    const builder = new Builder(1024);
-    
     const idOffset = data.id ? builder.createString(data.id) : 0;
-    const urlOffset = data.url ? builder.createString(data.url) : 0;
-    const altTextOffset = data.altText ? builder.createString(data.altText) : 0;
+      
+
+      FollowFB.Follow.startFollow(builder);
+      
+      FollowFB.Follow.addCreatedAt(builder, data.createdAt ?? null);
+    FollowFB.Follow.addFollowerId(builder, followerIdOffset ?? 0);
+    FollowFB.Follow.addFollowingId(builder, followingIdOffset ?? 0);
+    FollowFB.Follow.addId(builder, idOffset ?? 0);
+
+      const entityOffset = FollowFB.Follow.endFollow(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = FollowFB.Follow.getRootAsFollow(new ByteBuffer(buffer));
+
+      return new FollowNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
+    }
+
+    *[Symbol.iterator](): Generator<FollowNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = FollowFB.Follow.getRootAsFollow(new ByteBuffer(buffer));
+        yield new FollowNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
+  }
+
+export class Image_MetadataCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
+
+    get collectionName(): string {
+      return 'Image_Metadata';
+    }
+
+    create(data: CreateImage_MetadataInput): Image_MetadataNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const formatOffset = data.format ? builder.createString(data.format) : 0;
+      
+
+      Image_MetadataFB.Image_Metadata.startImage_Metadata(builder);
+      
+      Image_MetadataFB.Image_Metadata.addCreatedAt(builder, data.createdAt ?? null);
+    Image_MetadataFB.Image_Metadata.addFormat(builder, formatOffset ?? 0);
+    Image_MetadataFB.Image_Metadata.addHeight(builder, data.height ?? null);
+    Image_MetadataFB.Image_Metadata.addWidth(builder, data.width ?? null);
+
+      const entityOffset = Image_MetadataFB.Image_Metadata.endImage_Metadata(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = Image_MetadataFB.Image_Metadata.getRootAsImage_Metadata(new ByteBuffer(buffer));
+
+      return new Image_MetadataNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
+    }
+
+    *[Symbol.iterator](): Generator<Image_MetadataNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = Image_MetadataFB.Image_Metadata.getRootAsImage_Metadata(new ByteBuffer(buffer));
+        yield new Image_MetadataNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
+  }
+
+export class ImageCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
+
+    get collectionName(): string {
+      return 'Image';
+    }
+
+    create(data: CreateImageInput): ImageNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const altTextOffset = data.altText ? builder.createString(data.altText) : 0;
+    const idOffset = data.id ? builder.createString(data.id) : 0;
     const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
+    const urlOffset = data.url ? builder.createString(data.url) : 0;
     const userIdOffset = data.userId ? builder.createString(data.userId) : 0;
-    
-    const entityOffset = ImageFB.Image.createImage(builder, idOffset, urlOffset, BigInt(data.fartCount ?? 0), altTextOffset, data.metadata, postIdOffset, userIdOffset);
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
+      
+
+      ImageFB.Image.startImage(builder);
+      
+      ImageFB.Image.addAltText(builder, altTextOffset ?? 0);
+    ImageFB.Image.addFartCount(builder, data.fartCount ?? null);
+    ImageFB.Image.addId(builder, idOffset ?? 0);
+    ImageFB.Image.addMetadata(builder, data.metadata ?? null);
+    ImageFB.Image.addPostId(builder, postIdOffset ?? 0);
+    ImageFB.Image.addUrl(builder, urlOffset ?? 0);
+    ImageFB.Image.addUserId(builder, userIdOffset ?? 0);
+
+      const entityOffset = ImageFB.Image.endImage(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = ImageFB.Image.getRootAsImage(new ByteBuffer(buffer));
+
+      return new ImageNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
     }
 
-    return this.db.create(
-      'Image',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
+    *[Symbol.iterator](): Generator<ImageNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = ImageFB.Image.getRootAsImage(new ByteBuffer(buffer));
+        yield new ImageNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
   }
-}
 
+export class ReactionCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
 
+    get collectionName(): string {
+      return 'Reaction';
+    }
 
-export class ReactionCollection<TActor> extends EntityCollection<ReactionNode<TActor>> {
-
-  create(data: ReactionCreateInput): ReactionNode<TActor> {
-    const builder = new Builder(1024);
-    
+    create(data: CreateReactionInput): ReactionNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
     const idOffset = data.id ? builder.createString(data.id) : 0;
-    const typeOffset = data.type ? builder.createString(data.type) : 0;
-    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
     const targetIdOffset = data.targetId ? builder.createString(data.targetId) : 0;
     const targetTypeOffset = data.targetType ? builder.createString(data.targetType) : 0;
-    
-    const entityOffset = ReactionFB.Reaction.createReaction(builder, idOffset, typeOffset, authorIdOffset, targetIdOffset, targetTypeOffset);
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
+    const typeOffset = data.type ? builder.createString(data.type) : 0;
+      
+
+      ReactionFB.Reaction.startReaction(builder);
+      
+      ReactionFB.Reaction.addAuthorId(builder, authorIdOffset ?? 0);
+    ReactionFB.Reaction.addId(builder, idOffset ?? 0);
+    ReactionFB.Reaction.addTargetId(builder, targetIdOffset ?? 0);
+    ReactionFB.Reaction.addTargetType(builder, targetTypeOffset ?? 0);
+    ReactionFB.Reaction.addType(builder, typeOffset ?? 0);
+
+      const entityOffset = ReactionFB.Reaction.endReaction(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = ReactionFB.Reaction.getRootAsReaction(new ByteBuffer(buffer));
+
+      return new ReactionNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
     }
 
-    return this.db.create(
-      'Reaction',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
+    *[Symbol.iterator](): Generator<ReactionNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = ReactionFB.Reaction.getRootAsReaction(new ByteBuffer(buffer));
+        yield new ReactionNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
   }
-}
 
+export class TagCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
 
+    get collectionName(): string {
+      return 'Tag';
+    }
 
-export class TagCollection<TActor> extends EntityCollection<TagNode<TActor>> {
-
-  create(data: TagCreateInput): TagNode<TActor> {
-    const builder = new Builder(1024);
-    
-    const idOffset = data.id ? builder.createString(data.id) : 0;
+    create(data: CreateTagInput): TagNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const idOffset = data.id ? builder.createString(data.id) : 0;
     const nameOffset = data.name ? builder.createString(data.name) : 0;
-    
-    const entityOffset = TagFB.Tag.createTag(builder, idOffset, nameOffset);
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
+      
+
+      TagFB.Tag.startTag(builder);
+      
+      TagFB.Tag.addId(builder, idOffset ?? 0);
+    TagFB.Tag.addName(builder, nameOffset ?? 0);
+
+      const entityOffset = TagFB.Tag.endTag(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = TagFB.Tag.getRootAsTag(new ByteBuffer(buffer));
+
+      return new TagNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
     }
 
-    return this.db.create(
-      'Tag',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
+    *[Symbol.iterator](): Generator<TagNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = TagFB.Tag.getRootAsTag(new ByteBuffer(buffer));
+        yield new TagNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
   }
-}
 
+export class PostTagCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
 
+    get collectionName(): string {
+      return 'PostTag';
+    }
 
-export class PostTagCollection<TActor> extends EntityCollection<PostTagNode<TActor>> {
-
-  create(data: PostTagCreateInput): PostTagNode<TActor> {
-    const builder = new Builder(1024);
-    
-    const idOffset = data.id ? builder.createString(data.id) : 0;
+    create(data: CreatePostTagInput): PostTagNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const idOffset = data.id ? builder.createString(data.id) : 0;
     const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
     const tagIdOffset = data.tagId ? builder.createString(data.tagId) : 0;
-    
-    const entityOffset = PostTagFB.PostTag.createPostTag(builder, idOffset, postIdOffset, tagIdOffset);
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
+      
+
+      PostTagFB.PostTag.startPostTag(builder);
+      
+      PostTagFB.PostTag.addId(builder, idOffset ?? 0);
+    PostTagFB.PostTag.addPostId(builder, postIdOffset ?? 0);
+    PostTagFB.PostTag.addTagId(builder, tagIdOffset ?? 0);
+
+      const entityOffset = PostTagFB.PostTag.endPostTag(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = PostTagFB.PostTag.getRootAsPostTag(new ByteBuffer(buffer));
+
+      return new PostTagNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
     }
 
-    return this.db.create(
-      'PostTag',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
+    *[Symbol.iterator](): Generator<PostTagNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = PostTagFB.PostTag.getRootAsPostTag(new ByteBuffer(buffer));
+        yield new PostTagNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
   }
-}
-
 
 export class ZgClient<TActor> extends ZgDatabase {
   public readonly users: UserCollection<TActor>;

@@ -5,7 +5,6 @@ import {
 } from "../../parser/types.js";
 import { IGenerator } from "./interface.js";
 import { mapTsType } from "../utils.js";
-import { toSnakeCase } from "../utils.js";
 
 type ProcessedRelationship = {
   name: string;
@@ -54,7 +53,8 @@ function preprocessRelationships(
 
       let remoteFk: string | undefined;
       if (remoteRel.type === "polymorphic") {
-        remoteFk = remoteRel.foreignKey;
+        const remotePolyRel = remoteRel as PolymorphicRelationship;
+        remoteFk = remotePolyRel.foreignKey;
       } else if (remoteRel.type === "standard") {
         const remoteStandardRel = remoteRel as Relationship;
         remoteFk = remoteStandardRel.field ?? `${remoteStandardRel.name}Id`;
@@ -84,7 +84,7 @@ function generateSingleNodeClass(
         tsType = "string | null";
       }
       return `  get ${f.name}(): ${tsType} {
-    return this.fbb.${toSnakeCase(f.name)}();
+    return this.fbb.${f.name}();
   }`;
     })
     .join("\n\n");
@@ -105,14 +105,14 @@ function generateSingleNodeClass(
     // TODO: This is inefficient. We should use an index.
     return allNodes.filter(n => {
       const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.${toSnakeCase(foreignKeyField)}();
+      const fkValue = remoteNode.fbb.${foreignKeyField}();
       return fkValue === this.id;
     });
   }`;
       }
 
       return `  get ${rel.name}(): ${resolvedNodeType} | null {
-    const id = this.fbb.${toSnakeCase(foreignKeyField)}();
+    const id = this.fbb.${foreignKeyField}();
     if (!id) return null;
     return this.db.get(
       '${relSchemaName}',
@@ -127,14 +127,18 @@ function generateSingleNodeClass(
 
   const fieldsList = schema.fields.map((f) => `'${f.name}'`).join(", ");
 
-  const rehydrationParams = schema.fields
+  const sortedFields = [...schema.fields].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  const rehydrationParams = sortedFields
     .map((f) => {
-      const accessor = `target.fbb.${toSnakeCase(f.name)}()`;
+      const accessor = `target.fbb.${f.name}()`;
       return `${f.name}: (prop === '${f.name}') ? value : ${accessor}`;
     })
     .join(", ");
 
-  const createStrings = schema.fields
+  const createStrings = sortedFields
     .filter((f) => f.type === "string")
     .map(
       (f) =>
@@ -142,7 +146,7 @@ function generateSingleNodeClass(
     )
     .join("\n");
 
-  const createParams = schema.fields
+  const createParams = sortedFields
     .map((f) => {
       if (f.type === "string") {
         return `${f.name}Offset`;

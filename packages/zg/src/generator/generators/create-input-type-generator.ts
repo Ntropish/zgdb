@@ -7,10 +7,11 @@ function generateSingleCreateInputType(schema: NormalizedSchema): string {
     return "";
   }
   const createArgs = schema.fields
+    .filter((f) => f.name !== "id")
     .map((f) => `${f.name}: ${mapTsType(f.type)}`)
     .join(", ");
 
-  return `export type ${schema.name}CreateInput = { ${createArgs} };`;
+  return `export type Create${schema.name}Input = { ${createArgs} };`;
 }
 
 export class CreateInputTypeGenerator implements IGenerator {

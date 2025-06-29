@@ -2,33 +2,54 @@
 
 exports[`CollectionClassGenerator > should generate correct collection classes 1`] = `
 "// --- Collection Classes ---
+export class UserCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
 
-export class UserCollection<TActor> extends EntityCollection<UserNode<TActor>> {
-
-  create(data: UserCreateInput): UserNode<TActor> {
-    const builder = new Builder(1024);
-    
-    const idOffset = data.id ? builder.createString(data.id) : 0;
-    const displayNameOffset = data.displayName ? builder.createString(data.displayName) : 0;
-    
-    const entityOffset = UserFB.User.createUser(builder, idOffset, displayNameOffset, BigInt(data.createdAt ?? 0));
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
+    get collectionName(): string {
+      return 'User';
     }
 
-    return this.db.create(
-      'User',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
-  }
-}
-"
+    create(data: CreateUserInput): UserNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const displayNameOffset = data.displayName ? builder.createString(data.displayName) : 0;
+    const idOffset = data.id ? builder.createString(data.id) : 0;
+      
+
+      UserFB.User.startUser(builder);
+      
+      UserFB.User.addCreatedAt(builder, data.createdAt ?? null);
+    UserFB.User.addDisplayName(builder, displayNameOffset ?? 0);
+    UserFB.User.addId(builder, idOffset ?? 0);
+
+      const entityOffset = UserFB.User.endUser(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = UserFB.User.getRootAsUser(new ByteBuffer(buffer));
+
+      return new UserNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
+    }
+
+    *[Symbol.iterator](): Generator<UserNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = UserFB.User.getRootAsUser(new ByteBuffer(buffer));
+        yield new UserNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
+  }"
 `;

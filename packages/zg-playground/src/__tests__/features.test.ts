@@ -58,6 +58,7 @@ describe("ZG Client: Relationships", () => {
     expect(foundPost).toBeDefined();
 
     // 3. Traverse the relationship SYNCHRONOUSLY
+    console.log({ foundPost });
     const author = foundPost!.author;
     expect(author).toBeDefined();
     expect(author!.displayName).toBe("User A");

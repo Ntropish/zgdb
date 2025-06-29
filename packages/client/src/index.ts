@@ -134,6 +134,12 @@ export class ZgDatabase {
     this.tree = newTree;
   }
 
+  insert(entityName: string, id: string, data: Uint8Array): void {
+    const key = ZgDatabase.textToKey(`${entityName}:${id}`);
+    const { tree: newTree } = this.tree.putSync(key, data);
+    this.tree = newTree;
+  }
+
   scan(
     startKey: Uint8Array,
     endKey: Uint8Array

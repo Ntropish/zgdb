@@ -2,5 +2,5 @@
 
 exports[`CreateInputTypeGenerator > should generate correct create input types for given schemas 1`] = `
 "// --- Create Input Types ---
-export type UserCreateInput = { id: string, age: bigint };"
+export type CreateUserInput = { age: bigint };"
 `;

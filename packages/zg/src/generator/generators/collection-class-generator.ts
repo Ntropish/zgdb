@@ -1,30 +1,22 @@
+import { NormalizedSchema } from "../../parser/types.js";
 import { IGenerator } from "./interface.js";
-import { NormalizedSchema, Field } from "../../parser/types.js";
-
-function getFieldCreateValue(field: Field): string {
-  if (field.type === "long") {
-    // Dates are passed as numbers, need to convert to BigInt for FlatBuffers
-    return `BigInt(data.${field.name} ?? 0)`;
-  }
-  if (field.type === "string") {
-    return `${field.name}Offset`;
-  }
-  return `data.${field.name}`;
-}
 
 function generateSingleCollectionClass(schema: NormalizedSchema): string {
   if (schema.isJoinTable) {
     return "";
   }
 
+  const collectionName = `${schema.name}Collection<TActor>`;
+  const createInputName = `Create${schema.name}Input`;
   const nodeName = `${schema.name}Node<TActor>`;
-  const createInputType = `${schema.name}CreateInput`;
+  const fbsNodeName = `${schema.name}FB.${schema.name}`;
+  const fbsRootGetter = `getRootAs${schema.name}`;
 
-  // The fields should NOT be sorted alphabetically.
-  // They must match the order in the FBS file, which is the definition order.
-  const fields = schema.fields;
+  const sortedFields = [...schema.fields].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
 
-  const createStrings = fields
+  const createStrings = sortedFields
     .filter((f) => f.type === "string")
     .map(
       (f) =>
@@ -32,44 +24,95 @@ function generateSingleCollectionClass(schema: NormalizedSchema): string {
     )
     .join("\n");
 
-  const createParams = fields.map(getFieldCreateValue).join(", ");
+  const startVector = (fieldName: string, num: string) =>
+    `${fbsNodeName}.start${
+      fieldName.charAt(0).toUpperCase() + fieldName.slice(1)
+    }Vector(builder, ${num});`;
 
-  return `
-export class ${schema.name}Collection<TActor> extends EntityCollection<${nodeName}> {
+  const createListVectors = sortedFields
+    .filter((f) => f.isVector && f.type !== "string") // Assuming string arrays are handled differently or not at all for now
+    .map((f) => {
+      const fieldName = f.name;
+      const count = `data.${fieldName}?.length ?? 0`;
+      return `    ${startVector(fieldName, count)}
+    for (const item of (data.${fieldName} ?? []).reverse()) {
+      // numbers are added directly, other types might need builder offsets
+      builder.add${f.type.charAt(0).toUpperCase() + f.type.slice(1)}(item);
+    }
+    const ${fieldName}VectorOffset = builder.endVector();`;
+    })
+    .join("\n\n");
 
-  create(data: ${createInputType}): ${nodeName} {
-    const builder = new Builder(1024);
-    
-${createStrings}
-    
-    const entityOffset = ${schema.name}FB.${schema.name}.create${schema.name}(builder, ${createParams});
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
+  const addFields = sortedFields
+    .map((f, index) => {
+      const capName = f.name.charAt(0).toUpperCase() + f.name.slice(1);
+      const param = f.isVector
+        ? `${f.name}VectorOffset`
+        : f.type === "string"
+        ? `${f.name}Offset`
+        : `data.${f.name}`;
+
+      const defaultValue = f.type === "string" || f.isVector ? "0" : "null";
+      return `${fbsNodeName}.add${capName}(builder, ${param} ?? ${defaultValue});`;
+    })
+    .join("\n    ");
+
+  return `export class ${collectionName} {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
+
+    get collectionName(): string {
+      return '${schema.name}';
     }
 
-    return this.db.create(
-      '${schema.name}',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
-  }
-}
-`;
+    create(data: ${createInputName}): ${nodeName} {
+      const builder = new Builder(1024);
+      
+      ${createStrings}
+      ${createListVectors}
+
+      ${fbsNodeName}.start${schema.name}(builder);
+      
+      ${addFields}
+
+      const entityOffset = ${fbsNodeName}.end${schema.name}(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = ${fbsNodeName}.${fbsRootGetter}(new ByteBuffer(buffer));
+
+      return new ${nodeName}(
+        this.db,
+        fbb,
+        this.authContext,
+      );
+    }
+
+    *[Symbol.iterator](): Generator<${nodeName}> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = ${fbsNodeName}.${fbsRootGetter}(new ByteBuffer(buffer));
+        yield new ${nodeName}(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
+  }`;
 }
 
 export class CollectionClassGenerator implements IGenerator {
   generate(schemas: NormalizedSchema[]): string {
     const classes = schemas
-      .map(generateSingleCollectionClass)
+      .map((s) => generateSingleCollectionClass(s))
       .filter(Boolean)
       .join("\n\n");
+
     return `// --- Collection Classes ---\n${classes}`;
   }
 }

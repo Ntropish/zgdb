@@ -91,11 +91,11 @@ export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
         }
 
         const builder = new Builder(1024);
-        const data = { id: (prop === 'id') ? value : target.fbb.id(), title: (prop === 'title') ? value : target.fbb.title(), authorId: (prop === 'authorId') ? value : target.fbb.author_id() };
+        const data = { authorId: (prop === 'authorId') ? value : target.fbb.authorId(), id: (prop === 'id') ? value : target.fbb.id(), title: (prop === 'title') ? value : target.fbb.title() };
         
     const titleOffset = data.title ? builder.createString(data.title) : 0;
         
-        const entityOffset = PostFB.Post.createPost(builder, data.id, titleOffset, data.authorId);
+        const entityOffset = PostFB.Post.createPost(builder, data.authorId, data.id, titleOffset);
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
@@ -123,7 +123,7 @@ export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
   }
 
   get authorId(): any {
-    return this.fbb.author_id();
+    return this.fbb.authorId();
   }
 
   // --- Relationships ---
@@ -160,11 +160,11 @@ export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
         }
 
         const builder = new Builder(1024);
-        const data = { id: (prop === 'id') ? value : target.fbb.id(), name: (prop === 'name') ? value : target.fbb.name(), age: (prop === 'age') ? value : target.fbb.age() };
+        const data = { age: (prop === 'age') ? value : target.fbb.age(), id: (prop === 'id') ? value : target.fbb.id(), name: (prop === 'name') ? value : target.fbb.name() };
         
     const nameOffset = data.name ? builder.createString(data.name) : 0;
         
-        const entityOffset = UserFB.User.createUser(builder, data.id, nameOffset, data.age);
+        const entityOffset = UserFB.User.createUser(builder, data.age, data.id, nameOffset);
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 

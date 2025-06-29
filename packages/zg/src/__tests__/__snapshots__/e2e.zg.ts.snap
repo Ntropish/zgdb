@@ -18,7 +18,7 @@ export interface ITestEntity {
 }
 
 // --- Create Input Types ---
-export type TestEntityCreateInput = { id: string, value: bigint };
+export type CreateTestEntityInput = { value: bigint };
 
 // --- Node Classes ---
 export class TestEntityNode<TActor> extends ZgBaseNode<TestEntityFB.TestEntity, TActor> {
@@ -84,34 +84,54 @@ export class TestEntityNode<TActor> extends ZgBaseNode<TestEntityFB.TestEntity, 
 }
 
 // --- Collection Classes ---
+export class TestEntityCollection<TActor> {
+    constructor(
+      private db: ZgDatabase,
+      private authContext: ZgAuthContext<TActor> | null
+    ) {}
 
-export class TestEntityCollection<TActor> extends EntityCollection<TestEntityNode<TActor>> {
-
-  create(data: TestEntityCreateInput): TestEntityNode<TActor> {
-    const builder = new Builder(1024);
-    
-    const idOffset = data.id ? builder.createString(data.id) : 0;
-    
-    const entityOffset = TestEntityFB.TestEntity.createTestEntity(builder, idOffset, BigInt(data.value ?? 0));
-    builder.finish(entityOffset);
-    
-    const buffer = builder.asUint8Array();
-    
-    if (!data.id || typeof data.id !== 'string') {
-      throw new Error("The 'id' field is required and must be a string to create an entity.");
+    get collectionName(): string {
+      return 'TestEntity';
     }
 
-    return this.db.create(
-      'TestEntity',
-      data.id,
-      buffer,
-      this.nodeFactory,
-      this.getRootAs,
-      this.authContext,
-    );
-  }
-}
+    create(data: CreateTestEntityInput): TestEntityNode<TActor> {
+      const builder = new Builder(1024);
+      
+          const idOffset = data.id ? builder.createString(data.id) : 0;
+      
 
+      TestEntityFB.TestEntity.startTestEntity(builder);
+      
+      TestEntityFB.TestEntity.addId(builder, idOffset ?? 0);
+    TestEntityFB.TestEntity.addValue(builder, data.value ?? null);
+
+      const entityOffset = TestEntityFB.TestEntity.endTestEntity(builder);
+      
+      builder.finish(entityOffset);
+      const buffer = builder.asUint8Array();
+
+      this.db.insert(this.collectionName, data.id, buffer);
+
+      const fbb = TestEntityFB.TestEntity.getRootAsTestEntity(new ByteBuffer(buffer));
+
+      return new TestEntityNode<TActor>(
+        this.db,
+        fbb,
+        this.authContext,
+      );
+    }
+
+    *[Symbol.iterator](): Generator<TestEntityNode<TActor>> {
+      for (const [id, buffer] of this.db.scan(this.collectionName)) {
+        const fbb = TestEntityFB.TestEntity.getRootAsTestEntity(new ByteBuffer(buffer));
+        yield new TestEntityNode<TActor>(
+          this.db,
+          fbb,
+          this.authContext,
+        );
+      }
+    }
+  }
 
 export class ZgClient<TActor> extends ZgDatabase {
   public readonly testEntitys: TestEntityCollection<TActor>;
