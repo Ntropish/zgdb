@@ -15,16 +15,20 @@ describe("ProllyTree Scanning", () => {
       treeDefinition: {
         ...defaultConfiguration.treeDefinition,
         targetFanout: 2, // smaller fanout for easier testing
+        boundaryChecker: {
+          type: "prolly-v1",
+          bits: 1, // High probability of splitting
+          pattern: 0b1,
+        },
       },
     };
     blockManager = new BlockManager(config);
   });
 
   async function populateTree(keys: string[]): Promise<ProllyTree> {
-    let tree = await ProllyTree.create(blockManager);
+    const tree = await ProllyTree.create(blockManager);
     for (const key of keys) {
-      const { tree: newTree } = await tree.put(S(key), S(`v-${key}`));
-      tree = newTree;
+      await tree.put(S(key), S(`v-${key}`));
     }
     return tree;
   }
