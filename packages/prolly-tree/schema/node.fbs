@@ -35,8 +35,8 @@ union NodeBody {
 
 // The main Node table that wraps the node type and its data.
 table Node {
-  isLeaf:bool;
-  entryCount:uint; // Total number of entries in the subtree rooted at this node.
+  is_leaf:bool;
+  entry_count:uint; // Total number of entries in the subtree rooted at this node.
   body:NodeBody;
 }
 
