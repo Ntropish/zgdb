@@ -91,16 +91,7 @@ export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
   }
 
   // --- Relationships ---
-  get posts(): PostNode<TActor>[] {
-    // This is a placeholder implementation. A real implementation would use an index.
-    const allNodes = Array.from(this.db.posts);
-    // TODO: This is inefficient. We should use an index.
-    return allNodes.filter(n => {
-      const remoteNode = n as any;
-      const fkValue = remoteNode.fbb.authorId();
-      return fkValue === this.id;
-    });
-  }
+
 }
 
 export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
@@ -130,11 +121,11 @@ export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
         }
 
         const builder = new Builder(1024);
-        const data = { id: (prop === 'id') ? value : target.fbb.id(), title: (prop === 'title') ? value : target.fbb.title(), authorId: (prop === 'authorId') ? value : target.fbb.authorId() };
+        const data = { id: (prop === 'id') ? value : target.fbb.id(), title: (prop === 'title') ? value : target.fbb.title(), authorId: (prop === 'authorId') ? value : target.fbb.author_id() };
         
     const titleOffset = data.title ? builder.createString(data.title) : 0;
         
-        const entityOffset = PostFB.Post.createPost(builder, data.authorId, data.id, titleOffset);
+        const entityOffset = PostFB.Post.createPost(builder, data.id, titleOffset, data.authorId);
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
@@ -162,21 +153,11 @@ export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
   }
 
   get authorId(): any {
-    return this.fbb.authorId();
+    return this.fbb.author_id();
   }
 
   // --- Relationships ---
-  get author(): UserNode<TActor> | null {
-    const id = this.fbb.authorId();
-    if (!id) return null;
-    return this.db.get(
-      'User',
-       id,
-       (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
-       (bb) => UserFB.User.getRootAsUser(bb),
-       this.authContext
-    ) as UserNode<TActor> | null;
-  }
+
 }
 
 // --- Collection Classes ---
@@ -217,7 +198,7 @@ export class PostCollection<TActor> extends EntityCollection<PostNode<TActor>> {
     
     const titleOffset = data.title ? builder.createString(data.title) : 0;
     
-    const entityOffset = PostFB.Post.createPost(builder, data.authorId, data.id, titleOffset);
+    const entityOffset = PostFB.Post.createPost(builder, data.id, titleOffset, data.authorId);
     builder.finish(entityOffset);
     
     const buffer = builder.asUint8Array();

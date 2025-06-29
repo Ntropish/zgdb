@@ -81,20 +81,30 @@ describe("Schema Parser Deep Edge Cases: All Relationship Types", () => {
       expect.arrayContaining([
         {
           name: "owner",
-          node: "User",
+          entity: "User",
           cardinality: "one",
-          mappedBy: undefined,
+          required: true,
+          description: "The user who owns the project.",
+          type: "standard",
+          field: "ownerId",
         },
         {
           name: "tasks",
-          node: "Task",
+          entity: "Task",
           cardinality: "many",
           mappedBy: "project",
+          description: "The tasks associated with the project.",
+          type: "standard",
+          field: "tasksId",
         },
         {
           name: "attachment",
           type: "polymorphic",
-          field: "attachmentId",
+          cardinality: "one",
+          required: true,
+          discriminator: "attachmentType",
+          foreignKey: "attachmentId",
+          references: ["File", "Image"],
         },
       ])
     );

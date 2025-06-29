@@ -28,20 +28,27 @@ static getSizePrefixedRootAsImage(bb:flatbuffers.ByteBuffer, obj?:Image):Image {
   return (obj || new Image()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-altText():string|null
-altText(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-altText(optionalEncoding?:any):string|Uint8Array|null {
+id():string|null
+id(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+id(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-fartCount():bigint {
+url():string|null
+url(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+url(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+fartCount():bigint {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.readInt64(this.bb_pos + offset) : BigInt('0');
 }
 
-mutate_fartCount(value:bigint):boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
+mutate_fart_count(value:bigint):boolean {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
 
   if (offset === 0) {
     return false;
@@ -51,28 +58,21 @@ mutate_fartCount(value:bigint):boolean {
   return true;
 }
 
-id():string|null
-id(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-id(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
+altText():string|null
+altText(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+altText(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
 metadata(obj?:Image_Metadata):Image_Metadata|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? (obj || new Image_Metadata()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 postId():string|null
 postId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
 postId(optionalEncoding?:any):string|Uint8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-}
-
-url():string|null
-url(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-url(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
@@ -88,28 +88,28 @@ static startImage(builder:flatbuffers.Builder) {
   builder.startObject(7);
 }
 
-static addAltText(builder:flatbuffers.Builder, altTextOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, altTextOffset, 0);
-}
-
-static addFartCount(builder:flatbuffers.Builder, fartCount:bigint) {
-  builder.addFieldInt64(1, fartCount, BigInt('0'));
-}
-
 static addId(builder:flatbuffers.Builder, idOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, idOffset, 0);
-}
-
-static addMetadata(builder:flatbuffers.Builder, metadataOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, metadataOffset, 0);
-}
-
-static addPostId(builder:flatbuffers.Builder, postIdOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, postIdOffset, 0);
+  builder.addFieldOffset(0, idOffset, 0);
 }
 
 static addUrl(builder:flatbuffers.Builder, urlOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(5, urlOffset, 0);
+  builder.addFieldOffset(1, urlOffset, 0);
+}
+
+static addFartCount(builder:flatbuffers.Builder, fartCount:bigint) {
+  builder.addFieldInt64(2, fartCount, BigInt('0'));
+}
+
+static addAltText(builder:flatbuffers.Builder, altTextOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, altTextOffset, 0);
+}
+
+static addMetadata(builder:flatbuffers.Builder, metadataOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(4, metadataOffset, 0);
+}
+
+static addPostId(builder:flatbuffers.Builder, postIdOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(5, postIdOffset, 0);
 }
 
 static addUserId(builder:flatbuffers.Builder, userIdOffset:flatbuffers.Offset) {

@@ -153,7 +153,11 @@ describe("Schema Parser", () => {
     expect(reactionSchema.relationships[0]).toEqual({
       name: "target",
       type: "polymorphic",
-      field: "targetId",
+      cardinality: "one",
+      required: true,
+      discriminator: "targetType",
+      foreignKey: "targetId",
+      references: ["Post", "Comment"],
     });
   });
 
@@ -213,28 +217,32 @@ describe("Schema Parser", () => {
     const normalized = parseSchemas({ entities: [UserSchema, PostSchema] });
     const userSchema = normalized.find((s) => s.name === "User")!;
     const userPostsRelation = userSchema.relationships.find(
-      (r): r is import("../types.js").Relationship =>
-        r.type !== "polymorphic" && r.name === "posts"
-    )!;
+      (r) => r.name === "posts"
+    );
 
     expect(userPostsRelation).toBeDefined();
     expect(userPostsRelation).toEqual({
       name: "posts",
-      node: "Post",
+      entity: "Post",
       cardinality: "many",
       mappedBy: "author",
+      type: "standard",
+      description: "Posts by the user.",
+      field: "postsId",
     });
 
     const postSchema = normalized.find((s) => s.name === "Post")!;
     const postAuthorRelation = postSchema.relationships.find(
-      (r): r is import("../types.js").Relationship =>
-        r.type !== "polymorphic" && r.name === "author"
+      (r) => r.name === "author"
     )!;
     expect(postAuthorRelation).toBeDefined();
     expect(postAuthorRelation).toEqual({
       name: "author",
-      node: "User",
+      entity: "User",
       cardinality: "one",
+      required: true,
+      type: "standard",
+      field: "authorId",
     });
   });
 

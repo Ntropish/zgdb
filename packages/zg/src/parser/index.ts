@@ -117,7 +117,7 @@ export function parseZodSchema(
   }
 
   // Sort fields alphabetically by name to ensure consistent order
-  fields.sort((a, b) => a.name.localeCompare(b.name));
+  // fields.sort((a, b) => a.name.localeCompare(b.name));
 
   return fields;
 }
@@ -139,16 +139,16 @@ function parseRelationships(
     if (relDef.type === "polymorphic") {
       parsed.push({
         name: relName,
-        type: "polymorphic",
-        field: relDef.foreignKey,
+        ...relDef,
       });
     } else {
       // It's a standard relationship
+      const rel = relDef as StandardRelationshipDef;
       parsed.push({
+        ...rel,
         name: relName,
-        node: relDef.entity,
-        cardinality: relDef.cardinality,
-        mappedBy: relDef.mappedBy,
+        type: "standard",
+        field: rel.field ?? `${relName}Id`,
       });
     }
   }

@@ -20,11 +20,11 @@ function generateSingleCollectionClass(schema: NormalizedSchema): string {
   const nodeName = `${schema.name}Node<TActor>`;
   const createInputType = `${schema.name}CreateInput`;
 
-  const sortedFields = [...schema.fields].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  // The fields should NOT be sorted alphabetically.
+  // They must match the order in the FBS file, which is the definition order.
+  const fields = schema.fields;
 
-  const createStrings = sortedFields
+  const createStrings = fields
     .filter((f) => f.type === "string")
     .map(
       (f) =>
@@ -32,7 +32,7 @@ function generateSingleCollectionClass(schema: NormalizedSchema): string {
     )
     .join("\n");
 
-  const createParams = sortedFields.map(getFieldCreateValue).join(", ");
+  const createParams = fields.map(getFieldCreateValue).join(", ");
 
   return `
 export class ${schema.name}Collection<TActor> extends EntityCollection<${nodeName}> {

@@ -11,6 +11,7 @@ import {
 import { NormalizedSchema } from "../parser/types.js";
 import { topologicalSort } from "./topological-sort.js";
 import { GeneratorConfig } from "./types.js";
+import { toSnakeCase } from "./utils.js";
 
 const execAsync = promisify(exec);
 
@@ -47,11 +48,8 @@ export async function generateFbsFile(
       tableBuilder.docs(schema.description);
     }
 
-    const sortedFields = [...schema.fields].sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-    for (const field of sortedFields) {
-      tableBuilder.field(field.name, field.type as any);
+    for (const field of schema.fields) {
+      tableBuilder.field(toSnakeCase(field.name), field.type as any);
     }
 
     if (schema.manyToMany && schema.manyToMany.length > 0) {

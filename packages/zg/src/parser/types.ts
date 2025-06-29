@@ -121,11 +121,11 @@ export type Index = {
 
 export type Relationship = {
   name: string;
-  node: string;
+  entity?: string;
   cardinality: "one" | "many";
   mappedBy?: string;
-  foreignKey?: string;
-  type?: "polymorphic" | undefined;
+  field?: string;
+  type?: "polymorphic" | "standard" | undefined;
 };
 
 export type ManyToManyRelationship = {
@@ -138,8 +138,14 @@ export type ManyToManyRelationship = {
 };
 
 export type PolymorphicRelationship = {
+  name: string;
   type: "polymorphic";
-  field: string;
+  cardinality: "one" | "many";
+  required?: boolean;
+  description?: string;
+  discriminator: string; // e.g., 'targetType'
+  foreignKey: string; // e.g., 'targetId'
+  references: string[]; // e.g., ['Post', 'Comment']
 };
 
 export type NormalizedSchema = {
