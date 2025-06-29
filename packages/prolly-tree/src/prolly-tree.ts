@@ -299,19 +299,14 @@ export class ProllyTree {
 
     let newRootNode;
     if (split) {
-      const branches = [
-        { key: split.key, address: currentAddress },
-        { address: split.address, key: new Uint8Array() }, // This is incorrect, need to define how to create root
-      ];
-      // This is not how we create a root node.
-      // const newRoot = await this.nodeManager.createNode(
-      //   [],
-      //   [split.key],
-      //   [currentAddress, split.address],
-      //   false
-      // );
-      // newRootAddress = newRoot.address!;
-      newRootNode = await this.nodeManager.getNode(currentAddress); // Placeholder
+      // The root node split, so we need to create a new root.
+      const leftChildAddress = currentAddress;
+      const rightChildAddress = split.address;
+      const { node: newRoot } = await this.nodeManager.createInternalNode(
+        [{ key: split.key, address: leftChildAddress }],
+        rightChildAddress
+      );
+      newRootNode = newRoot;
     } else {
       newRootNode = await this.nodeManager.getNode(currentAddress);
     }

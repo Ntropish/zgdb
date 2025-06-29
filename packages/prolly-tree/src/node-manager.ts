@@ -65,6 +65,29 @@ export class NodeManager {
     return { address, node };
   }
 
+  async createInternalNode(
+    branches: BranchPair[],
+    rightmostAddress: Address
+  ): Promise<{ address: Address; node: InternalNodeProxy }> {
+    let totalSubtreeEntries = 0;
+    for (const branch of branches) {
+      const child = await this.getNode(branch.address);
+      if (child) totalSubtreeEntries += child.entryCount;
+    }
+    const rightmostChild = await this.getNode(rightmostAddress);
+    if (rightmostChild) totalSubtreeEntries += rightmostChild.entryCount;
+
+    const fullBranches = [
+      ...branches,
+      { key: new Uint8Array(), address: rightmostAddress },
+    ];
+
+    const bytes = createInternalNodeBuffer(fullBranches, totalSubtreeEntries);
+    const address = await this.blockManager.put(bytes);
+    const node = new InternalNodeProxy(bytes);
+    return { address, node };
+  }
+
   async updateChild(
     parent: InternalNodeProxy,
     oldChildAddress: Address,
@@ -96,17 +119,18 @@ export class NodeManager {
       address: newChildAddress,
     };
 
-    let totalSubtreeEntries = parent.entryCount;
-
     if (split) {
-      newBranches.splice(childIndex, 0, split);
-      // This is not correct, we need to find the entry count of the split node
-      // totalSubtreeEntries += split.entryCount;
+      newBranches.splice(childIndex + 1, 0, {
+        key: split.key,
+        address: split.address,
+      });
     }
 
-    const bytes = createInternalNodeBuffer(newBranches, totalSubtreeEntries);
-    const newAddress = await this.blockManager.put(bytes);
-    const newNode = new InternalNodeProxy(bytes);
+    const { address: newAddress, node: newNode } =
+      await this.createInternalNode(
+        newBranches.slice(0, -1),
+        newBranches[newBranches.length - 1].address
+      );
 
     if (this.isNodeFull(newNode)) {
       return this.splitNode(newNode);
@@ -145,20 +169,24 @@ export class NodeManager {
       const mid = Math.ceil(internal.numBranches / 2);
       const splitKey = internal.getBranch(mid - 1).key;
 
-      const leftBranches: BranchPair[] = [];
-      for (let i = 0; i < mid; i++) {
-        leftBranches.push(internal.getBranch(i));
-      }
-      const rightBranches: BranchPair[] = [];
-      for (let i = mid; i < internal.numBranches; i++) {
-        rightBranches.push(internal.getBranch(i));
+      const allBranches: BranchPair[] = [];
+      for (let i = 0; i < internal.numBranches; i++) {
+        allBranches.push(internal.getBranch(i));
       }
 
-      // We need to recalculate entry counts for subtrees
-      const leftBytes = createInternalNodeBuffer(leftBranches, 0); // Invalid entry count
-      const rightBytes = createInternalNodeBuffer(rightBranches, 0); // Invalid entry count
-      const leftAddress = await this.blockManager.put(leftBytes);
-      const rightAddress = await this.blockManager.put(rightBytes);
+      const leftBranches = allBranches.slice(0, mid);
+      const rightBranches = allBranches.slice(mid);
+
+      const newRightmost = rightBranches.pop()!;
+
+      const { address: leftAddress } = await this.createInternalNode(
+        leftBranches.slice(0, -1),
+        leftBranches[leftBranches.length - 1].address
+      );
+      const { address: rightAddress } = await this.createInternalNode(
+        rightBranches,
+        newRightmost.address
+      );
 
       return {
         newAddress: leftAddress,
