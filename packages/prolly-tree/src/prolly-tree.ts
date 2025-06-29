@@ -7,6 +7,7 @@ import {
   NodeProxy,
   InternalNodeProxy,
   Address,
+  Branch,
 } from "./node-proxy.js";
 import { Diff, ConflictResolver } from "./types.js";
 import { compare } from "uint8arrays/compare";
@@ -61,7 +62,11 @@ export class ProllyTree {
 
     while (!isLeafNodeProxy(current)) {
       const internalNode = current as InternalNodeProxy;
-      const index = internalNode.findChildIndex(key);
+      let index = internalNode.findChildIndex(key);
+      // If the key is greater than all keys in the node, descend into the rightmost child.
+      if (index === internalNode.length) {
+        index = internalNode.length - 1;
+      }
       const branch = internalNode.getBranch(index);
       if (!branch.address) {
         throw new Error(`Failed to find address for child index: ${index}`);
@@ -83,7 +88,11 @@ export class ProllyTree {
 
     while (!isLeafNodeProxy(current)) {
       const internalNode = current as InternalNodeProxy;
-      const index = internalNode.findChildIndex(key);
+      let index = internalNode.findChildIndex(key);
+      // If the key is greater than all keys in the node, descend into the rightmost child.
+      if (index === internalNode.length) {
+        index = internalNode.length - 1;
+      }
       const branch = internalNode.getBranch(index);
       if (!branch.address) {
         throw new Error(`Failed to find address for child index: ${index}`);
@@ -194,14 +203,25 @@ export class ProllyTree {
       return;
     }
 
-    let currentAddress = newAddress;
-    let branchesToPropagate = newBranches;
+    let branchesToPropagate: Branch[] | undefined;
+    if (newBranches) {
+      branchesToPropagate = newBranches;
+    } else {
+      // The leaf was modified without splitting. We need to create a single branch to represent it for propagation.
+      const newLeaf = (await this.nodeManager.getNode(
+        newAddress
+      )) as LeafNodeProxy;
+      const maxKey = newLeaf.getPair(newLeaf.length - 1).key;
+      branchesToPropagate = [{ key: maxKey, address: newAddress }];
+    }
 
-    // Propagate splits up the tree
+    let currentAddress = newAddress;
+
+    // Propagate changes up the tree
     for (let i = path.length - 2; i >= 0; i--) {
       if (!branchesToPropagate) {
-        // If there are no more branches to propagate, we might still need to update the parent's address
-        // but for now we can break
+        // This should not happen if the logic is correct, but as a safeguard:
+        // If there are no more branches to propagate, we can stop.
         break;
       }
       const parent = path[i] as InternalNodeProxy;
@@ -218,13 +238,14 @@ export class ProllyTree {
     }
 
     let newRootNode;
-    // If a split propagates all the way to the root, create a new root
-    if (branchesToPropagate && branchesToPropagate.length > 1) {
+    // If a split propagated all the way to the root, create a new root from the resulting branches
+    if (branchesToPropagate) {
       const { node } = await this.nodeManager.createInternalNode(
         branchesToPropagate
       );
       newRootNode = node;
     } else {
+      // Otherwise, the new root is the (potentially updated) node at the top of the path
       newRootNode = await this.nodeManager.getNode(currentAddress);
       if (!newRootNode) {
         throw new Error("Could not find new root node");

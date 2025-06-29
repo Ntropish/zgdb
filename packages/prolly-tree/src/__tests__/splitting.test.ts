@@ -1,24 +1,23 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ProllyTree } from "../prolly-tree.js";
 import { BlockManager } from "../block-store.js";
-import { isLeafNodeProxy, InternalNodeProxy } from "../node-proxy.js";
+import { Configuration, defaultConfiguration } from "../configuration.js";
 
 const enc = new TextEncoder();
 
 // A configuration with a very small max node size to force splits easily
-const splittingConfig = {
+const splittingConfig: Configuration = {
+  ...defaultConfiguration,
   treeDefinition: {
+    ...defaultConfiguration.treeDefinition,
     targetFanout: 4,
     minFanout: 2,
+    boundaryChecker: {
+      type: "prolly-v1",
+      bits: 1, // High probability of splitting
+      pattern: 0b1,
+    },
   },
-  valueChunking: {
-    chunkingStrategy: "fastcdc-v2020" as const,
-    maxInlineValueSize: 128,
-    minChunkSize: 64,
-    avgChunkSize: 128,
-    maxChunkSize: 256, // small size to trigger splits
-  },
-  hashingAlgorithm: "blake3" as const,
 };
 
 describe("ProllyTree Splitting", () => {
@@ -37,21 +36,16 @@ describe("ProllyTree Splitting", () => {
     for (let i = 0; i < 10; i++) {
       const key = `key${i}`;
       const value = `value${i}`;
-      const result = await tree.put(enc.encode(key), enc.encode(value));
-      tree = result.tree;
+      await tree.put(enc.encode(key), enc.encode(value));
     }
 
     // After splitting, the root hash should have changed
     expect(tree.root).not.toEqual(initialRoot);
 
-    // The new root should be an internal node
-    const rootNode = await tree.nodeManager.getNode(tree.root);
-    expect(rootNode).toBeDefined();
-    expect(isLeafNodeProxy(rootNode!)).toBe(false);
-
-    // It should have at least two children
-    const internalRoot = rootNode as InternalNodeProxy;
-    expect(internalRoot.addressesLength).toBeGreaterThanOrEqual(2);
+    // The new root should be an internal node with at least two children
+    const treeState = JSON.parse(await tree.print());
+    expect(treeState.type).toBe("internal");
+    expect(treeState.children.length).toBeGreaterThanOrEqual(2);
 
     // Verify all keys are still retrievable
     for (let i = 0; i < 10; i++) {
