@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`InterfaceGenerator > should generate correct interfaces for given schemas 1`] = `
+"// --- Interfaces ---
+export interface IUser {
+  id: string;
+  age: bigint;
+  isActive: boolean;
+}"
+`;

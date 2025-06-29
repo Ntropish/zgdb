@@ -6,7 +6,7 @@
 export function mapTsType(fbsType: string): string {
   const typeMap: Record<string, string> = {
     string: "string",
-    long: "number",
+    long: "bigint",
     bool: "boolean",
   };
   // For nested objects or unhandled types, we can default to 'any'
