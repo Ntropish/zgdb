@@ -1,0 +1,43 @@
+// @zgdb/prolly-tree/schema/node.fbs
+
+namespace Zgdb.ProllyTree;
+
+// Using a union for different key types might be useful in the future.
+// For now, we'll assume keys are byte arrays.
+
+// An entry in a leaf node, representing a key-value pair.
+table Entry {
+  key:[ubyte];
+  value:[ubyte];
+}
+
+// An entry in an internal node, pointing to a child node.
+table Branch {
+  key:[ubyte];
+  address:[ubyte]; // Address (hash) of the child node.
+}
+
+// A leaf node contains key-value pairs.
+table LeafNode {
+  entries:[Entry];
+}
+
+// An internal node contains branches pointing to child nodes.
+table InternalNode {
+  branches:[Branch];
+}
+
+// A union to represent either a LeafNode or an InternalNode.
+union NodeBody {
+  LeafNode,
+  InternalNode
+}
+
+// The main Node table that wraps the node type and its data.
+table Node {
+  isLeaf:bool;
+  entryCount:uint; // Total number of entries in the subtree rooted at this node.
+  body:NodeBody;
+}
+
+root_type Node; 
