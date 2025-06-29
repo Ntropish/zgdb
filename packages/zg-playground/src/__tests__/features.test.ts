@@ -61,7 +61,7 @@ describe("ZG Client: Relationships", () => {
     expect(author.displayName).toBe("User A");
 
     // 4. Test the other side of the relationship (many-to-one)
-    const foundUser = await clientForUserA.users.get("user-A");
+    const foundUser = clientForUserA.users.get("user-A");
     expect(foundUser).toBeDefined();
 
     const posts = foundUser!.posts;
