@@ -7,6 +7,15 @@ const asArray = <T>(value: T | T[]): T[] => {
   return Array.isArray(value) ? value : [value];
 };
 
+const toKebabCase = (str: string) =>
+  str
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/_/g, "-")
+    .toLowerCase();
+
+// TODO: This should be configurable
+const importExt = ".js";
+
 function mapTsType(fbsType: string): string {
   const typeMap: Record<string, string> = {
     string: "string",
@@ -47,7 +56,7 @@ function generateNodeClass(schema: NormalizedSchema): string {
       const relSchemaName = rel.node;
       const relNodeName = `${relSchemaName}Node<TActor>`;
       const foreignKeyField = `${rel.name}Id`;
-      const resolvedNodeType = relNodeName;
+      const resolvedNodeType = `${relNodeName}`; // Simplified
       return `  get ${rel.name}(): ${resolvedNodeType} | null {
     const id = this.fbb.${foreignKeyField}();
     if (!id) return null;
@@ -55,7 +64,7 @@ function generateNodeClass(schema: NormalizedSchema): string {
       '${relSchemaName}',
        id,
        (db, fbb, ac) => new ${relNodeName}(db, fbb, ac),
-       (bb) => getRootAs(bb, '${relSchemaName}') as LowLevel.${relSchemaName},
+       (bb) => ${relSchemaName}FB.${relSchemaName}.getRootAs${relSchemaName}(bb),
        this.authContext
     ) as ${resolvedNodeType} | null;
   }`;
@@ -86,15 +95,26 @@ function generateNodeClass(schema: NormalizedSchema): string {
     })
     .join(", ");
 
-  return `export class ${schema.name}Node<TActor> extends ZgBaseNode<LowLevel.${schema.name}, TActor> {
+  return `export class ${schema.name}Node<TActor> extends ZgBaseNode<${schema.name}FB.${schema.name}, TActor> {
   constructor(
     db: ZgDatabase,
-    fbb: LowLevel.${schema.name},
+    fbb: ${schema.name}FB.${schema.name},
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
     
     return new Proxy(this, {
+      get: (target, prop, receiver) => {
+        const entityResolvers = target.db.config.entityResolvers?.['${schema.name}'] ?? {};
+        if (prop in entityResolvers) {
+          return entityResolvers[prop as keyof typeof entityResolvers]({ actor: target.authContext?.actor, db: target.db, node: target });
+        }
+        const globalResolvers = target.db.config.globalResolvers ?? {};
+        if (prop in globalResolvers) {
+          return globalResolvers[prop as keyof typeof globalResolvers]({ actor: target.authContext?.actor, db: target.db, node: target });
+        }
+        return Reflect.get(target, prop, receiver);
+      },
       set: (target, prop, value, receiver) => {
         const schemaFields = new Set([${fieldsList}]);
         if (!schemaFields.has(prop as string)) {
@@ -106,7 +126,7 @@ function generateNodeClass(schema: NormalizedSchema): string {
         
 ${createStrings}
         
-        const entityOffset = LowLevel.create${schema.name}(builder, ${createParams});
+        const entityOffset = ${schema.name}FB.${schema.name}.create${schema.name}(builder, ${createParams});
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
@@ -116,7 +136,7 @@ ${createStrings}
           buffer
         );
         
-        const newFbb = getRootAs(new ByteBuffer(buffer), '${schema.name}') as LowLevel.${schema.name};
+        const newFbb = ${schema.name}FB.${schema.name}.getRootAs${schema.name}(new ByteBuffer(buffer));
         target.fbb = newFbb;
 
         return true;
@@ -150,7 +170,8 @@ function generateDbAccessors(schema: NormalizedSchema): string {
 
   const createStrings = stringFields
     .map(
-      (f) => `    const ${f.name}Offset = builder.createString(data.${f.name});`
+      (f) =>
+        `    const ${f.name}Offset = data.${f.name} ? builder.createString(data.${f.name}) : 0;`
     )
     .join("\n");
   const createParams = schema.fields
@@ -166,11 +187,11 @@ function generateDbAccessors(schema: NormalizedSchema): string {
   get ${schemaNameLower}s() {
     return {
       get: (id: string): ${resolvedNodeType} | null => {
-        return this.db.get<LowLevel.${schema.name}, ${nodeName}>(
+        return this.db.get<${schema.name}FB.${schema.name}, ${nodeName}>(
           '${schema.name}',
           id,
           (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
-          (bb) => LowLevel.${schema.name}.getRootAs${schema.name}(bb),
+          (bb) => ${schema.name}FB.${schema.name}.getRootAs${schema.name}(bb),
           this.authContext,
         ) as ${resolvedNodeType} | null;
       },
@@ -179,7 +200,7 @@ function generateDbAccessors(schema: NormalizedSchema): string {
         
 ${createStrings}
         
-        const entityOffset = LowLevel.${schema.name}.create${schema.name}(builder, ${createParams});
+        const entityOffset = ${schema.name}FB.${schema.name}.create${schema.name}(builder, ${createParams});
         builder.finish(entityOffset);
         
         const buffer = builder.asUint8Array();
@@ -188,12 +209,12 @@ ${createStrings}
           throw new Error("The 'id' field is required and must be a string to create an entity.");
         }
 
-        return this.db.create<LowLevel.${schema.name}, ${nodeName}>(
+        return this.db.create<${schema.name}FB.${schema.name}, ${nodeName}>(
           '${schema.name}',
           data.id,
           buffer,
           (db, fbb, ac) => new ${nodeName}(db, fbb, ac),
-          (bb) => LowLevel.${schema.name}.getRootAs${schema.name}(bb),
+          (bb) => ${schema.name}FB.${schema.name}.getRootAs${schema.name}(bb),
           this.authContext,
         ) as ${resolvedNodeType};
       },
@@ -212,15 +233,27 @@ export function generateZgFile(
   options: GeneratorConfig["options"] = {}
 ): string {
   const sortedSchemas = topologicalSort(schemas);
+  const importExt = options.importExtension ?? ".js";
+
+  const schemaImports = sortedSchemas
+    .map((s) => {
+      return `import * as ${s.name}FB from './schema/${toKebabCase(
+        s.name
+      )}${importExt}';`;
+    })
+    .join("\n");
+
+  const allTypes = sortedSchemas
+    .map((s) => `${s.name}FB.${s.name}`)
+    .join(" | ");
 
   const interfaces = sortedSchemas.map(generateInterface).join("\n\n");
   const nodeClasses = sortedSchemas.map(generateNodeClass).join("\n\n");
   const dbAccessors = sortedSchemas.map(generateDbAccessors).join("\n");
-  const importExt = options.importExtension ?? ".js";
 
   return `// Generated by ZG. Do not edit.
 import { ZgDatabase, ZgBaseNode, ZgAuthContext } from '@zgdb/client';
-import * as LowLevel from './schema${importExt}';
+${schemaImports}
 import { Builder, ByteBuffer } from 'flatbuffers';
 
 // This is a hack. The generated schema.ts file exports all root functions,
@@ -234,6 +267,7 @@ const getRootAs = (bb: ByteBuffer, identifier: string) => {
 }
 
 // --- Helper Types ---
+type AnyZgNode = ${allTypes};
 type ResolverFn = (context: any) => any;
 type ResolverMap = Record<string, ResolverFn>;
 type ResolvedNode<TNode, TEntityResolvers extends ResolverMap, TGlobalResolvers extends ResolverMap> = TNode & {
