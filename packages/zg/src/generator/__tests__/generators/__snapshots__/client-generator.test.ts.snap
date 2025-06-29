@@ -1,0 +1,30 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ClientGenerator > should generate a ZgClient class with collections for each schema 1`] = `
+"export class ZgClient<TActor> extends ZgDatabase {
+  constructor(
+    prollyTree: ProllyTree,
+    config: ZgConfig<TActor> = { entityResolvers: {}, globalResolvers: {} }
+  ) {
+    super(prollyTree, config);
+  }
+
+  get users(): EntityCollection<UserNode<TActor>> {
+    return new EntityCollection<UserNode<TActor>>(
+      this,
+      'User',
+      (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
+      (bb) => UserFB.User.getRootAsUser(bb)
+    );
+  }
+
+  get posts(): EntityCollection<PostNode<TActor>> {
+    return new EntityCollection<PostNode<TActor>>(
+      this,
+      'Post',
+      (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
+      (bb) => PostFB.Post.getRootAsPost(bb)
+    );
+  }
+}"
+`;
