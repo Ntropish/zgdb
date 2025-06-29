@@ -3,6 +3,16 @@ import { ZgDatabase, ZgBaseNode, ZgAuthContext } from '@zgdb/client';
 import * as LowLevel from './schema.js';
 import { Builder, ByteBuffer } from 'flatbuffers';
 
+// This is a hack. The generated schema.ts file exports all root functions,
+// but we need a single entry point to look them up dynamically.
+const getRootAs = (bb: ByteBuffer, identifier: string) => {
+  const funcName = `getRootAs${identifier}`;
+  if (funcName in LowLevel) {
+    return (LowLevel as any)[funcName](bb);
+  }
+  throw new Error(`Invalid identifier for getRootAs: ${identifier}`);
+}
+
 // --- Helper Types ---
 type ResolverFn = (context: any) => any;
 type ResolverMap = Record<string, ResolverFn>;
@@ -87,6 +97,38 @@ export class UserNode<TActor> extends ZgBaseNode<LowLevel.User, TActor> {
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
+    
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        const schemaFields = new Set(['id', 'publicKey', 'displayName', 'avatarUrl']);
+        if (!schemaFields.has(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const data = { id: (prop === 'id') ? value : target.fbb.id(), publicKey: (prop === 'publicKey') ? value : target.fbb.publicKey(), displayName: (prop === 'displayName') ? value : target.fbb.displayName(), avatarUrl: (prop === 'avatarUrl') ? value : target.fbb.avatarUrl() };
+        
+    const idOffset = data.id ? builder.createString(data.id) : 0;
+    const publicKeyOffset = data.publicKey ? builder.createString(data.publicKey) : 0;
+    const displayNameOffset = data.displayName ? builder.createString(data.displayName) : 0;
+    const avatarUrlOffset = data.avatarUrl ? builder.createString(data.avatarUrl) : 0;
+        
+        const entityOffset = LowLevel.createUser(builder, idOffset, publicKeyOffset, displayNameOffset, avatarUrlOffset);
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.db.update(
+          'User',
+          target.id,
+          buffer
+        );
+        
+        const newFbb = getRootAs(new ByteBuffer(buffer), 'User') as LowLevel.User;
+        target.fbb = newFbb;
+
+        return true;
+      }
+    });
   }
 
   // --- Fields ---
@@ -107,79 +149,64 @@ export class UserNode<TActor> extends ZgBaseNode<LowLevel.User, TActor> {
   }
 
   // --- Relationships ---
-  get posts(): ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> | null {
+  get posts(): PostNode<TActor> | null {
     const id = this.fbb.postsId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Post, PostNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Post',
-      id,
-      (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Post.getRootAsPost(bb),
-      this.authContext
-    ) as ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Post') as LowLevel.Post,
+       this.authContext
+    ) as PostNode<TActor> | null;
   }
 
-  get comments(): ResolvedNode<CommentNode<TActor>, TEntityResolvers["Comment"], TGlobalResolvers> | null {
+  get comments(): CommentNode<TActor> | null {
     const id = this.fbb.commentsId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Comment, CommentNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Comment',
-      id,
-      (db, fbb, ac) => new CommentNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Comment.getRootAsComment(bb),
-      this.authContext
-    ) as ResolvedNode<CommentNode<TActor>, TEntityResolvers["Comment"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new CommentNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Comment') as LowLevel.Comment,
+       this.authContext
+    ) as CommentNode<TActor> | null;
   }
 
-  get reactions(): ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers> | null {
+  get reactions(): ReactionNode<TActor> | null {
     const id = this.fbb.reactionsId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Reaction, ReactionNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Reaction',
-      id,
-      (db, fbb, ac) => new ReactionNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Reaction.getRootAsReaction(bb),
-      this.authContext
-    ) as ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new ReactionNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Reaction') as LowLevel.Reaction,
+       this.authContext
+    ) as ReactionNode<TActor> | null;
   }
 
-  get following(): ResolvedNode<FollowNode<TActor>, TEntityResolvers["Follow"], TGlobalResolvers> | null {
+  get following(): FollowNode<TActor> | null {
     const id = this.fbb.followingId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Follow, FollowNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Follow',
-      id,
-      (db, fbb, ac) => new FollowNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Follow.getRootAsFollow(bb),
-      this.authContext
-    ) as ResolvedNode<FollowNode<TActor>, TEntityResolvers["Follow"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new FollowNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Follow') as LowLevel.Follow,
+       this.authContext
+    ) as FollowNode<TActor> | null;
   }
 
-  get followers(): ResolvedNode<FollowNode<TActor>, TEntityResolvers["Follow"], TGlobalResolvers> | null {
+  get followers(): FollowNode<TActor> | null {
     const id = this.fbb.followersId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Follow, FollowNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Follow',
-      id,
-      (db, fbb, ac) => new FollowNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Follow.getRootAsFollow(bb),
-      this.authContext
-    ) as ResolvedNode<FollowNode<TActor>, TEntityResolvers["Follow"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new FollowNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Follow') as LowLevel.Follow,
+       this.authContext
+    ) as FollowNode<TActor> | null;
   }
 }
 
@@ -190,6 +217,38 @@ export class PostNode<TActor> extends ZgBaseNode<LowLevel.Post, TActor> {
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
+    
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        const schemaFields = new Set(['id', 'title', 'content', 'authorId', 'createdAt']);
+        if (!schemaFields.has(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const data = { id: (prop === 'id') ? value : target.fbb.id(), title: (prop === 'title') ? value : target.fbb.title(), content: (prop === 'content') ? value : target.fbb.content(), authorId: (prop === 'authorId') ? value : target.fbb.authorId(), createdAt: (prop === 'createdAt') ? value : target.fbb.createdAt() };
+        
+    const idOffset = data.id ? builder.createString(data.id) : 0;
+    const titleOffset = data.title ? builder.createString(data.title) : 0;
+    const contentOffset = data.content ? builder.createString(data.content) : 0;
+    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
+        
+        const entityOffset = LowLevel.createPost(builder, idOffset, titleOffset, contentOffset, authorIdOffset, data.createdAt);
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.db.update(
+          'Post',
+          target.id,
+          buffer
+        );
+        
+        const newFbb = getRootAs(new ByteBuffer(buffer), 'Post') as LowLevel.Post;
+        target.fbb = newFbb;
+
+        return true;
+      }
+    });
   }
 
   // --- Fields ---
@@ -214,64 +273,52 @@ export class PostNode<TActor> extends ZgBaseNode<LowLevel.Post, TActor> {
   }
 
   // --- Relationships ---
-  get author(): ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null {
+  get author(): UserNode<TActor> | null {
     const id = this.fbb.authorId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.User, UserNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'User',
-      id,
-      (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.User.getRootAsUser(bb),
-      this.authContext
-    ) as ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'User') as LowLevel.User,
+       this.authContext
+    ) as UserNode<TActor> | null;
   }
 
-  get comments(): ResolvedNode<CommentNode<TActor>, TEntityResolvers["Comment"], TGlobalResolvers> | null {
+  get comments(): CommentNode<TActor> | null {
     const id = this.fbb.commentsId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Comment, CommentNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Comment',
-      id,
-      (db, fbb, ac) => new CommentNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Comment.getRootAsComment(bb),
-      this.authContext
-    ) as ResolvedNode<CommentNode<TActor>, TEntityResolvers["Comment"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new CommentNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Comment') as LowLevel.Comment,
+       this.authContext
+    ) as CommentNode<TActor> | null;
   }
 
-  get images(): ResolvedNode<ImageNode<TActor>, TEntityResolvers["Image"], TGlobalResolvers> | null {
+  get images(): ImageNode<TActor> | null {
     const id = this.fbb.imagesId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Image, ImageNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Image',
-      id,
-      (db, fbb, ac) => new ImageNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Image.getRootAsImage(bb),
-      this.authContext
-    ) as ResolvedNode<ImageNode<TActor>, TEntityResolvers["Image"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new ImageNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Image') as LowLevel.Image,
+       this.authContext
+    ) as ImageNode<TActor> | null;
   }
 
-  get reactions(): ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers> | null {
+  get reactions(): ReactionNode<TActor> | null {
     const id = this.fbb.reactionsId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Reaction, ReactionNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Reaction',
-      id,
-      (db, fbb, ac) => new ReactionNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Reaction.getRootAsReaction(bb),
-      this.authContext
-    ) as ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new ReactionNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Reaction') as LowLevel.Reaction,
+       this.authContext
+    ) as ReactionNode<TActor> | null;
   }
 }
 
@@ -282,6 +329,38 @@ export class CommentNode<TActor> extends ZgBaseNode<LowLevel.Comment, TActor> {
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
+    
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        const schemaFields = new Set(['id', 'content', 'authorId', 'postId', 'createdAt']);
+        if (!schemaFields.has(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const data = { id: (prop === 'id') ? value : target.fbb.id(), content: (prop === 'content') ? value : target.fbb.content(), authorId: (prop === 'authorId') ? value : target.fbb.authorId(), postId: (prop === 'postId') ? value : target.fbb.postId(), createdAt: (prop === 'createdAt') ? value : target.fbb.createdAt() };
+        
+    const idOffset = data.id ? builder.createString(data.id) : 0;
+    const contentOffset = data.content ? builder.createString(data.content) : 0;
+    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
+    const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
+        
+        const entityOffset = LowLevel.createComment(builder, idOffset, contentOffset, authorIdOffset, postIdOffset, data.createdAt);
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.db.update(
+          'Comment',
+          target.id,
+          buffer
+        );
+        
+        const newFbb = getRootAs(new ByteBuffer(buffer), 'Comment') as LowLevel.Comment;
+        target.fbb = newFbb;
+
+        return true;
+      }
+    });
   }
 
   // --- Fields ---
@@ -306,49 +385,40 @@ export class CommentNode<TActor> extends ZgBaseNode<LowLevel.Comment, TActor> {
   }
 
   // --- Relationships ---
-  get author(): ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null {
+  get author(): UserNode<TActor> | null {
     const id = this.fbb.authorId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.User, UserNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'User',
-      id,
-      (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.User.getRootAsUser(bb),
-      this.authContext
-    ) as ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'User') as LowLevel.User,
+       this.authContext
+    ) as UserNode<TActor> | null;
   }
 
-  get post(): ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> | null {
+  get post(): PostNode<TActor> | null {
     const id = this.fbb.postId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Post, PostNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Post',
-      id,
-      (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Post.getRootAsPost(bb),
-      this.authContext
-    ) as ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Post') as LowLevel.Post,
+       this.authContext
+    ) as PostNode<TActor> | null;
   }
 
-  get reactions(): ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers> | null {
+  get reactions(): ReactionNode<TActor> | null {
     const id = this.fbb.reactionsId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Reaction, ReactionNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Reaction',
-      id,
-      (db, fbb, ac) => new ReactionNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Reaction.getRootAsReaction(bb),
-      this.authContext
-    ) as ResolvedNode<ReactionNode<TActor>, TEntityResolvers["Reaction"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new ReactionNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Reaction') as LowLevel.Reaction,
+       this.authContext
+    ) as ReactionNode<TActor> | null;
   }
 }
 
@@ -359,6 +429,37 @@ export class FollowNode<TActor> extends ZgBaseNode<LowLevel.Follow, TActor> {
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
+    
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        const schemaFields = new Set(['id', 'followerId', 'followingId', 'createdAt']);
+        if (!schemaFields.has(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const data = { id: (prop === 'id') ? value : target.fbb.id(), followerId: (prop === 'followerId') ? value : target.fbb.followerId(), followingId: (prop === 'followingId') ? value : target.fbb.followingId(), createdAt: (prop === 'createdAt') ? value : target.fbb.createdAt() };
+        
+    const idOffset = data.id ? builder.createString(data.id) : 0;
+    const followerIdOffset = data.followerId ? builder.createString(data.followerId) : 0;
+    const followingIdOffset = data.followingId ? builder.createString(data.followingId) : 0;
+        
+        const entityOffset = LowLevel.createFollow(builder, idOffset, followerIdOffset, followingIdOffset, data.createdAt);
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.db.update(
+          'Follow',
+          target.id,
+          buffer
+        );
+        
+        const newFbb = getRootAs(new ByteBuffer(buffer), 'Follow') as LowLevel.Follow;
+        target.fbb = newFbb;
+
+        return true;
+      }
+    });
   }
 
   // --- Fields ---
@@ -379,34 +480,28 @@ export class FollowNode<TActor> extends ZgBaseNode<LowLevel.Follow, TActor> {
   }
 
   // --- Relationships ---
-  get follower(): ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null {
+  get follower(): UserNode<TActor> | null {
     const id = this.fbb.followerId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.User, UserNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'User',
-      id,
-      (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.User.getRootAsUser(bb),
-      this.authContext
-    ) as ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'User') as LowLevel.User,
+       this.authContext
+    ) as UserNode<TActor> | null;
   }
 
-  get following(): ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null {
+  get following(): UserNode<TActor> | null {
     const id = this.fbb.followingId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.User, UserNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'User',
-      id,
-      (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.User.getRootAsUser(bb),
-      this.authContext
-    ) as ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'User') as LowLevel.User,
+       this.authContext
+    ) as UserNode<TActor> | null;
   }
 }
 
@@ -417,6 +512,35 @@ export class Image_MetadataNode<TActor> extends ZgBaseNode<LowLevel.Image_Metada
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
+    
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        const schemaFields = new Set(['width', 'height', 'format', 'createdAt']);
+        if (!schemaFields.has(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const data = { width: (prop === 'width') ? value : target.fbb.width(), height: (prop === 'height') ? value : target.fbb.height(), format: (prop === 'format') ? value : target.fbb.format(), createdAt: (prop === 'createdAt') ? value : target.fbb.createdAt() };
+        
+    const formatOffset = data.format ? builder.createString(data.format) : 0;
+        
+        const entityOffset = LowLevel.createImage_Metadata(builder, data.width, data.height, formatOffset, data.createdAt);
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.db.update(
+          'Image_Metadata',
+          target.id,
+          buffer
+        );
+        
+        const newFbb = getRootAs(new ByteBuffer(buffer), 'Image_Metadata') as LowLevel.Image_Metadata;
+        target.fbb = newFbb;
+
+        return true;
+      }
+    });
   }
 
   // --- Fields ---
@@ -447,6 +571,39 @@ export class ImageNode<TActor> extends ZgBaseNode<LowLevel.Image, TActor> {
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
+    
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        const schemaFields = new Set(['id', 'url', 'fartCount', 'altText', 'metadata', 'postId', 'userId']);
+        if (!schemaFields.has(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const data = { id: (prop === 'id') ? value : target.fbb.id(), url: (prop === 'url') ? value : target.fbb.url(), fartCount: (prop === 'fartCount') ? value : target.fbb.fartCount(), altText: (prop === 'altText') ? value : target.fbb.altText(), metadata: (prop === 'metadata') ? value : target.fbb.metadata(), postId: (prop === 'postId') ? value : target.fbb.postId(), userId: (prop === 'userId') ? value : target.fbb.userId() };
+        
+    const idOffset = data.id ? builder.createString(data.id) : 0;
+    const urlOffset = data.url ? builder.createString(data.url) : 0;
+    const altTextOffset = data.altText ? builder.createString(data.altText) : 0;
+    const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
+    const userIdOffset = data.userId ? builder.createString(data.userId) : 0;
+        
+        const entityOffset = LowLevel.createImage(builder, idOffset, urlOffset, data.fartCount, altTextOffset, data.metadata, postIdOffset, userIdOffset);
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.db.update(
+          'Image',
+          target.id,
+          buffer
+        );
+        
+        const newFbb = getRootAs(new ByteBuffer(buffer), 'Image') as LowLevel.Image;
+        target.fbb = newFbb;
+
+        return true;
+      }
+    });
   }
 
   // --- Fields ---
@@ -479,34 +636,28 @@ export class ImageNode<TActor> extends ZgBaseNode<LowLevel.Image, TActor> {
   }
 
   // --- Relationships ---
-  get post(): ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> | null {
+  get post(): PostNode<TActor> | null {
     const id = this.fbb.postId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Post, PostNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Post',
-      id,
-      (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Post.getRootAsPost(bb),
-      this.authContext
-    ) as ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Post') as LowLevel.Post,
+       this.authContext
+    ) as PostNode<TActor> | null;
   }
 
-  get user(): ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null {
+  get user(): UserNode<TActor> | null {
     const id = this.fbb.userId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.User, UserNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'User',
-      id,
-      (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.User.getRootAsUser(bb),
-      this.authContext
-    ) as ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'User') as LowLevel.User,
+       this.authContext
+    ) as UserNode<TActor> | null;
   }
 }
 
@@ -517,6 +668,39 @@ export class ReactionNode<TActor> extends ZgBaseNode<LowLevel.Reaction, TActor> 
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
+    
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        const schemaFields = new Set(['id', 'type', 'authorId', 'targetId', 'targetType']);
+        if (!schemaFields.has(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const data = { id: (prop === 'id') ? value : target.fbb.id(), type: (prop === 'type') ? value : target.fbb.type(), authorId: (prop === 'authorId') ? value : target.fbb.authorId(), targetId: (prop === 'targetId') ? value : target.fbb.targetId(), targetType: (prop === 'targetType') ? value : target.fbb.targetType() };
+        
+    const idOffset = data.id ? builder.createString(data.id) : 0;
+    const typeOffset = data.type ? builder.createString(data.type) : 0;
+    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
+    const targetIdOffset = data.targetId ? builder.createString(data.targetId) : 0;
+    const targetTypeOffset = data.targetType ? builder.createString(data.targetType) : 0;
+        
+        const entityOffset = LowLevel.createReaction(builder, idOffset, typeOffset, authorIdOffset, targetIdOffset, targetTypeOffset);
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.db.update(
+          'Reaction',
+          target.id,
+          buffer
+        );
+        
+        const newFbb = getRootAs(new ByteBuffer(buffer), 'Reaction') as LowLevel.Reaction;
+        target.fbb = newFbb;
+
+        return true;
+      }
+    });
   }
 
   // --- Fields ---
@@ -541,19 +725,16 @@ export class ReactionNode<TActor> extends ZgBaseNode<LowLevel.Reaction, TActor> 
   }
 
   // --- Relationships ---
-  get author(): ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null {
+  get author(): UserNode<TActor> | null {
     const id = this.fbb.authorId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.User, UserNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'User',
-      id,
-      (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.User.getRootAsUser(bb),
-      this.authContext
-    ) as ResolvedNode<UserNode<TActor>, TEntityResolvers["User"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new UserNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'User') as LowLevel.User,
+       this.authContext
+    ) as UserNode<TActor> | null;
   }
 }
 
@@ -564,6 +745,36 @@ export class TagNode<TActor> extends ZgBaseNode<LowLevel.Tag, TActor> {
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
+    
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        const schemaFields = new Set(['id', 'name']);
+        if (!schemaFields.has(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const data = { id: (prop === 'id') ? value : target.fbb.id(), name: (prop === 'name') ? value : target.fbb.name() };
+        
+    const idOffset = data.id ? builder.createString(data.id) : 0;
+    const nameOffset = data.name ? builder.createString(data.name) : 0;
+        
+        const entityOffset = LowLevel.createTag(builder, idOffset, nameOffset);
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.db.update(
+          'Tag',
+          target.id,
+          buffer
+        );
+        
+        const newFbb = getRootAs(new ByteBuffer(buffer), 'Tag') as LowLevel.Tag;
+        target.fbb = newFbb;
+
+        return true;
+      }
+    });
   }
 
   // --- Fields ---
@@ -586,6 +797,37 @@ export class PostTagNode<TActor> extends ZgBaseNode<LowLevel.PostTag, TActor> {
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
+    
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        const schemaFields = new Set(['id', 'postId', 'tagId']);
+        if (!schemaFields.has(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const data = { id: (prop === 'id') ? value : target.fbb.id(), postId: (prop === 'postId') ? value : target.fbb.postId(), tagId: (prop === 'tagId') ? value : target.fbb.tagId() };
+        
+    const idOffset = data.id ? builder.createString(data.id) : 0;
+    const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
+    const tagIdOffset = data.tagId ? builder.createString(data.tagId) : 0;
+        
+        const entityOffset = LowLevel.createPostTag(builder, idOffset, postIdOffset, tagIdOffset);
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.db.update(
+          'PostTag',
+          target.id,
+          buffer
+        );
+        
+        const newFbb = getRootAs(new ByteBuffer(buffer), 'PostTag') as LowLevel.PostTag;
+        target.fbb = newFbb;
+
+        return true;
+      }
+    });
   }
 
   // --- Fields ---
@@ -602,34 +844,28 @@ export class PostTagNode<TActor> extends ZgBaseNode<LowLevel.PostTag, TActor> {
   }
 
   // --- Relationships ---
-  get post(): ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> | null {
+  get post(): PostNode<TActor> | null {
     const id = this.fbb.postId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Post, PostNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Post',
-      id,
-      (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Post.getRootAsPost(bb),
-      this.authContext
-    ) as ResolvedNode<PostNode<TActor>, TEntityResolvers["Post"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new PostNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Post') as LowLevel.Post,
+       this.authContext
+    ) as PostNode<TActor> | null;
   }
 
-  get tag(): ResolvedNode<TagNode<TActor>, TEntityResolvers["Tag"], TGlobalResolvers> | null {
+  get tag(): TagNode<TActor> | null {
     const id = this.fbb.tagId();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.Tag, TagNode<TActor>>(
+    if (!id) return null;
+    return this.db.get(
       'Tag',
-      id,
-      (db, fbb, ac) => new TagNode<TActor>(db, fbb, ac),
-      (bb) => LowLevel.Tag.getRootAsTag(bb),
-      this.authContext
-    ) as ResolvedNode<TagNode<TActor>, TEntityResolvers["Tag"], TGlobalResolvers> | null;
+       id,
+       (db, fbb, ac) => new TagNode<TActor>(db, fbb, ac),
+       (bb) => getRootAs(bb, 'Tag') as LowLevel.Tag,
+       this.authContext
+    ) as TagNode<TActor> | null;
   }
 }
 

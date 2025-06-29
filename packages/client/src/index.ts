@@ -12,12 +12,16 @@ export type ZgAuthContext<TActor = any> = {
 
 // This is the base class for all generated node types.
 // It provides the link to the low-level Flatbuffers object.
-export class ZgBaseNode<T extends Table, TActor = any> {
+export class ZgBaseNode<T extends Table & { id(): string }, TActor = any> {
   constructor(
     protected db: ZgDatabase,
     public fbb: T,
     public authContext: ZgAuthContext<TActor> | null
   ) {}
+
+  get id(): string {
+    return this.fbb.id();
+  }
 }
 
 // The ZgDatabase class is the storage engine.
@@ -44,40 +48,7 @@ export class ZgDatabase {
       : constructorName;
   }
 
-  private _createNodeProxy<TNode extends ZgBaseNode<any, any>>(
-    node: TNode
-  ): TNode {
-    const entityName = this._getNodeName(node);
-    const entityResolvers = this.config.entityResolvers?.[entityName] ?? {};
-    const globalResolvers = this.config.globalResolvers ?? {};
-    const allResolverNames = new Set([
-      ...Object.keys(entityResolvers),
-      ...Object.keys(globalResolvers),
-    ]);
-
-    return new Proxy(node, {
-      get: (target, prop, receiver) => {
-        // If the property is on the node itself, return it
-        if (Reflect.has(target, prop)) {
-          return Reflect.get(target, prop, receiver);
-        }
-
-        // If it's a known resolver, resolve it
-        if (typeof prop === "string" && allResolverNames.has(prop)) {
-          const resolver = entityResolvers[prop] ?? globalResolvers[prop];
-          return resolver({
-            actor: node.authContext?.actor,
-            db: this,
-            node: target,
-          });
-        }
-
-        return undefined;
-      },
-    });
-  }
-
-  get<T extends Table, TNode extends ZgBaseNode<T>>(
+  get<T extends Table & { id(): string }, TNode extends ZgBaseNode<T>>(
     entityName: string,
     id: string,
     nodeFactory: (
@@ -95,11 +66,10 @@ export class ZgDatabase {
     }
     const byteBuffer = new ByteBuffer(data);
     const table = getRootAs(byteBuffer);
-    const node = nodeFactory(this, table, authContext);
-    return this._createNodeProxy(node);
+    return nodeFactory(this, table, authContext);
   }
 
-  create<T extends Table, TNode extends ZgBaseNode<T>>(
+  create<T extends Table & { id(): string }, TNode extends ZgBaseNode<T>>(
     entityName: string,
     id: string,
     data: Uint8Array,
@@ -117,30 +87,13 @@ export class ZgDatabase {
 
     const byteBuffer = new ByteBuffer(data);
     const table = getRootAs(byteBuffer);
-    const node = nodeFactory(this, table, authContext);
-    return this._createNodeProxy(node);
+    return nodeFactory(this, table, authContext);
   }
 
-  update<T extends Table, TNode extends ZgBaseNode<T>>(
-    entityName: string,
-    id: string,
-    data: Uint8Array,
-    nodeFactory: (
-      db: ZgDatabase,
-      fbb: T,
-      ac: ZgAuthContext<any> | null
-    ) => TNode,
-    getRootAs: (byteBuffer: ByteBuffer) => T,
-    authContext: ZgAuthContext | null
-  ): TNode {
+  update(entityName: string, id: string, data: Uint8Array): void {
     const key = ZgDatabase.textToKey(`${entityName}:${id}`);
     const { tree: newTree } = this.tree.putSync(key, data);
     this.tree = newTree;
-
-    const byteBuffer = new ByteBuffer(data);
-    const table = getRootAs(byteBuffer);
-    const node = nodeFactory(this, table, authContext);
-    return this._createNodeProxy(node);
   }
 }
 

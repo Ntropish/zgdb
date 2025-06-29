@@ -71,6 +71,31 @@ describe("ZG Client: Relationships", () => {
     // expect(posts).toHaveLength(1);
     // expect(posts[0].title).toBe("Post by A");
   });
+
+  it("should update a node via direct property assignment", () => {
+    const client = db.createClient({ id: "system" });
+
+    // 1. Create a post
+    const originalPost = client.posts.create({
+      id: "post-to-update",
+      title: "Original Title",
+      content: "Some content.",
+      authorId: "user-B",
+      createdAt: BigInt(Date.now()),
+    });
+    expect(originalPost.title).toBe("Original Title");
+
+    // 2. Update the title via direct assignment
+    originalPost.title = "Updated Title";
+
+    // 3. Verify the change is reflected on the same object
+    expect(originalPost.title).toBe("Updated Title");
+
+    // 4. Fetch the post again to ensure the change was persisted
+    const updatedPost = client.posts.get("post-to-update");
+    expect(updatedPost).toBeDefined();
+    expect(updatedPost!.title).toBe("Updated Title");
+  });
 });
 
 describe("ZG Client: Resolvers", () => {

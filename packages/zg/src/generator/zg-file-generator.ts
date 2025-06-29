@@ -29,7 +29,6 @@ function generateNodeClass(schema: NormalizedSchema): string {
   const fields = schema.fields
     .map((f) => {
       let tsType = mapTsType(f.type);
-      // Flatbuffers returns null for string fields that are not set.
       if (f.type === "string") {
         tsType = "string | null";
       }
@@ -48,23 +47,44 @@ function generateNodeClass(schema: NormalizedSchema): string {
       const relSchemaName = rel.node;
       const relNodeName = `${relSchemaName}Node<TActor>`;
       const foreignKeyField = `${rel.name}Id`;
-      const resolvedNodeType = `ResolvedNode<${relNodeName}, TEntityResolvers["${relSchemaName}"], TGlobalResolvers>`;
+      const resolvedNodeType = relNodeName;
       return `  get ${rel.name}(): ${resolvedNodeType} | null {
     const id = this.fbb.${foreignKeyField}();
-    if (!id) {
-      return null;
-    }
-    // This assumes the generator will correctly pass down the full TEntityResolvers and TGlobalResolvers types
-    return this.db.get<LowLevel.${relSchemaName}, ${relNodeName}>(
+    if (!id) return null;
+    return this.db.get(
       '${relSchemaName}',
-      id,
-      (db, fbb, ac) => new ${relNodeName}(db, fbb, ac),
-      (bb) => LowLevel.${relSchemaName}.getRootAs${relSchemaName}(bb),
-      this.authContext
+       id,
+       (db, fbb, ac) => new ${relNodeName}(db, fbb, ac),
+       (bb) => getRootAs(bb, '${relSchemaName}') as LowLevel.${relSchemaName},
+       this.authContext
     ) as ${resolvedNodeType} | null;
   }`;
     })
     .join("\n\n");
+
+  const fieldsList = schema.fields.map((f) => `'${f.name}'`).join(", ");
+
+  const rehydrationParams = schema.fields
+    .map((f) => {
+      const accessor = `target.fbb.${f.name}()`;
+      return `${f.name}: (prop === '${f.name}') ? value : ${accessor}`;
+    })
+    .join(", ");
+
+  const createStrings = schema.fields
+    .filter((f) => f.type === "string")
+    .map(
+      (f) =>
+        `    const ${f.name}Offset = data.${f.name} ? builder.createString(data.${f.name}) : 0;`
+    )
+    .join("\n");
+
+  const createParams = schema.fields
+    .map((f) => {
+      if (f.type === "string") return `${f.name}Offset`;
+      return `data.${f.name}`;
+    })
+    .join(", ");
 
   return `export class ${schema.name}Node<TActor> extends ZgBaseNode<LowLevel.${schema.name}, TActor> {
   constructor(
@@ -73,6 +93,35 @@ function generateNodeClass(schema: NormalizedSchema): string {
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(db, fbb, authContext);
+    
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        const schemaFields = new Set([${fieldsList}]);
+        if (!schemaFields.has(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const data = { ${rehydrationParams} };
+        
+${createStrings}
+        
+        const entityOffset = LowLevel.create${schema.name}(builder, ${createParams});
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.db.update(
+          '${schema.name}',
+          target.id,
+          buffer
+        );
+        
+        const newFbb = getRootAs(new ByteBuffer(buffer), '${schema.name}') as LowLevel.${schema.name};
+        target.fbb = newFbb;
+
+        return true;
+      }
+    });
   }
 
   // --- Fields ---
@@ -173,6 +222,16 @@ export function generateZgFile(
 import { ZgDatabase, ZgBaseNode, ZgAuthContext } from '@zgdb/client';
 import * as LowLevel from './schema${importExt}';
 import { Builder, ByteBuffer } from 'flatbuffers';
+
+// This is a hack. The generated schema.ts file exports all root functions,
+// but we need a single entry point to look them up dynamically.
+const getRootAs = (bb: ByteBuffer, identifier: string) => {
+  const funcName = \`getRootAs\${identifier}\`;
+  if (funcName in LowLevel) {
+    return (LowLevel as any)[funcName](bb);
+  }
+  throw new Error(\`Invalid identifier for getRootAs: \${identifier}\`);
+}
 
 // --- Helper Types ---
 type ResolverFn = (context: any) => any;
