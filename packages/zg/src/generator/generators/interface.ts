@@ -30,3 +30,7 @@ function generateInterface(schema: NormalizedSchema): string {
 export function generateInterfaces(schemas: NormalizedSchema[]): string {
   return schemas.map(generateInterface).join("\n\n");
 }
+
+export interface IGenerator<TOptions = any> {
+  generate(schemas: NormalizedSchema[], options?: TOptions): string;
+}
