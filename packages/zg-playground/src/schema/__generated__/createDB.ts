@@ -370,10 +370,10 @@ export class ZgClient<TActor> {
       get: async (id: string): Promise<UserNode<TActor> | null> => {
         return this.db.get<LowLevel.User, UserNode<TActor>>('User', id, (db, fbb, ac) => new UserNode(db, fbb, ac));
       },
-      create: async (data: Partial<IUser>): Promise<UserNode<TActor>> => {
+      create: (data: Partial<IUser>): UserNode<TActor> => {
         return this.db.create<LowLevel.User, UserNode<TActor>>('User', data, (db, fbb, ac) => new UserNode(db, fbb, ac));
       },
-      update: async (id: string, data: Partial<IUser>): Promise<UserNode<TActor>> => {
+      update: (id: string, data: Partial<IUser>): UserNode<TActor> => {
         return this.db.update<LowLevel.User, UserNode<TActor>>('User', id, data, (db, fbb, ac) => new UserNode(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {
@@ -387,10 +387,10 @@ export class ZgClient<TActor> {
       get: async (id: string): Promise<PostNode<TActor> | null> => {
         return this.db.get<LowLevel.Post, PostNode<TActor>>('Post', id, (db, fbb, ac) => new PostNode(db, fbb, ac));
       },
-      create: async (data: Partial<IPost>): Promise<PostNode<TActor>> => {
+      create: (data: Partial<IPost>): PostNode<TActor> => {
         return this.db.create<LowLevel.Post, PostNode<TActor>>('Post', data, (db, fbb, ac) => new PostNode(db, fbb, ac));
       },
-      update: async (id: string, data: Partial<IPost>): Promise<PostNode<TActor>> => {
+      update: (id: string, data: Partial<IPost>): PostNode<TActor> => {
         return this.db.update<LowLevel.Post, PostNode<TActor>>('Post', id, data, (db, fbb, ac) => new PostNode(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {
@@ -404,10 +404,10 @@ export class ZgClient<TActor> {
       get: async (id: string): Promise<CommentNode<TActor> | null> => {
         return this.db.get<LowLevel.Comment, CommentNode<TActor>>('Comment', id, (db, fbb, ac) => new CommentNode(db, fbb, ac));
       },
-      create: async (data: Partial<IComment>): Promise<CommentNode<TActor>> => {
+      create: (data: Partial<IComment>): CommentNode<TActor> => {
         return this.db.create<LowLevel.Comment, CommentNode<TActor>>('Comment', data, (db, fbb, ac) => new CommentNode(db, fbb, ac));
       },
-      update: async (id: string, data: Partial<IComment>): Promise<CommentNode<TActor>> => {
+      update: (id: string, data: Partial<IComment>): CommentNode<TActor> => {
         return this.db.update<LowLevel.Comment, CommentNode<TActor>>('Comment', id, data, (db, fbb, ac) => new CommentNode(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {
@@ -421,10 +421,10 @@ export class ZgClient<TActor> {
       get: async (id: string): Promise<FollowNode<TActor> | null> => {
         return this.db.get<LowLevel.Follow, FollowNode<TActor>>('Follow', id, (db, fbb, ac) => new FollowNode(db, fbb, ac));
       },
-      create: async (data: Partial<IFollow>): Promise<FollowNode<TActor>> => {
+      create: (data: Partial<IFollow>): FollowNode<TActor> => {
         return this.db.create<LowLevel.Follow, FollowNode<TActor>>('Follow', data, (db, fbb, ac) => new FollowNode(db, fbb, ac));
       },
-      update: async (id: string, data: Partial<IFollow>): Promise<FollowNode<TActor>> => {
+      update: (id: string, data: Partial<IFollow>): FollowNode<TActor> => {
         return this.db.update<LowLevel.Follow, FollowNode<TActor>>('Follow', id, data, (db, fbb, ac) => new FollowNode(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {
@@ -438,10 +438,10 @@ export class ZgClient<TActor> {
       get: async (id: string): Promise<Image_MetadataNode<TActor> | null> => {
         return this.db.get<LowLevel.Image_Metadata, Image_MetadataNode<TActor>>('Image_Metadata', id, (db, fbb, ac) => new Image_MetadataNode(db, fbb, ac));
       },
-      create: async (data: Partial<IImage_Metadata>): Promise<Image_MetadataNode<TActor>> => {
+      create: (data: Partial<IImage_Metadata>): Image_MetadataNode<TActor> => {
         return this.db.create<LowLevel.Image_Metadata, Image_MetadataNode<TActor>>('Image_Metadata', data, (db, fbb, ac) => new Image_MetadataNode(db, fbb, ac));
       },
-      update: async (id: string, data: Partial<IImage_Metadata>): Promise<Image_MetadataNode<TActor>> => {
+      update: (id: string, data: Partial<IImage_Metadata>): Image_MetadataNode<TActor> => {
         return this.db.update<LowLevel.Image_Metadata, Image_MetadataNode<TActor>>('Image_Metadata', id, data, (db, fbb, ac) => new Image_MetadataNode(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {
@@ -455,10 +455,10 @@ export class ZgClient<TActor> {
       get: async (id: string): Promise<ImageNode<TActor> | null> => {
         return this.db.get<LowLevel.Image, ImageNode<TActor>>('Image', id, (db, fbb, ac) => new ImageNode(db, fbb, ac));
       },
-      create: async (data: Partial<IImage>): Promise<ImageNode<TActor>> => {
+      create: (data: Partial<IImage>): ImageNode<TActor> => {
         return this.db.create<LowLevel.Image, ImageNode<TActor>>('Image', data, (db, fbb, ac) => new ImageNode(db, fbb, ac));
       },
-      update: async (id: string, data: Partial<IImage>): Promise<ImageNode<TActor>> => {
+      update: (id: string, data: Partial<IImage>): ImageNode<TActor> => {
         return this.db.update<LowLevel.Image, ImageNode<TActor>>('Image', id, data, (db, fbb, ac) => new ImageNode(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {
@@ -472,10 +472,10 @@ export class ZgClient<TActor> {
       get: async (id: string): Promise<ReactionNode<TActor> | null> => {
         return this.db.get<LowLevel.Reaction, ReactionNode<TActor>>('Reaction', id, (db, fbb, ac) => new ReactionNode(db, fbb, ac));
       },
-      create: async (data: Partial<IReaction>): Promise<ReactionNode<TActor>> => {
+      create: (data: Partial<IReaction>): ReactionNode<TActor> => {
         return this.db.create<LowLevel.Reaction, ReactionNode<TActor>>('Reaction', data, (db, fbb, ac) => new ReactionNode(db, fbb, ac));
       },
-      update: async (id: string, data: Partial<IReaction>): Promise<ReactionNode<TActor>> => {
+      update: (id: string, data: Partial<IReaction>): ReactionNode<TActor> => {
         return this.db.update<LowLevel.Reaction, ReactionNode<TActor>>('Reaction', id, data, (db, fbb, ac) => new ReactionNode(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {
@@ -489,10 +489,10 @@ export class ZgClient<TActor> {
       get: async (id: string): Promise<TagNode<TActor> | null> => {
         return this.db.get<LowLevel.Tag, TagNode<TActor>>('Tag', id, (db, fbb, ac) => new TagNode(db, fbb, ac));
       },
-      create: async (data: Partial<ITag>): Promise<TagNode<TActor>> => {
+      create: (data: Partial<ITag>): TagNode<TActor> => {
         return this.db.create<LowLevel.Tag, TagNode<TActor>>('Tag', data, (db, fbb, ac) => new TagNode(db, fbb, ac));
       },
-      update: async (id: string, data: Partial<ITag>): Promise<TagNode<TActor>> => {
+      update: (id: string, data: Partial<ITag>): TagNode<TActor> => {
         return this.db.update<LowLevel.Tag, TagNode<TActor>>('Tag', id, data, (db, fbb, ac) => new TagNode(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {
@@ -506,10 +506,10 @@ export class ZgClient<TActor> {
       get: async (id: string): Promise<PostTagNode<TActor> | null> => {
         return this.db.get<LowLevel.PostTag, PostTagNode<TActor>>('PostTag', id, (db, fbb, ac) => new PostTagNode(db, fbb, ac));
       },
-      create: async (data: Partial<IPostTag>): Promise<PostTagNode<TActor>> => {
+      create: (data: Partial<IPostTag>): PostTagNode<TActor> => {
         return this.db.create<LowLevel.PostTag, PostTagNode<TActor>>('PostTag', data, (db, fbb, ac) => new PostTagNode(db, fbb, ac));
       },
-      update: async (id: string, data: Partial<IPostTag>): Promise<PostTagNode<TActor>> => {
+      update: (id: string, data: Partial<IPostTag>): PostTagNode<TActor> => {
         return this.db.update<LowLevel.PostTag, PostTagNode<TActor>>('PostTag', id, data, (db, fbb, ac) => new PostTagNode(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {

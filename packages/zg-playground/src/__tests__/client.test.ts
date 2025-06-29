@@ -6,7 +6,7 @@ describe("ZG Playground Client", () => {
     expect(createDB).toBeDefined();
   });
 
-  it("should create a new user and return a proxy object", async () => {
+  it("should create a new user and return a proxy object", () => {
     const client = createDB({
       globalResolvers: { isOwner: () => true },
       entityResolvers: {},
@@ -14,7 +14,7 @@ describe("ZG Playground Client", () => {
     });
     client.setAuthContext({ actor: { id: "test-user" } });
 
-    const newUser = await client.users.create({
+    const newUser = client.users.create({
       id: "user-1",
       publicKey: "key-123",
       displayName: "Test User",
@@ -37,7 +37,7 @@ describe("ZG Playground Client", () => {
     });
     client.setAuthContext({ actor: { id: "test-user" } });
 
-    await client.users.create({
+    client.users.create({
       id: "user-to-find",
       publicKey: "key-456",
       displayName: "Findable User",

@@ -68,10 +68,10 @@ function generateDbAccessors(schema: NormalizedSchema): string {
       get: async (id: string): Promise<${schema.name}Node<TActor> | null> => {
         return this.db.get<LowLevel.${schema.name}, ${schema.name}Node<TActor>>('${schema.name}', id, (db, fbb, ac) => new ${schema.name}Node(db, fbb, ac));
       },
-      create: async (data: Partial<I${schema.name}>): Promise<${schema.name}Node<TActor>> => {
+      create: (data: Partial<I${schema.name}>): ${schema.name}Node<TActor> => {
         return this.db.create<LowLevel.${schema.name}, ${schema.name}Node<TActor>>('${schema.name}', data, (db, fbb, ac) => new ${schema.name}Node(db, fbb, ac));
       },
-      update: async (id: string, data: Partial<I${schema.name}>): Promise<${schema.name}Node<TActor>> => {
+      update: (id: string, data: Partial<I${schema.name}>): ${schema.name}Node<TActor> => {
         return this.db.update<LowLevel.${schema.name}, ${schema.name}Node<TActor>>('${schema.name}', id, data, (db, fbb, ac) => new ${schema.name}Node(db, fbb, ac));
       },
       delete: async (id: string): Promise<void> => {

@@ -46,32 +46,47 @@ export class ZgDatabase {
     return this.store.get(`${entityName}:${id}`) ?? null;
   }
 
-  async create<T extends Table, TNode extends ZgBaseNode<T>>(
+  create<T extends Table, TNode extends ZgBaseNode<T>>(
     entityName: string,
     data: any,
     nodeFactory: (db: ZgDatabase, fbb: T, ac: ZgAuthContext | null) => TNode
-  ): Promise<TNode> {
+  ): TNode {
     console.log(`Creating ${entityName} with data`, data);
     if (!data.id) throw new Error("Mock DB requires data to have an id");
     this.store.set(`${entityName}:${data.id}`, data);
+
+    // Fire-and-forget persistence
+    (async () => {
+      // In a real implementation, this would serialize `data` to a Flatbuffer
+      // and write it to the Prolly Tree store.
+      // For the mock, we can just log it.
+      console.log(`(Background) Persisting ${entityName}:${data.id}`);
+    })();
+
     const mockFbb = new Proxy({} as any, {
       get: (_, prop: string) => () => data[prop],
     }) as T;
     return nodeFactory(this, mockFbb, null);
   }
 
-  async update<T extends Table, TNode extends ZgBaseNode<T>>(
+  update<T extends Table, TNode extends ZgBaseNode<T>>(
     entityName: string,
     id: string,
     data: any,
     nodeFactory: (db: ZgDatabase, fbb: T, ac: ZgAuthContext | null) => TNode
-  ): Promise<TNode> {
+  ): TNode {
     console.log(`Updating ${entityName} with id ${id} and data`, data);
     const key = `${entityName}:${id}`;
     const existing = this.store.get(key);
     if (!existing) throw new Error(`Record not found for update: ${key}`);
     const updated = { ...existing, ...data };
     this.store.set(key, updated);
+
+    // Fire-and-forget persistence
+    (async () => {
+      console.log(`(Background) Persisting update for ${entityName}:${id}`);
+    })();
+
     const mockFbb = new Proxy({} as any, {
       get: (_, prop: string) => () => updated[prop],
     }) as T;
