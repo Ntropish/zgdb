@@ -10,6 +10,7 @@ import {
 } from "./node-proxy.js";
 import { Diff, ConflictResolver } from "./types.js";
 import { compare } from "uint8arrays/compare";
+import { toString } from "uint8arrays/to-string";
 
 type Change = {
   newAddress: Address;
@@ -318,5 +319,42 @@ export class ProllyTree {
       this.nodeManager
     );
     return { tree: newTree, changed: true };
+  }
+
+  async print(): Promise<string> {
+    return this.printNode(this.rootNode, 0);
+  }
+
+  private async printNode(node: NodeProxy, level: number): Promise<string> {
+    const indent = "  ".repeat(level);
+    const address = this.blockManager.hashFn(node.bytes);
+    const addressStr = toString(address.slice(0, 6), "hex");
+    let output = `${indent}${
+      node.isLeaf ? "LEAF" : "INTERNAL"
+    } @ ${addressStr} (${node.entryCount} entries)\n`;
+
+    if (isLeafNodeProxy(node)) {
+      const leaf = node as LeafNodeProxy;
+      for (const entry of leaf.getEntries()) {
+        output += `${indent}  - [${toString(entry.key)}] = ${toString(
+          entry.value
+        )}\n`;
+      }
+    } else {
+      const internal = node as InternalNodeProxy;
+      for (const branch of internal.getBranches()) {
+        const childPrefix =
+          branch.key.length > 0 ? `> [${toString(branch.key)}]` : `> *`;
+        output += `${indent}  ${childPrefix} -> ${toString(
+          branch.address.slice(0, 6),
+          "hex"
+        )}\n`;
+        const childNode = await this.nodeManager.getNode(branch.address);
+        if (childNode) {
+          output += await this.printNode(childNode, level + 1);
+        }
+      }
+    }
+    return output;
   }
 }

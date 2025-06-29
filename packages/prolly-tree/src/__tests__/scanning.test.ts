@@ -40,6 +40,7 @@ describe("ProllyTree Scanning", () => {
           new TextDecoder().decode(v),
         ]);
       }
+      console.log(await tree.print());
       expect(results.map(([k]) => k)).toEqual(keys);
       expect(results.map(([, v]) => v)).toEqual(keys.map((k) => `v-${k}`));
     });

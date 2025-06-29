@@ -96,6 +96,14 @@ export class LeafNodeProxy extends NodeProxy {
 
     return -(low + 1); // Key not found, returns insertion point
   }
+
+  getEntries(): KeyValuePair[] {
+    const pairs: KeyValuePair[] = [];
+    for (let i = 0; i < this.numEntries; i++) {
+      pairs.push(this.getEntry(i));
+    }
+    return pairs;
+  }
 }
 
 export class InternalNodeProxy extends NodeProxy {
@@ -149,6 +157,14 @@ export class InternalNodeProxy extends NodeProxy {
     }
 
     return childIndex === -1 ? this.numBranches - 1 : childIndex;
+  }
+
+  getBranches(): BranchPair[] {
+    const branches: BranchPair[] = [];
+    for (let i = 0; i < this.numBranches; i++) {
+      branches.push(this.getBranch(i));
+    }
+    return branches;
   }
 }
 

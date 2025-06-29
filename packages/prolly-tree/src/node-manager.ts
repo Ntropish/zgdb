@@ -175,7 +175,7 @@ export class NodeManager {
     } else {
       const internal = node as InternalNodeProxy;
       const mid = Math.ceil(internal.numBranches / 2);
-      const splitKey = internal.getBranch(mid).key;
+      const splitKey = internal.getBranch(mid - 1).key;
 
       const allBranches: BranchPair[] = [];
       for (let i = 0; i < internal.numBranches; i++) {
