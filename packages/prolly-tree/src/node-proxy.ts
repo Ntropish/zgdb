@@ -8,7 +8,8 @@ import {
   Branch,
   NodeBody,
 } from "./generated/zgdb/prolly-tree.js";
-import { Address } from "./node.js";
+
+export type Address = Uint8Array;
 
 /**
  * A proxy class for accessing FlatBuffer-based node data in a type-safe manner.

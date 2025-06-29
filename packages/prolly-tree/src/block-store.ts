@@ -1,6 +1,6 @@
 import { Configuration, defaultConfiguration } from "./configuration.js";
 import { HashFn, getHashFn } from "./hashing.js";
-import { Node, serializeNode, deserializeNode, Address } from "./node.js";
+import { Address } from "./node-proxy.js";
 import { merge } from "lodash-es";
 
 // A mock BlockManager that simulates content-addressing with a Map.
@@ -8,7 +8,7 @@ import { merge } from "lodash-es";
 export class BlockManager {
   private blocks = new Map<string, Uint8Array>();
   public readonly config: Configuration;
-  private readonly hashFn: HashFn;
+  public readonly hashFn: HashFn;
 
   constructor(config?: Partial<Configuration>) {
     this.config = merge({}, defaultConfiguration, config);
@@ -33,27 +33,5 @@ export class BlockManager {
     const hash = this.hashFn(block);
     this.blocks.set(hash.toString(), block);
     return hash;
-  }
-
-  async getNode(address: Address): Promise<Node | undefined> {
-    const block = await this.get(address);
-    if (!block) return undefined;
-    return deserializeNode(block);
-  }
-
-  getNodeSync(address: Address): Node | undefined {
-    const block = this.getSync(address);
-    if (!block) return undefined;
-    return deserializeNode(block);
-  }
-
-  async putNode(node: Node): Promise<Address> {
-    const block = serializeNode(node);
-    return this.put(block);
-  }
-
-  putNodeSync(node: Node): Address {
-    const block = serializeNode(node);
-    return this.putSync(block);
   }
 }

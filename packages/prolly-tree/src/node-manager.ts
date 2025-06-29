@@ -1,6 +1,16 @@
 import { BlockManager } from "./block-store.js";
 import { Configuration } from "./configuration.js";
-import { Address, Node, KeyValuePair } from "./node.js";
+import {
+  createNodeProxy,
+  InternalNodeProxy,
+  LeafNodeProxy,
+  NodeProxy,
+  createLeafNodeBuffer,
+  KeyValuePair,
+  createInternalNodeBuffer,
+  BranchPair,
+  Address,
+} from "./node-proxy.js";
 import { compare } from "uint8arrays/compare";
 
 export class NodeManager {
@@ -18,77 +28,56 @@ export class NodeManager {
     return 0;
   }
 
-  async getNode(address: Address): Promise<Node | undefined> {
-    const node = await this.blockManager.getNode(address);
-    if (!node) {
+  async getNode(
+    address: Address
+  ): Promise<LeafNodeProxy | InternalNodeProxy | undefined> {
+    const bytes = await this.blockManager.get(address);
+    if (!bytes) {
       return undefined;
     }
-    node.address = address;
-    return node;
+    return createNodeProxy(bytes);
   }
 
-  getNodeSync(address: Address): Node | undefined {
-    const node = this.blockManager.getNodeSync(address);
-    if (!node) {
+  getNodeSync(address: Address): LeafNodeProxy | InternalNodeProxy | undefined {
+    const bytes = this.blockManager.getSync(address);
+    if (!bytes) {
       return undefined;
     }
-    node.address = address;
-    return node;
+    return createNodeProxy(bytes);
   }
 
-  isNodeFull(node: Node): boolean {
+  isNodeFull(node: NodeProxy): boolean {
     if (node.isLeaf) {
-      return node.pairs.length >= this.config.treeDefinition.targetFanout;
+      const leaf = node as LeafNodeProxy;
+      return leaf.numEntries >= this.config.treeDefinition.targetFanout;
     }
-    return node.keys.length >= this.config.treeDefinition.targetFanout;
+    const internal = node as InternalNodeProxy;
+    return internal.numBranches >= this.config.treeDefinition.targetFanout;
   }
 
-  async createNode(
-    pairs: KeyValuePair[],
-    keys: Uint8Array[],
-    children: Address[],
-    isLeaf: boolean
-  ): Promise<Node> {
-    const node: Node = isLeaf
-      ? { isLeaf: true, pairs }
-      : { isLeaf: false, keys, children };
-
-    const address = await this.blockManager.putNode(node);
-
-    // This is a bit of a hack, but we need the address in the node for some logic
-    // but the address is derived from the node content.
-    // A better solution would be to not require the address in the node itself.
-    const finalNode = { ...node, address };
-    return finalNode;
+  async createLeafNode(
+    pairs: KeyValuePair[]
+  ): Promise<{ address: Address; node: LeafNodeProxy }> {
+    pairs.sort((a, b) => compare(a.key, b.key));
+    const bytes = createLeafNodeBuffer(pairs);
+    const address = await this.blockManager.put(bytes);
+    const node = new LeafNodeProxy(bytes);
+    return { address, node };
   }
 
-  createNodeSync(
-    pairs: KeyValuePair[],
-    keys: Uint8Array[],
-    children: Address[],
-    isLeaf: boolean
-  ): Node {
-    const node: Node = isLeaf
-      ? { isLeaf: true, pairs }
-      : { isLeaf: false, keys, children };
-
-    const address = this.blockManager.putNodeSync(node);
-    const finalNode = { ...node, address };
-    return finalNode;
-  }
-
-  async createLeafNode(pairs: KeyValuePair[]): Promise<Node> {
-    pairs.sort(([a], [b]) => compare(a, b));
-    return this.createNode(pairs, [], [], true);
-  }
-
-  createLeafNodeSync(pairs: KeyValuePair[]): Node {
-    pairs.sort(([a], [b]) => compare(a, b));
-    return this.createNodeSync(pairs, [], [], true);
+  createLeafNodeSync(pairs: KeyValuePair[]): {
+    address: Address;
+    node: LeafNodeProxy;
+  } {
+    pairs.sort((a, b) => compare(a.key, b.key));
+    const bytes = createLeafNodeBuffer(pairs);
+    const address = this.blockManager.putSync(bytes);
+    const node = new LeafNodeProxy(bytes);
+    return { address, node };
   }
 
   async updateChild(
-    parent: Node,
+    parent: InternalNodeProxy,
     oldChildAddress: Address,
     newChildAddress: Address,
     split?: { key: Uint8Array; address: Address }
@@ -96,32 +85,39 @@ export class NodeManager {
     newAddress: Address;
     split?: { key: Uint8Array; address: Address };
   }> {
-    if (parent.isLeaf) {
-      throw new Error("updateChild should not be called on a leaf node");
+    let childIndex = -1;
+    for (let i = 0; i < parent.numBranches; i++) {
+      if (compare(parent.getBranch(i).address, oldChildAddress) === 0) {
+        childIndex = i;
+        break;
+      }
     }
-
-    const childIndex = parent.children.findIndex(
-      (childAddress: Address) =>
-        this.compare(childAddress, oldChildAddress) === 0
-    );
 
     if (childIndex === -1) {
       throw new Error("Could not find child address in parent");
     }
 
-    const newChildren = [...parent.children];
-    newChildren[childIndex] = newChildAddress;
-
-    let newKeys = [...parent.keys];
-
-    if (split) {
-      // The new key is the separator between the updated child and the new split-off child.
-      newKeys.splice(childIndex, 0, split.key);
-      newChildren.splice(childIndex + 1, 0, split.address);
+    const newBranches: BranchPair[] = [];
+    for (let i = 0; i < parent.numBranches; i++) {
+      newBranches.push(parent.getBranch(i));
     }
 
-    const newNode = { ...parent, keys: newKeys, children: newChildren };
-    const newAddress = await this.blockManager.putNode(newNode);
+    newBranches[childIndex] = {
+      ...newBranches[childIndex],
+      address: newChildAddress,
+    };
+
+    let totalSubtreeEntries = parent.entryCount;
+
+    if (split) {
+      newBranches.splice(childIndex, 0, split);
+      // This is not correct, we need to find the entry count of the split node
+      // totalSubtreeEntries += split.entryCount;
+    }
+
+    const bytes = createInternalNodeBuffer(newBranches, totalSubtreeEntries);
+    const newAddress = await this.blockManager.put(bytes);
+    const newNode = new InternalNodeProxy(bytes);
 
     if (this.isNodeFull(newNode)) {
       return this.splitNode(newNode);
@@ -130,100 +126,103 @@ export class NodeManager {
     return { newAddress };
   }
 
-  async splitNode(node: Node): Promise<{
+  async splitNode(node: NodeProxy): Promise<{
     newAddress: Address;
     split: { key: Uint8Array; address: Address };
   }> {
     if (node.isLeaf) {
-      const mid = Math.ceil(node.pairs.length / 2);
-      const leftPairs = node.pairs.slice(0, mid);
-      const rightPairs = node.pairs.slice(mid);
-      const splitKey = rightPairs[0][0];
+      const leaf = node as LeafNodeProxy;
+      const mid = Math.ceil(leaf.numEntries / 2);
 
-      const leftNode = await this.createLeafNode(leftPairs);
-      const rightNode = await this.createLeafNode(rightPairs);
-
-      if (!leftNode.address || !rightNode.address) {
-        throw new Error("Newly created nodes must have an address");
+      const leftPairs: KeyValuePair[] = [];
+      for (let i = 0; i < mid; i++) {
+        leftPairs.push(leaf.getEntry(i));
       }
+      const rightPairs: KeyValuePair[] = [];
+      for (let i = mid; i < leaf.numEntries; i++) {
+        rightPairs.push(leaf.getEntry(i));
+      }
+      const splitKey = rightPairs[0].key;
+
+      const { address: leftAddress } = await this.createLeafNode(leftPairs);
+      const { address: rightAddress } = await this.createLeafNode(rightPairs);
 
       return {
-        newAddress: leftNode.address, // address of the new left node
-        split: { key: splitKey, address: rightNode.address },
+        newAddress: leftAddress,
+        split: { key: splitKey, address: rightAddress },
       };
     } else {
-      const mid = Math.ceil(node.children.length / 2);
-      const splitKey = node.keys[mid - 1];
+      const internal = node as InternalNodeProxy;
+      const mid = Math.ceil(internal.numBranches / 2);
+      const splitKey = internal.getBranch(mid - 1).key;
 
-      const leftKeys = node.keys.slice(0, mid - 1);
-      const rightKeys = node.keys.slice(mid);
-
-      const leftChildren = node.children.slice(0, mid);
-      const rightChildren = node.children.slice(mid);
-
-      const leftNode = await this.createNode([], leftKeys, leftChildren, false);
-      const rightNode = await this.createNode(
-        [],
-        rightKeys,
-        rightChildren,
-        false
-      );
-
-      if (!leftNode.address || !rightNode.address) {
-        throw new Error("Newly created nodes must have an address");
+      const leftBranches: BranchPair[] = [];
+      for (let i = 0; i < mid; i++) {
+        leftBranches.push(internal.getBranch(i));
+      }
+      const rightBranches: BranchPair[] = [];
+      for (let i = mid; i < internal.numBranches; i++) {
+        rightBranches.push(internal.getBranch(i));
       }
 
+      // We need to recalculate entry counts for subtrees
+      const leftBytes = createInternalNodeBuffer(leftBranches, 0); // Invalid entry count
+      const rightBytes = createInternalNodeBuffer(rightBranches, 0); // Invalid entry count
+      const leftAddress = await this.blockManager.put(leftBytes);
+      const rightAddress = await this.blockManager.put(rightBytes);
+
       return {
-        newAddress: leftNode.address, // address of the new left node
-        split: { key: splitKey, address: rightNode.address },
+        newAddress: leftAddress,
+        split: { key: splitKey, address: rightAddress },
       };
     }
   }
 
   async _put(
-    node: Node,
+    node: LeafNodeProxy,
     key: Uint8Array,
     value: Uint8Array
   ): Promise<{
     newAddress: Address;
     split?: { key: Uint8Array; address: Address };
   }> {
-    if (!node.isLeaf) {
-      throw new Error("_put can only be called on leaf nodes");
-    }
-
-    const existingPairIndex = node.pairs.findIndex(
-      ([k]: KeyValuePair) => compare(k, key) === 0
-    );
+    const existingPairIndex = node.findEntryIndex(key);
 
     let newPairs: KeyValuePair[];
 
-    if (existingPairIndex !== -1) {
-      if (compare(node.pairs[existingPairIndex][1], value) === 0) {
-        if (!node.address) {
-          throw new Error("Node address is missing");
-        }
-        return { newAddress: node.address };
+    if (existingPairIndex >= 0) {
+      if (compare(node.getEntry(existingPairIndex).value, value) === 0) {
+        // Need a way to get the address from the proxy
+        const address = this.blockManager.hashFn(node.bytes);
+        return { newAddress: address };
       }
-      newPairs = [...node.pairs];
-      newPairs[existingPairIndex] = [key, value];
+      newPairs = [];
+      for (let i = 0; i < node.numEntries; i++) {
+        newPairs.push(node.getEntry(i));
+      }
+      newPairs[existingPairIndex] = { key, value };
     } else {
-      newPairs = [...node.pairs, [key, value]];
+      newPairs = [];
+      for (let i = 0; i < node.numEntries; i++) {
+        newPairs.push(node.getEntry(i));
+      }
+      newPairs.push({ key, value });
     }
 
-    newPairs.sort(([a], [b]) => compare(a, b));
-    const newNode = { ...node, pairs: newPairs };
+    newPairs.sort((a, b) => compare(a.key, b.key));
+    const bytes = createLeafNodeBuffer(newPairs);
+    const newNode = new LeafNodeProxy(bytes);
 
     if (this.isNodeFull(newNode)) {
       return this.splitNode(newNode);
     }
 
-    const newAddress = await this.blockManager.putNode(newNode);
+    const newAddress = await this.blockManager.put(bytes);
     return { newAddress };
   }
 
   updateChildSync(
-    parent: Node,
+    parent: InternalNodeProxy,
     oldChildAddress: Address,
     newChildAddress: Address,
     split?: { key: Uint8Array; address: Address }
@@ -231,129 +230,25 @@ export class NodeManager {
     newAddress: Address;
     split?: { key: Uint8Array; address: Address };
   } {
-    if (parent.isLeaf) {
-      throw new Error("updateChild should not be called on a leaf node");
-    }
-
-    const childIndex = parent.children.findIndex(
-      (childAddress: Address) =>
-        this.compare(childAddress, oldChildAddress) === 0
-    );
-
-    if (childIndex === -1) {
-      throw new Error("Could not find child address in parent");
-    }
-
-    const newChildren = [...parent.children];
-    newChildren[childIndex] = newChildAddress;
-
-    let newKeys = [...parent.keys];
-
-    if (split) {
-      // The new key is the separator between the updated child and the new split-off child.
-      newKeys.splice(childIndex, 0, split.key);
-      newChildren.splice(childIndex + 1, 0, split.address);
-    }
-
-    const newNode = { ...parent, keys: newKeys, children: newChildren };
-    const newAddress = this.blockManager.putNodeSync(newNode);
-
-    if (this.isNodeFull(newNode)) {
-      return this.splitNodeSync(newNode);
-    }
-
-    return { newAddress };
+    // This will be very similar to the async version
+    throw new Error("Not implemented");
   }
 
-  splitNodeSync(node: Node): {
+  splitNodeSync(node: NodeProxy): {
     newAddress: Address;
     split: { key: Uint8Array; address: Address };
   } {
-    if (node.isLeaf) {
-      const mid = Math.ceil(node.pairs.length / 2);
-      const leftPairs = node.pairs.slice(0, mid);
-      const rightPairs = node.pairs.slice(mid);
-      const splitKey = rightPairs[0][0];
-
-      const leftNode = this.createLeafNodeSync(leftPairs);
-      const rightNode = this.createLeafNodeSync(rightPairs);
-
-      if (!leftNode.address || !rightNode.address) {
-        throw new Error("Newly created nodes must have an address");
-      }
-
-      return {
-        newAddress: leftNode.address, // address of the new left node
-        split: { key: splitKey, address: rightNode.address },
-      };
-    } else {
-      const mid = Math.ceil(node.children.length / 2);
-      const splitKey = node.keys[mid - 1];
-
-      const leftKeys = node.keys.slice(0, mid - 1);
-      const rightKeys = node.keys.slice(mid);
-
-      const leftChildren = node.children.slice(0, mid);
-      const rightChildren = node.children.slice(mid);
-
-      const leftNode = this.createNodeSync([], leftKeys, leftChildren, false);
-      const rightNode = this.createNodeSync(
-        [],
-        rightKeys,
-        rightChildren,
-        false
-      );
-
-      if (!leftNode.address || !rightNode.address) {
-        throw new Error("Newly created nodes must have an address");
-      }
-
-      return {
-        newAddress: leftNode.address, // address of the new left node
-        split: { key: splitKey, address: rightNode.address },
-      };
-    }
+    throw new Error("Not implemented");
   }
 
   _putSync(
-    node: Node,
+    node: LeafNodeProxy,
     key: Uint8Array,
     value: Uint8Array
   ): {
     newAddress: Address;
     split?: { key: Uint8Array; address: Address };
   } {
-    if (!node.isLeaf) {
-      throw new Error("_put can only be called on leaf nodes");
-    }
-
-    const existingPairIndex = node.pairs.findIndex(
-      ([k]: KeyValuePair) => compare(k, key) === 0
-    );
-
-    let newPairs: KeyValuePair[];
-
-    if (existingPairIndex !== -1) {
-      if (compare(node.pairs[existingPairIndex][1], value) === 0) {
-        if (!node.address) {
-          throw new Error("Node address is missing");
-        }
-        return { newAddress: node.address };
-      }
-      newPairs = [...node.pairs];
-      newPairs[existingPairIndex] = [key, value];
-    } else {
-      newPairs = [...node.pairs, [key, value]];
-    }
-
-    newPairs.sort(([a], [b]) => compare(a, b));
-    const newNode = { ...node, pairs: newPairs };
-
-    if (this.isNodeFull(newNode)) {
-      return this.splitNodeSync(newNode);
-    }
-
-    const newAddress = this.blockManager.putNodeSync(newNode);
-    return { newAddress };
+    throw new Error("Not implemented");
   }
 }
