@@ -6,7 +6,13 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@zgdb/prolly-tree", "--", "test", "${file}"],
+      "runtimeArgs": [
+        "--filter",
+        "@zgdb/zg-playground",
+        "--",
+        "test",
+        "${file}"
+      ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
