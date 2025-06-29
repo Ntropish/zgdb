@@ -98,8 +98,10 @@ export class NodeManager {
     split?: { key: Uint8Array; address: Address };
   }> {
     let childIndex = -1;
-    for (let i = 0; i < parent.numBranches; i++) {
-      if (compare(parent.getBranch(i).address, oldChildAddress) === 0) {
+    const oldBranches = parent.getBranches();
+
+    for (let i = 0; i < oldBranches.length; i++) {
+      if (compare(oldBranches[i].address, oldChildAddress) === 0) {
         childIndex = i;
         break;
       }
@@ -109,10 +111,7 @@ export class NodeManager {
       throw new Error("Could not find child address in parent");
     }
 
-    const newBranches: BranchPair[] = [];
-    for (let i = 0; i < parent.numBranches; i++) {
-      newBranches.push(parent.getBranch(i));
-    }
+    const newBranches: BranchPair[] = [...oldBranches];
 
     newBranches[childIndex] = {
       ...newBranches[childIndex],

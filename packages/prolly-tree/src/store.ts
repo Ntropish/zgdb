@@ -1,6 +1,5 @@
 import { BlockManager } from "./block-store.js";
 import { Configuration, defaultConfiguration } from "./configuration.js";
-import { LeafNode } from "./node.js";
 import { ProllyTree } from "./prolly-tree.js";
 
 // The Store class is a convenience wrapper around the BlockManager and ProllyTree

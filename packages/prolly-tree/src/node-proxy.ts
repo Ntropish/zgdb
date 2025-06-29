@@ -1,5 +1,6 @@
 import { ByteBuffer, Builder } from "flatbuffers";
 import { compare } from "uint8arrays/compare";
+import { toString } from "uint8arrays/to-string";
 import {
   Node as FlatbufferNode,
   LeafNode as FlatbufferLeafNode,
@@ -148,7 +149,12 @@ export class InternalNodeProxy extends NodeProxy {
 
       const cmp = compare(key, midKey);
 
-      if (cmp <= 0) {
+      console.log(
+        `findChildIndex: key=${toString(key)}, midKey=${toString(
+          midKey
+        )}, cmp=${cmp}`
+      );
+      if (cmp < 0) {
         childIndex = mid;
         high = mid - 1;
       } else {
