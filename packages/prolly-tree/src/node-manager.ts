@@ -96,49 +96,45 @@ export class NodeManager {
     newAddress: Address;
     split?: { key: Uint8Array; address: Address };
   }> {
-    const oldBranches: BranchPair[] = [];
+    // Deconstruct the parent into simple arrays of keys and addresses.
+    const keys: Uint8Array[] = [];
+    for (let i = 0; i < parent.keysLength; i++) {
+      keys.push(parent.getKey(i)!);
+    }
+    const addresses: Address[] = [];
     for (let i = 0; i < parent.addressesLength; i++) {
-      const address = parent.getAddress(i);
-      // The last address has no corresponding key. We handle it outside the loop.
-      if (address && i < parent.keysLength) {
-        const key = parent.getKey(i);
-        if (key) {
-          oldBranches.push({ key, address });
-        }
-      } else if (address) {
-        // Last address
-        oldBranches.push({ key: new Uint8Array(), address });
-      }
+      addresses.push(parent.getAddress(i)!);
     }
 
-    let childIndex = -1;
-    for (let i = 0; i < oldBranches.length; i++) {
-      if (
-        this.config.comparator(oldBranches[i].address, oldChildAddress) === 0
-      ) {
-        childIndex = i;
-        break;
-      }
-    }
-
+    // Find the index of the child address to update.
+    const childIndex = addresses.findIndex(
+      (addr) => this.config.comparator(addr, oldChildAddress) === 0
+    );
     if (childIndex === -1) {
       throw new Error("Could not find child address in parent");
     }
 
-    const newBranches: BranchPair[] = [...oldBranches];
-    newBranches[childIndex].address = newChildAddress;
-
+    // Reconstruct the new keys and addresses arrays based on the update.
     if (split) {
-      newBranches.splice(childIndex + 1, 0, {
-        key: split.key,
-        address: split.address,
-      });
+      // A split occurred. The old pointer is replaced by two new ones, and a new separator key is inserted.
+      addresses.splice(childIndex, 1, newChildAddress, split.address);
+      keys.splice(childIndex, 0, split.key);
+    } else {
+      // No split, just a simple update of the child's address.
+      addresses[childIndex] = newChildAddress;
     }
-    // The key for the rightmost branch is implicit and not stored.
-    // The createInternalNode function expects the final branch to be passed in separately.
+
+    // Re-serialize the new parent node from the updated keys and addresses.
+    const newBranches: BranchPair[] = addresses.map((address, i) => ({
+      // there is one more address than key
+      key: i < keys.length ? keys[i] : new Uint8Array(),
+      address,
+    }));
+
     const { address: newAddress, node: newNode } =
       await this.createInternalNode(newBranches);
 
+    // Check if the new parent also needs to be split and propagate if necessary.
     if (this.isNodeFull(newNode)) {
       return this.splitNode(newNode);
     }

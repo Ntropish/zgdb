@@ -116,35 +116,59 @@ export class ProllyTree {
     return leaf.getPair(index).value;
   }
 
-  public async *scan(
-    startKey: Uint8Array,
-    endKey?: Uint8Array
-  ): AsyncGenerator<[Uint8Array, Uint8Array]> {
+  public async *scan(options?: {
+    start?: { key: Uint8Array; inclusive: boolean };
+    end?: { key: Uint8Array; inclusive: boolean };
+  }): AsyncGenerator<[Uint8Array, Uint8Array]> {
     const cursor = this.createCursor();
+    const startKey = options?.start?.key;
+
     for (
-      let pair = await cursor.seek(startKey);
+      let pair = startKey ? await cursor.seek(startKey) : await cursor.first();
       pair !== null;
       pair = await cursor.next()
     ) {
-      if (endKey && compare(pair.key, endKey) > 0) {
-        break;
+      if (
+        options?.start &&
+        !options.start.inclusive &&
+        compare(pair.key, options.start.key) === 0
+      ) {
+        continue; // Skip the first key if not inclusive
+      }
+      if (options?.end) {
+        const cmp = compare(pair.key, options.end.key);
+        if (cmp > 0 || (cmp === 0 && !options.end.inclusive)) {
+          break;
+        }
       }
       yield [pair.key, pair.value];
     }
   }
 
-  public *scanSync(
-    startKey: Uint8Array,
-    endKey?: Uint8Array
-  ): Generator<[Uint8Array, Uint8Array]> {
+  public *scanSync(options?: {
+    start?: { key: Uint8Array; inclusive: boolean };
+    end?: { key: Uint8Array; inclusive: boolean };
+  }): Generator<[Uint8Array, Uint8Array]> {
     const cursor = this.createCursor();
+    const startKey = options?.start?.key;
+
     for (
-      let pair = cursor.seekSync(startKey);
+      let pair = startKey ? cursor.seekSync(startKey) : cursor.firstSync();
       pair !== null;
       pair = cursor.nextSync()
     ) {
-      if (endKey && compare(pair.key, endKey) > 0) {
-        break;
+      if (
+        options?.start &&
+        !options.start.inclusive &&
+        compare(pair.key, options.start.key) === 0
+      ) {
+        continue;
+      }
+      if (options?.end) {
+        const cmp = compare(pair.key, options.end.key);
+        if (cmp > 0 || (cmp === 0 && !options.end.inclusive)) {
+          break;
+        }
       }
       yield [pair.key, pair.value];
     }
@@ -165,11 +189,11 @@ export class ProllyTree {
       value
     );
 
-    const newLeafAddress = currentAddress;
     if (
+      !split &&
       this.nodeManager.config.comparator(
         originalLeafAddress,
-        newLeafAddress
+        currentAddress
       ) === 0
     ) {
       return { tree: this, changed: false };

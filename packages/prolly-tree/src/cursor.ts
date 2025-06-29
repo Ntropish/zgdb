@@ -28,6 +28,25 @@ export class Cursor {
 
   // #region Async Methods
 
+  async first(): Promise<KeyValuePair | null> {
+    this.path = [this.tree.rootNode];
+    let currentNode = this.tree.rootNode;
+    while (!currentNode.isLeaf()) {
+      const firstChildAddress = (currentNode as InternalNodeProxy).getAddress(
+        0
+      );
+      if (!firstChildAddress) {
+        // This is an empty internal node, so the tree is empty.
+        this._current = null;
+        return null;
+      }
+      currentNode = (await this.nodeManager.getNode(firstChildAddress))!;
+      this.path.push(currentNode);
+    }
+    this.index = 0;
+    return this._updateCurrent();
+  }
+
   async seek(key: Uint8Array): Promise<KeyValuePair | null> {
     this.path = await this.tree.findPathToLeaf(key);
     const leaf = this.path[this.path.length - 1] as LeafNodeProxy;
@@ -120,6 +139,25 @@ export class Cursor {
   // #endregion
 
   // #region Sync Methods
+
+  firstSync(): KeyValuePair | null {
+    this.path = [this.tree.rootNode];
+    let currentNode = this.tree.rootNode;
+    while (!currentNode.isLeaf()) {
+      const firstChildAddress = (currentNode as InternalNodeProxy).getAddress(
+        0
+      );
+      if (!firstChildAddress) {
+        // This is an empty internal node, so the tree is empty.
+        this._current = null;
+        return null;
+      }
+      currentNode = this.nodeManager.getNodeSync(firstChildAddress)!;
+      this.path.push(currentNode);
+    }
+    this.index = 0;
+    return this._updateCurrentSync();
+  }
 
   seekSync(key: Uint8Array): KeyValuePair | null {
     this.path = this.tree.findPathToLeafSync(key);

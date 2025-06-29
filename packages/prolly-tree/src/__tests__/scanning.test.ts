@@ -34,7 +34,7 @@ describe("ProllyTree Scanning", () => {
       const keys = ["a", "b", "c", "d", "e"];
       const tree = await populateTree(keys);
       const results: [string, string][] = [];
-      for (const [k, v] of tree.scanSync(S(""))) {
+      for (const [k, v] of tree.scanSync()) {
         results.push([
           new TextDecoder().decode(k),
           new TextDecoder().decode(v),
@@ -49,7 +49,9 @@ describe("ProllyTree Scanning", () => {
       const keys = ["a", "b", "c", "d", "e", "f", "g"];
       const tree = await populateTree(keys);
       const results: string[] = [];
-      for (const [k] of tree.scanSync(S("a"))) {
+      for (const [k] of tree.scanSync({
+        start: { key: S("a"), inclusive: true },
+      })) {
         results.push(new TextDecoder().decode(k));
       }
       expect(results).toEqual(keys);
@@ -59,7 +61,9 @@ describe("ProllyTree Scanning", () => {
       const keys = ["a", "b", "c", "d", "e"];
       const tree = await populateTree(keys);
       const results: string[] = [];
-      for (const [k] of tree.scanSync(S("c"))) {
+      for (const [k] of tree.scanSync({
+        start: { key: S("c"), inclusive: true },
+      })) {
         results.push(new TextDecoder().decode(k));
       }
       expect(results).toEqual(["c", "d", "e"]);
@@ -69,16 +73,60 @@ describe("ProllyTree Scanning", () => {
       const keys = ["a", "b", "c", "d", "e"];
       const tree = await populateTree(keys);
       const results: string[] = [];
-      for (const [k] of tree.scanSync(S("b"), S("d"))) {
+      for (const [k] of tree.scanSync({
+        start: { key: S("b"), inclusive: true },
+        end: { key: S("d"), inclusive: true },
+      })) {
         results.push(new TextDecoder().decode(k));
       }
       expect(results).toEqual(["b", "c", "d"]);
     });
 
+    it("should handle exclusive startKey", async () => {
+      const keys = ["a", "b", "c", "d", "e"];
+      const tree = await populateTree(keys);
+      const results: string[] = [];
+      for (const [k] of tree.scanSync({
+        start: { key: S("b"), inclusive: false },
+        end: { key: S("d"), inclusive: true },
+      })) {
+        results.push(new TextDecoder().decode(k));
+      }
+      expect(results).toEqual(["c", "d"]);
+    });
+
+    it("should handle exclusive endKey", async () => {
+      const keys = ["a", "b", "c", "d", "e"];
+      const tree = await populateTree(keys);
+      const results: string[] = [];
+      for (const [k] of tree.scanSync({
+        start: { key: S("b"), inclusive: true },
+        end: { key: S("d"), inclusive: false },
+      })) {
+        results.push(new TextDecoder().decode(k));
+      }
+      expect(results).toEqual(["b", "c"]);
+    });
+
+    it("should handle exclusive startKey and endKey", async () => {
+      const keys = ["a", "b", "c", "d", "e"];
+      const tree = await populateTree(keys);
+      const results: string[] = [];
+      for (const [k] of tree.scanSync({
+        start: { key: S("b"), inclusive: false },
+        end: { key: S("d"), inclusive: false },
+      })) {
+        results.push(new TextDecoder().decode(k));
+      }
+      expect(results).toEqual(["c"]);
+    });
+
     it("should return nothing if startKey is past the end", async () => {
       const keys = ["a", "b", "c"];
       const tree = await populateTree(keys);
-      const results = Array.from(tree.scanSync(S("d")));
+      const results = Array.from(
+        tree.scanSync({ start: { key: S("d"), inclusive: true } })
+      );
       expect(results.length).toBe(0);
     });
 
@@ -86,7 +134,9 @@ describe("ProllyTree Scanning", () => {
       const keys = ["a", "c", "e"];
       const tree = await populateTree(keys);
       const results: string[] = [];
-      for (const [k] of tree.scanSync(S("b"))) {
+      for (const [k] of tree.scanSync({
+        start: { key: S("b"), inclusive: true },
+      })) {
         results.push(new TextDecoder().decode(k));
       }
       expect(results).toEqual(["c", "e"]);
@@ -94,7 +144,9 @@ describe("ProllyTree Scanning", () => {
 
     it("should handle an empty tree", async () => {
       const tree = await ProllyTree.create(blockManager);
-      const results = Array.from(tree.scanSync(S("a")));
+      const results = Array.from(
+        tree.scanSync({ start: { key: S("a"), inclusive: true } })
+      );
       expect(results.length).toBe(0);
     });
   });
@@ -104,7 +156,7 @@ describe("ProllyTree Scanning", () => {
       const keys = ["a", "b", "c", "d", "e"];
       const tree = await populateTree(keys);
       const results: [string, string][] = [];
-      for await (const [k, v] of tree.scan(S(""))) {
+      for await (const [k, v] of tree.scan()) {
         results.push([
           new TextDecoder().decode(k),
           new TextDecoder().decode(v),
@@ -118,7 +170,10 @@ describe("ProllyTree Scanning", () => {
       const keys = ["a", "b", "c", "d", "e"];
       const tree = await populateTree(keys);
       const results: string[] = [];
-      for await (const [k] of tree.scan(S("b"), S("d"))) {
+      for await (const [k] of tree.scan({
+        start: { key: S("b"), inclusive: true },
+        end: { key: S("d"), inclusive: true },
+      })) {
         results.push(new TextDecoder().decode(k));
       }
       expect(results).toEqual(["b", "c", "d"]);
