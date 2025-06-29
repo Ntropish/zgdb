@@ -11,6 +11,7 @@ import {
 import { Diff, ConflictResolver } from "./types.js";
 import { compare } from "uint8arrays/compare";
 import { toString } from "uint8arrays/to-string";
+import { Cursor } from "./cursor.js";
 
 type Change = {
   newAddress: Address;
@@ -49,14 +50,19 @@ export class ProllyTree {
     return this.blockManager.hashFn(this.rootNode.bytes);
   }
 
-  private async findPathToLeaf(key: Uint8Array): Promise<NodeProxy[]> {
+  public async findPathToLeaf(key: Uint8Array): Promise<NodeProxy[]> {
     const path: NodeProxy[] = [this.rootNode];
     let current = this.rootNode;
 
     while (!isLeafNodeProxy(current)) {
       const internalNode = current as InternalNodeProxy;
       const childIndex = internalNode.findChildIndex(key);
-      const nextAddress = internalNode.getBranch(childIndex).address;
+      const nextAddress = internalNode.getAddress(childIndex);
+
+      if (!nextAddress)
+        throw new Error(
+          `Failed to find address for child index: ${childIndex}`
+        );
 
       const nextNode = await this.nodeManager.getNode(nextAddress);
       if (!nextNode)
@@ -67,14 +73,19 @@ export class ProllyTree {
     return path;
   }
 
-  private findPathToLeafSync(key: Uint8Array): NodeProxy[] {
+  public findPathToLeafSync(key: Uint8Array): NodeProxy[] {
     const path: NodeProxy[] = [this.rootNode];
     let current = this.rootNode;
 
     while (!isLeafNodeProxy(current)) {
       const internalNode = current as InternalNodeProxy;
       const childIndex = internalNode.findChildIndex(key);
-      const nextAddress = internalNode.getBranch(childIndex).address;
+      const nextAddress = internalNode.getAddress(childIndex);
+
+      if (!nextAddress)
+        throw new Error(
+          `Failed to find address for child index: ${childIndex}`
+        );
 
       const nextNode = this.nodeManager.getNodeSync(nextAddress);
       if (!nextNode)
@@ -88,99 +99,37 @@ export class ProllyTree {
   public async get(key: Uint8Array): Promise<Uint8Array | undefined> {
     const path = await this.findPathToLeaf(key);
     const leaf = path[path.length - 1] as LeafNodeProxy;
-    const entryIndex = leaf.findEntryIndex(key);
-    if (entryIndex < 0) {
+    const { found, index } = leaf.findKeyIndex(key);
+    if (!found) {
       return undefined;
     }
-    return leaf.getEntry(entryIndex).value;
+    return leaf.getPair(index).value;
   }
 
   public getSync(key: Uint8Array): Uint8Array | undefined {
     const path = this.findPathToLeafSync(key);
     const leaf = path[path.length - 1] as LeafNodeProxy;
-    const entryIndex = leaf.findEntryIndex(key);
-    if (entryIndex < 0) {
+    const { found, index } = leaf.findKeyIndex(key);
+    if (!found) {
       return undefined;
     }
-    return leaf.getEntry(entryIndex).value;
+    return leaf.getPair(index).value;
   }
 
   public async *scan(
     startKey: Uint8Array,
     endKey?: Uint8Array
   ): AsyncGenerator<[Uint8Array, Uint8Array]> {
-    const path = await this.findPathToLeaf(startKey);
-    let currentLeaf = path[path.length - 1] as LeafNodeProxy;
-
-    let pairIndex = 0;
-    if (currentLeaf.numEntries > 0) {
-      pairIndex = currentLeaf.findEntryIndex(startKey);
-      if (pairIndex < 0) {
-        pairIndex = ~pairIndex; // bitwise NOT to get insertion point
-      }
-    }
-
-    while (currentLeaf) {
-      for (let i = pairIndex; i < currentLeaf.numEntries; i++) {
-        const { key, value } = currentLeaf.getEntry(i);
-        if (endKey && compare(key, endKey) > 0) {
-          return;
-        }
-        yield [key, value];
-      }
-
-      pairIndex = 0;
-      let foundNextLeaf = false;
-
-      while (path.length > 1) {
-        const childNode = path.pop()!;
-        const parent = path[path.length - 1];
-        if (parent.isLeaf) {
-          // Should not happen, root is leaf and we are done
-          break;
-        }
-        const internalParent = parent as InternalNodeProxy;
-
-        const childAddress = this.blockManager.hashFn(childNode.bytes);
-        let childIndex = -1;
-        for (let i = 0; i < internalParent.numBranches; i++) {
-          if (
-            compare(internalParent.getBranch(i).address, childAddress) === 0
-          ) {
-            childIndex = i;
-            break;
-          }
-        }
-
-        if (childIndex !== -1 && childIndex < internalParent.numBranches - 1) {
-          let nextNodeAddress = internalParent.getBranch(
-            childIndex + 1
-          ).address;
-          let nextNode = await this.nodeManager.getNode(nextNodeAddress);
-          if (!nextNode)
-            throw new Error(`Could not find node at ${nextNodeAddress}`);
-          path.push(nextNode);
-
-          while (!isLeafNodeProxy(nextNode)) {
-            const internal = nextNode as InternalNodeProxy;
-            if (internal.numBranches === 0) break;
-            nextNodeAddress = internal.getBranch(0).address;
-            nextNode = await this.nodeManager.getNode(nextNodeAddress);
-            if (!nextNode) throw new Error("Failed to traverse down to leaf");
-            path.push(nextNode);
-          }
-
-          if (nextNode.isLeaf) {
-            currentLeaf = nextNode as LeafNodeProxy;
-            foundNextLeaf = true;
-            break;
-          }
-        }
-      }
-
-      if (!foundNextLeaf) {
+    const cursor = this.createCursor();
+    for (
+      let pair = await cursor.seek(startKey);
+      pair !== null;
+      pair = await cursor.next()
+    ) {
+      if (endKey && compare(pair.key, endKey) > 0) {
         break;
       }
+      yield [pair.key, pair.value];
     }
   }
 
@@ -188,77 +137,16 @@ export class ProllyTree {
     startKey: Uint8Array,
     endKey?: Uint8Array
   ): Generator<[Uint8Array, Uint8Array]> {
-    const path = this.findPathToLeafSync(startKey);
-    let currentLeaf = path[path.length - 1] as LeafNodeProxy;
-
-    let pairIndex = 0;
-    if (currentLeaf.numEntries > 0) {
-      pairIndex = currentLeaf.findEntryIndex(startKey);
-      if (pairIndex < 0) {
-        pairIndex = ~pairIndex; // bitwise NOT to get insertion point
-      }
-    }
-
-    while (currentLeaf) {
-      for (let i = pairIndex; i < currentLeaf.numEntries; i++) {
-        const { key, value } = currentLeaf.getEntry(i);
-        if (endKey && compare(key, endKey) > 0) {
-          return;
-        }
-        yield [key, value];
-      }
-
-      pairIndex = 0;
-      let foundNextLeaf = false;
-
-      while (path.length > 1) {
-        const childNode = path.pop()!;
-        const parent = path[path.length - 1];
-        if (isLeafNodeProxy(parent)) {
-          break;
-        }
-        const internalParent = parent as InternalNodeProxy;
-
-        const childAddress = this.blockManager.hashFn(childNode.bytes);
-        let childIndex = -1;
-        for (let i = 0; i < internalParent.numBranches; i++) {
-          if (
-            compare(internalParent.getBranch(i).address, childAddress) === 0
-          ) {
-            childIndex = i;
-            break;
-          }
-        }
-
-        if (childIndex !== -1 && childIndex < internalParent.numBranches - 1) {
-          let nextNodeAddress = internalParent.getBranch(
-            childIndex + 1
-          ).address;
-          let nextNode = this.nodeManager.getNodeSync(nextNodeAddress);
-          if (!nextNode)
-            throw new Error(`Could not find node at ${nextNodeAddress}`);
-          path.push(nextNode);
-
-          while (!isLeafNodeProxy(nextNode)) {
-            const internal = nextNode as InternalNodeProxy;
-            if (internal.numBranches === 0) break;
-            nextNodeAddress = internal.getBranch(0).address;
-            nextNode = this.nodeManager.getNodeSync(nextNodeAddress);
-            if (!nextNode) throw new Error("Failed to traverse down to leaf");
-            path.push(nextNode);
-          }
-
-          if (isLeafNodeProxy(nextNode)) {
-            currentLeaf = nextNode;
-            foundNextLeaf = true;
-            break;
-          }
-        }
-      }
-
-      if (!foundNextLeaf) {
+    const cursor = this.createCursor();
+    for (
+      let pair = cursor.seekSync(startKey);
+      pair !== null;
+      pair = cursor.nextSync()
+    ) {
+      if (endKey && compare(pair.key, endKey) > 0) {
         break;
       }
+      yield [pair.key, pair.value];
     }
   }
 
@@ -269,13 +157,7 @@ export class ProllyTree {
     const path = await this.findPathToLeaf(key);
     const leaf = path[path.length - 1] as LeafNodeProxy;
 
-    const entryIndex = leaf.findEntryIndex(key);
-    if (entryIndex >= 0) {
-      const existingValue = leaf.getEntry(entryIndex).value;
-      if (compare(existingValue, value) === 0) {
-        return { tree: this, changed: false };
-      }
-    }
+    const originalLeafAddress = await this.blockManager.hashFn(leaf.bytes);
 
     let { newAddress: currentAddress, split } = await this.nodeManager._put(
       leaf,
@@ -283,9 +165,20 @@ export class ProllyTree {
       value
     );
 
+    const newLeafAddress = currentAddress;
+    if (
+      this.nodeManager.config.comparator(
+        originalLeafAddress,
+        newLeafAddress
+      ) === 0
+    ) {
+      return { tree: this, changed: false };
+    }
+
     for (let i = path.length - 2; i >= 0; i--) {
       const parent = path[i] as InternalNodeProxy;
-      const oldChildAddress = this.blockManager.hashFn(path[i + 1].bytes);
+      const oldChildAddress = await this.blockManager.hashFn(path[i + 1].bytes);
+
       const result = await this.nodeManager.updateChild(
         parent,
         oldChildAddress,
@@ -301,10 +194,11 @@ export class ProllyTree {
       // The root node split, so we need to create a new root.
       const leftChildAddress = currentAddress;
       const rightChildAddress = split.address;
-      const { node: newRoot } = await this.nodeManager.createInternalNode(
-        [{ key: split.key, address: leftChildAddress }],
-        rightChildAddress
-      );
+
+      const { node: newRoot } = await this.nodeManager.createInternalNode([
+        { key: split.key, address: leftChildAddress },
+        { key: new Uint8Array(), address: rightChildAddress },
+      ]);
       newRootNode = newRoot;
     } else {
       newRootNode = await this.nodeManager.getNode(currentAddress);
@@ -321,35 +215,43 @@ export class ProllyTree {
     return { tree: newTree, changed: true };
   }
 
+  public createCursor(): Cursor {
+    return new Cursor(this);
+  }
+
   async print(): Promise<string> {
     return this.printNode(this.rootNode, 0);
   }
 
   private async printNode(node: NodeProxy, level: number): Promise<string> {
     const indent = "  ".repeat(level);
-    const address = this.blockManager.hashFn(node.bytes);
+    const address = await this.blockManager.hashFn(node.bytes);
     const addressStr = toString(address.slice(0, 6), "hex");
     let output = `${indent}${
-      node.isLeaf ? "LEAF" : "INTERNAL"
-    } @ ${addressStr} (${node.entryCount} entries)\n`;
+      node.isLeaf() ? "LEAF" : "INTERNAL"
+    } @ ${addressStr} (${node.entryCount} entries, L${node.level})\n`;
 
-    if (isLeafNodeProxy(node)) {
-      const leaf = node as LeafNodeProxy;
-      for (const entry of leaf.getEntries()) {
-        output += `${indent}  - [${toString(entry.key)}] = ${toString(
-          entry.value
+    if (node.isLeaf()) {
+      const pairs = node.getAllPairs();
+      for (const pair of pairs) {
+        output += `${indent}  - [${toString(pair.key)}] = ${toString(
+          pair.value
         )}\n`;
       }
     } else {
-      const internal = node as InternalNodeProxy;
-      for (const branch of internal.getBranches()) {
-        const childPrefix =
-          branch.key.length > 0 ? `> [${toString(branch.key)}]` : `> *`;
+      const internalNode = node as InternalNodeProxy;
+      for (let i = 0; i < internalNode.addressesLength; i++) {
+        const childAddress = internalNode.getAddress(i)!;
+        const key =
+          i < internalNode.keysLength ? internalNode.getKey(i) : undefined;
+
+        const childPrefix = key ? `> [${toString(key)}]` : `> *`;
         output += `${indent}  ${childPrefix} -> ${toString(
-          branch.address.slice(0, 6),
+          childAddress.slice(0, 6),
           "hex"
         )}\n`;
-        const childNode = await this.nodeManager.getNode(branch.address);
+
+        const childNode = await this.nodeManager.getNode(childAddress);
         if (childNode) {
           output += await this.printNode(childNode, level + 1);
         }

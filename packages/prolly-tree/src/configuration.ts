@@ -1,3 +1,5 @@
+import { compare } from "uint8arrays/compare";
+
 export interface FastCDCChunking {
   chunkingStrategy: "fastcdc-v2020";
   maxInlineValueSize: number;
@@ -36,6 +38,7 @@ export interface Configuration {
   treeDefinition: TreeDefinition;
   valueChunking: ValueChunking;
   hashingAlgorithm: HashingAlgorithm;
+  comparator: (a: Uint8Array, b: Uint8Array) => number;
 }
 
 // default configuration
@@ -52,4 +55,5 @@ export const defaultConfiguration: Configuration = {
     maxChunkSize: 65536,
   },
   hashingAlgorithm: "blake3",
+  comparator: compare,
 };

@@ -11,22 +11,12 @@ import {
   BranchPair,
   Address,
 } from "./node-proxy.js";
-import { compare } from "uint8arrays/compare";
 
 export class NodeManager {
   constructor(
     public readonly blockManager: BlockManager,
     public readonly config: Configuration
   ) {}
-
-  compare(a: Address, b: Address): number {
-    for (let i = 0; i < a.length; i++) {
-      if (a[i] !== b[i]) {
-        return a[i] - b[i];
-      }
-    }
-    return 0;
-  }
 
   async getNode(
     address: Address
@@ -35,7 +25,7 @@ export class NodeManager {
     if (!bytes) {
       return undefined;
     }
-    return createNodeProxy(bytes);
+    return createNodeProxy(bytes, this);
   }
 
   getNodeSync(address: Address): LeafNodeProxy | InternalNodeProxy | undefined {
@@ -43,48 +33,57 @@ export class NodeManager {
     if (!bytes) {
       return undefined;
     }
-    return createNodeProxy(bytes);
+    return createNodeProxy(bytes, this);
   }
 
   isNodeFull(node: NodeProxy): boolean {
-    if (node.isLeaf) {
-      const leaf = node as LeafNodeProxy;
-      return leaf.numEntries >= this.config.treeDefinition.targetFanout;
+    const fanout = this.config.treeDefinition.targetFanout;
+    if (node.isLeaf()) {
+      return node.keysLength >= fanout;
     }
-    const internal = node as InternalNodeProxy;
-    return internal.numBranches >= this.config.treeDefinition.targetFanout;
+    // It's an InternalNodeProxy
+    const internalNode = node as InternalNodeProxy;
+    return internalNode.addressesLength >= fanout;
   }
 
   async createLeafNode(
     pairs: KeyValuePair[]
   ): Promise<{ address: Address; node: LeafNodeProxy }> {
-    pairs.sort((a, b) => compare(a.key, b.key));
-    const bytes = createLeafNodeBuffer(pairs);
+    pairs.sort((a, b) => this.config.comparator(a.key, b.key));
+
+    const level = 0; // Leaf nodes are at level 0
+    const bytes = createLeafNodeBuffer(pairs, level);
     const address = await this.blockManager.put(bytes);
-    const node = new LeafNodeProxy(bytes);
+    const node = new LeafNodeProxy(bytes, this);
     return { address, node };
   }
 
   async createInternalNode(
-    branches: BranchPair[],
-    rightmostAddress: Address
+    branches: BranchPair[]
   ): Promise<{ address: Address; node: InternalNodeProxy }> {
     let totalSubtreeEntries = 0;
+    let level = -1;
+
     for (const branch of branches) {
       const child = await this.getNode(branch.address);
-      if (child) totalSubtreeEntries += child.entryCount;
+      if (child) {
+        totalSubtreeEntries += child.entryCount;
+        if (level === -1) {
+          level = child.level + 1;
+        }
+      }
     }
-    const rightmostChild = await this.getNode(rightmostAddress);
-    if (rightmostChild) totalSubtreeEntries += rightmostChild.entryCount;
+    if (level === -1) {
+      level = 1; // Default to 1 if no children
+    }
 
-    const fullBranches = [
-      ...branches,
-      { key: new Uint8Array(), address: rightmostAddress },
-    ];
-
-    const bytes = createInternalNodeBuffer(fullBranches, totalSubtreeEntries);
+    const bytes = createInternalNodeBuffer(
+      branches,
+      totalSubtreeEntries,
+      level
+    );
     const address = await this.blockManager.put(bytes);
-    const node = new InternalNodeProxy(bytes);
+    const node = new InternalNodeProxy(bytes, this);
     return { address, node };
   }
 
@@ -97,11 +96,26 @@ export class NodeManager {
     newAddress: Address;
     split?: { key: Uint8Array; address: Address };
   }> {
-    let childIndex = -1;
-    const oldBranches = parent.getBranches();
+    const oldBranches: BranchPair[] = [];
+    for (let i = 0; i < parent.addressesLength; i++) {
+      const address = parent.getAddress(i);
+      // The last address has no corresponding key. We handle it outside the loop.
+      if (address && i < parent.keysLength) {
+        const key = parent.getKey(i);
+        if (key) {
+          oldBranches.push({ key, address });
+        }
+      } else if (address) {
+        // Last address
+        oldBranches.push({ key: new Uint8Array(), address });
+      }
+    }
 
+    let childIndex = -1;
     for (let i = 0; i < oldBranches.length; i++) {
-      if (compare(oldBranches[i].address, oldChildAddress) === 0) {
+      if (
+        this.config.comparator(oldBranches[i].address, oldChildAddress) === 0
+      ) {
         childIndex = i;
         break;
       }
@@ -112,11 +126,7 @@ export class NodeManager {
     }
 
     const newBranches: BranchPair[] = [...oldBranches];
-
-    newBranches[childIndex] = {
-      ...newBranches[childIndex],
-      address: newChildAddress,
-    };
+    newBranches[childIndex].address = newChildAddress;
 
     if (split) {
       newBranches.splice(childIndex + 1, 0, {
@@ -124,20 +134,10 @@ export class NodeManager {
         address: split.address,
       });
     }
-
-    // Ensure branches are sorted by key to maintain B-tree properties
-    newBranches.sort((a, b) => {
-      // The rightmost branch has an empty key and should always be last.
-      if (a.key.length === 0) return 1;
-      if (b.key.length === 0) return -1;
-      return compare(a.key, b.key);
-    });
-
+    // The key for the rightmost branch is implicit and not stored.
+    // The createInternalNode function expects the final branch to be passed in separately.
     const { address: newAddress, node: newNode } =
-      await this.createInternalNode(
-        newBranches.slice(0, -1),
-        newBranches[newBranches.length - 1].address
-      );
+      await this.createInternalNode(newBranches);
 
     if (this.isNodeFull(newNode)) {
       return this.splitNode(newNode);
@@ -150,18 +150,12 @@ export class NodeManager {
     newAddress: Address;
     split: { key: Uint8Array; address: Address };
   }> {
-    if (node.isLeaf) {
-      const leaf = node as LeafNodeProxy;
-      const mid = Math.ceil(leaf.numEntries / 2);
+    if (node.isLeaf()) {
+      const pairs = node.getAllPairs();
+      const mid = Math.ceil(pairs.length / 2);
+      const leftPairs = pairs.slice(0, mid);
+      const rightPairs = pairs.slice(mid);
 
-      const leftPairs: KeyValuePair[] = [];
-      for (let i = 0; i < mid; i++) {
-        leftPairs.push(leaf.getEntry(i));
-      }
-      const rightPairs: KeyValuePair[] = [];
-      for (let i = mid; i < leaf.numEntries; i++) {
-        rightPairs.push(leaf.getEntry(i));
-      }
       const splitKey = rightPairs[0].key;
 
       const { address: leftAddress } = await this.createLeafNode(leftPairs);
@@ -172,27 +166,33 @@ export class NodeManager {
         split: { key: splitKey, address: rightAddress },
       };
     } else {
-      const internal = node as InternalNodeProxy;
-      const mid = Math.ceil(internal.numBranches / 2);
-      const splitKey = internal.getBranch(mid - 1).key;
-
+      const internalNode = node as InternalNodeProxy;
       const allBranches: BranchPair[] = [];
-      for (let i = 0; i < internal.numBranches; i++) {
-        allBranches.push(internal.getBranch(i));
+      for (let i = 0; i < internalNode.addressesLength; i++) {
+        const address = internalNode.getAddress(i)!;
+        // The key for the *rightmost* pointer is not stored, it's implicit.
+        // So we have N addresses but N-1 keys.
+        const key =
+          i < internalNode.keysLength
+            ? internalNode.getKey(i)!
+            : new Uint8Array();
+        allBranches.push({ key, address });
       }
 
+      const mid = Math.ceil(allBranches.length / 2);
       const leftBranches = allBranches.slice(0, mid);
       const rightBranches = allBranches.slice(mid);
 
-      const newRightmost = rightBranches.pop()!;
+      // The split key is the first key of the new right-hand node.
+      // We need to fetch this from the actual child node.
+      const firstRightChildNode = await this.getNode(rightBranches[0].address);
+      const splitKey = (await firstRightChildNode?.getFirstKey())!;
 
       const { address: leftAddress } = await this.createInternalNode(
-        leftBranches.slice(0, -1),
-        leftBranches[leftBranches.length - 1].address
+        leftBranches
       );
       const { address: rightAddress } = await this.createInternalNode(
-        rightBranches,
-        newRightmost.address
+        rightBranches
       );
 
       return {
@@ -210,38 +210,30 @@ export class NodeManager {
     newAddress: Address;
     split?: { key: Uint8Array; address: Address };
   }> {
-    const existingPairIndex = node.findEntryIndex(key);
+    const pairs = node.getAllPairs();
+    const { found, index } = node.findKeyIndex(key);
 
-    let newPairs: KeyValuePair[];
-
-    if (existingPairIndex >= 0) {
-      if (compare(node.getEntry(existingPairIndex).value, value) === 0) {
-        // Need a way to get the address from the proxy
-        const address = this.blockManager.hashFn(node.bytes);
+    if (found) {
+      // Key exists. If value is the same, do nothing.
+      if (this.config.comparator(pairs[index].value, value) === 0) {
+        const address = await this.blockManager.hashFn(node.bytes);
         return { newAddress: address };
       }
-      newPairs = [];
-      for (let i = 0; i < node.numEntries; i++) {
-        newPairs.push(node.getEntry(i));
-      }
-      newPairs[existingPairIndex] = { key, value };
+      // Value is different, update it.
+      pairs[index] = { key, value };
     } else {
-      newPairs = [];
-      for (let i = 0; i < node.numEntries; i++) {
-        newPairs.push(node.getEntry(i));
-      }
-      newPairs.push({ key, value });
+      // Key does not exist, insert it.
+      pairs.splice(index, 0, { key, value });
     }
 
-    newPairs.sort((a, b) => compare(a.key, b.key));
-    const bytes = createLeafNodeBuffer(newPairs);
-    const newNode = new LeafNodeProxy(bytes);
+    const { address: newAddress, node: newNode } = await this.createLeafNode(
+      pairs
+    );
 
     if (this.isNodeFull(newNode)) {
       return this.splitNode(newNode);
     }
 
-    const newAddress = await this.blockManager.put(bytes);
     return { newAddress };
   }
 }

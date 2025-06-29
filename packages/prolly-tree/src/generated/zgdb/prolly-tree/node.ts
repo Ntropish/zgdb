@@ -25,9 +25,9 @@ static getSizePrefixedRootAsNode(bb:flatbuffers.ByteBuffer, obj?:Node):Node {
   return (obj || new Node()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-isLeaf():boolean {
+level():number {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
+  return offset ? this.bb!.readUint32(this.bb_pos + offset) : 0;
 }
 
 entryCount():number {
@@ -49,8 +49,8 @@ static startNode(builder:flatbuffers.Builder) {
   builder.startObject(4);
 }
 
-static addIsLeaf(builder:flatbuffers.Builder, isLeaf:boolean) {
-  builder.addFieldInt8(0, +isLeaf, +false);
+static addLevel(builder:flatbuffers.Builder, level:number) {
+  builder.addFieldInt32(0, level, 0);
 }
 
 static addEntryCount(builder:flatbuffers.Builder, entryCount:number) {
@@ -78,9 +78,9 @@ static finishSizePrefixedNodeBuffer(builder:flatbuffers.Builder, offset:flatbuff
   builder.finish(offset, undefined, true);
 }
 
-static createNode(builder:flatbuffers.Builder, isLeaf:boolean, entryCount:number, bodyType:NodeBody, bodyOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createNode(builder:flatbuffers.Builder, level:number, entryCount:number, bodyType:NodeBody, bodyOffset:flatbuffers.Offset):flatbuffers.Offset {
   Node.startNode(builder);
-  Node.addIsLeaf(builder, isLeaf);
+  Node.addLevel(builder, level);
   Node.addEntryCount(builder, entryCount);
   Node.addBodyType(builder, bodyType);
   Node.addBody(builder, bodyOffset);

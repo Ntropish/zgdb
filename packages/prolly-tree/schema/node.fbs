@@ -2,29 +2,34 @@
 
 namespace Zgdb.ProllyTree;
 
-// Using a union for different key types might be useful in the future.
-// For now, we'll assume keys are byte arrays.
-
-// An entry in a leaf node, representing a key-value pair.
-table Entry {
+// A wrapper for a key byte array.
+table Key {
   key:[ubyte];
+}
+
+// A wrapper for a value byte array.
+table Value {
   value:[ubyte];
 }
 
-// An entry in an internal node, pointing to a child node.
-table Branch {
-  key:[ubyte];
-  address:[ubyte]; // Address (hash) of the child node.
+// A wrapper for an address byte array.
+table Address {
+  address:[ubyte];
 }
 
-// A leaf node contains key-value pairs.
+// A leaf node contains parallel arrays of keys and values.
 table LeafNode {
-  entries:[Entry];
+  keys:[Key];
+  values:[Value];
 }
 
-// An internal node contains branches pointing to child nodes.
+// An internal node contains separator keys and pointers to child node addresses.
 table InternalNode {
-  branches:[Branch];
+  // There are N keys and N+1 addresses.
+  // The keys are separators for the child nodes.
+  // The last address corresponds to the rightmost child and has no upper-bound key in this node.
+  keys:[Key];
+  addresses:[Address];
 }
 
 // A union to represent either a LeafNode or an InternalNode.
@@ -35,7 +40,7 @@ union NodeBody {
 
 // The main Node table that wraps the node type and its data.
 table Node {
-  is_leaf:bool;
+  level:uint; // 0 for leaf, > 0 for internal
   entry_count:uint; // Total number of entries in the subtree rooted at this node.
   body:NodeBody;
 }
