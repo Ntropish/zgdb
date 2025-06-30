@@ -44,7 +44,7 @@ describe("Cascading Splits", () => {
 
     // Verify all keys are retrievable
     for (let i = 0; i < N; i++) {
-      const retrievedValue = await tree.get(keys[i]);
+      const retrievedValue = tree.getSync(keys[i]);
       expect(retrievedValue).toBeDefined();
       expect(D(retrievedValue!)).toBe(D(values[i]));
     }
