@@ -1,4 +1,4 @@
-import { ProllyTree } from "./prolly-tree.js";
+import { ProllyTree, PathEntry } from "./prolly-tree.js";
 import {
   NodeProxy,
   LeafNodeProxy,
@@ -12,17 +12,14 @@ import { compare } from "uint8arrays/compare";
 export class Cursor {
   private readonly tree: ProllyTree;
   private readonly nodeManager: NodeManager;
-  private readonly rootNode: NodeProxy;
 
-  private path: NodeProxy[] = [];
+  private path: PathEntry[] = [];
   private index: number = -1;
   private _current: KeyValuePair | null = null;
 
-  constructor(tree: ProllyTree, nodeManager: NodeManager, rootNode: NodeProxy) {
+  constructor(tree: ProllyTree, nodeManager: NodeManager) {
     this.tree = tree;
     this.nodeManager = nodeManager;
-    this.rootNode = rootNode;
-    this.path = [this.rootNode];
   }
 
   get current(): KeyValuePair | null {
@@ -32,19 +29,24 @@ export class Cursor {
   // #region Async Methods
 
   async first(): Promise<KeyValuePair | null> {
-    this.path = [this.rootNode];
-    let currentNode = this.rootNode;
+    this.path = [];
+    let currentNode: NodeProxy = (await this.tree.loadRoot())!;
+    let currentAddress = this.tree.root;
+    this.path.push({ node: currentNode, address: currentAddress });
+
     while (!currentNode.isLeaf()) {
-      const firstChildAddress = (currentNode as InternalNodeProxy).getBranch(
-        0
-      ).address;
+      const internalNode = currentNode as InternalNodeProxy;
+      if (internalNode.length === 0) {
+        this._current = null;
+        return null;
+      }
+      const firstChildAddress = internalNode.getBranch(0).address;
       if (!firstChildAddress) {
-        // This is an empty internal node, so the tree is empty.
         this._current = null;
         return null;
       }
       currentNode = (await this.nodeManager.getNode(firstChildAddress))!;
-      this.path.push(currentNode);
+      this.path.push({ node: currentNode, address: firstChildAddress });
     }
     this.index = 0;
     return this._updateCurrent();
@@ -52,7 +54,12 @@ export class Cursor {
 
   async seek(key: Uint8Array): Promise<KeyValuePair | null> {
     this.path = await this.tree.findPathToLeaf(key);
-    const leaf = this.path[this.path.length - 1] as LeafNodeProxy;
+    const leafEntry = this.path[this.path.length - 1];
+    if (!leafEntry) {
+      this._current = null;
+      return null;
+    }
+    const leaf = leafEntry.node as LeafNodeProxy;
     if (leaf.length === 0) {
       this._current = null;
       return null;
@@ -70,7 +77,8 @@ export class Cursor {
 
   private async _updateCurrent(): Promise<KeyValuePair | null> {
     if (this.path.length === 0) return null;
-    let leaf = this.path[this.path.length - 1] as LeafNodeProxy;
+    let leafEntry = this.path[this.path.length - 1];
+    let leaf = leafEntry.node as LeafNodeProxy;
 
     if (this.index >= leaf.length) {
       const nextLeaf = await this._findNextLeaf();
@@ -91,14 +99,13 @@ export class Cursor {
 
   private async _findNextLeaf(): Promise<LeafNodeProxy | null> {
     while (this.path.length > 1) {
-      const childNode = this.path.pop()!;
-      const parent = this.path[this.path.length - 1];
+      const childEntry = this.path.pop()!;
+      const parentEntry = this.path[this.path.length - 1];
+      const parent = parentEntry.node;
       if (parent.isLeaf()) break;
 
       const internalParent = parent as InternalNodeProxy;
-      const childAddress = await this.nodeManager.blockManager.hashFn(
-        childNode.bytes
-      );
+      const childAddress = childEntry.address;
 
       let childIndex = -1;
       for (let i = 0; i < internalParent.length; i++) {
@@ -116,7 +123,7 @@ export class Cursor {
         let nextNode = await this.nodeManager.getNode(nextNodeAddress);
         if (!nextNode) return null;
 
-        this.path.push(nextNode);
+        this.path.push({ node: nextNode, address: nextNodeAddress });
 
         while (!nextNode.isLeaf()) {
           const internal = nextNode as InternalNodeProxy;
@@ -125,7 +132,7 @@ export class Cursor {
           if (!nextNodeAddress) return null;
           nextNode = await this.nodeManager.getNode(nextNodeAddress);
           if (!nextNode) return null;
-          this.path.push(nextNode);
+          this.path.push({ node: nextNode, address: nextNodeAddress });
         }
         return nextNode as LeafNodeProxy;
       }
@@ -138,19 +145,24 @@ export class Cursor {
   // #region Sync Methods
 
   firstSync(): KeyValuePair | null {
-    this.path = [this.rootNode];
-    let currentNode = this.rootNode;
+    this.path = [];
+    let currentNode: NodeProxy = this.tree.getRootNodeSync();
+    let currentAddress = this.tree.root;
+    this.path.push({ node: currentNode, address: currentAddress });
+
     while (!currentNode.isLeaf()) {
-      const firstChildAddress = (currentNode as InternalNodeProxy).getBranch(
-        0
-      ).address;
+      const internalNode = currentNode as InternalNodeProxy;
+      if (internalNode.length === 0) {
+        this._current = null;
+        return null;
+      }
+      const firstChildAddress = internalNode.getBranch(0).address;
       if (!firstChildAddress) {
-        // This is an empty internal node, so the tree is empty.
         this._current = null;
         return null;
       }
       currentNode = this.nodeManager.getNodeSync(firstChildAddress)!;
-      this.path.push(currentNode);
+      this.path.push({ node: currentNode, address: firstChildAddress });
     }
     this.index = 0;
     return this._updateCurrentSync();
@@ -158,7 +170,12 @@ export class Cursor {
 
   seekSync(key: Uint8Array): KeyValuePair | null {
     this.path = this.tree.findPathToLeafSync(key);
-    const leaf = this.path[this.path.length - 1] as LeafNodeProxy;
+    const leafEntry = this.path[this.path.length - 1];
+    if (!leafEntry) {
+      this._current = null;
+      return null;
+    }
+    const leaf = leafEntry.node as LeafNodeProxy;
     if (leaf.length === 0) {
       this._current = null;
       return null;
@@ -175,7 +192,8 @@ export class Cursor {
 
   private _updateCurrentSync(): KeyValuePair | null {
     if (this.path.length === 0) return null;
-    let leaf = this.path[this.path.length - 1] as LeafNodeProxy;
+    let leafEntry = this.path[this.path.length - 1];
+    let leaf = leafEntry.node as LeafNodeProxy;
 
     if (this.index >= leaf.length) {
       const nextLeaf = this._findNextLeafSync();
@@ -196,13 +214,12 @@ export class Cursor {
 
   private _findNextLeafSync(): LeafNodeProxy | null {
     while (this.path.length > 1) {
-      const childNode = this.path.pop()!;
-      const parent = this.path[this.path.length - 1];
+      const childEntry = this.path.pop()!;
+      const parentEntry = this.path[this.path.length - 1];
+      const parent = parentEntry.node;
       if (parent.isLeaf()) break;
       const internalParent = parent as InternalNodeProxy;
-      const childAddress = this.nodeManager.blockManager.hashFnSync(
-        childNode.bytes
-      );
+      const childAddress = childEntry.address;
       let childIndex = -1;
       for (let i = 0; i < internalParent.length; i++) {
         const branch = internalParent.getBranch(i);
@@ -216,7 +233,7 @@ export class Cursor {
         if (!nextNodeAddress) return null;
         let nextNode = this.nodeManager.getNodeSync(nextNodeAddress);
         if (!nextNode) return null;
-        this.path.push(nextNode);
+        this.path.push({ node: nextNode, address: nextNodeAddress });
         while (!nextNode.isLeaf()) {
           const internal = nextNode as InternalNodeProxy;
           if (internal.length === 0) return null;
@@ -224,7 +241,7 @@ export class Cursor {
           if (!nextNodeAddress) return null;
           nextNode = this.nodeManager.getNodeSync(nextNodeAddress);
           if (!nextNode) return null;
-          this.path.push(nextNode);
+          this.path.push({ node: nextNode, address: nextNodeAddress });
         }
         return nextNode as LeafNodeProxy;
       }

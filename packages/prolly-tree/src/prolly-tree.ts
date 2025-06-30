@@ -22,7 +22,7 @@ type Change = {
   };
 };
 
-interface PathEntry {
+export interface PathEntry {
   node: NodeProxy;
   address: Address;
 }
@@ -59,6 +59,14 @@ export class ProllyTree {
 
   public get root(): Address {
     return this.blockManager.hashFnSync(this.rootNode.bytes);
+  }
+
+  public async loadRoot(): Promise<NodeProxy> {
+    return this.rootNode;
+  }
+
+  public getRootNodeSync(): NodeProxy {
+    return this.rootNode;
   }
 
   public async findPathToLeaf(key: Uint8Array): Promise<PathEntry[]> {
@@ -292,16 +300,15 @@ export class ProllyTree {
   }
 
   public createCursor(): Cursor {
-    return new Cursor(this, this.nodeManager, this.rootNode);
+    return new Cursor(this, this.nodeManager);
   }
 
   async print(): Promise<string> {
-    const rootData = await this.printNode(this.rootNode);
+    const rootData = await this.printNode(this.rootNode, this.root);
     return JSON.stringify(rootData, null, 2);
   }
 
-  private async printNode(node: NodeProxy): Promise<any> {
-    const address = this.blockManager.hashFnSync(node.bytes);
+  private async printNode(node: NodeProxy, address: Uint8Array): Promise<any> {
     if (node.isLeaf()) {
       const leaf = node as LeafNodeProxy;
       return {
@@ -325,7 +332,7 @@ export class ProllyTree {
       if (branch.address) {
         const childNode = await this.nodeManager.getNode(branch.address);
         if (childNode) {
-          children.push(await this.printNode(childNode));
+          children.push(await this.printNode(childNode, branch.address));
         }
       }
     }
