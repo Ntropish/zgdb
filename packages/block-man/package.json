@@ -1,5 +1,5 @@
 {
-  "name": "@zgdb/chunk-store",
+  "name": "@zgdb/block-man",
   "version": "0.0.1",
   "private": true,
   "main": "./dist/index.cjs",
@@ -8,9 +8,9 @@
   "type": "module",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "scripts": {
