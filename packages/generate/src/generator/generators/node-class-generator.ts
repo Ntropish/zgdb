@@ -99,7 +99,7 @@ function generateSingleNodeClass(
       if (rel.cardinality === "many") {
         return `  get ${rel.name}(): ${relNodeName}[] {
     // This is a placeholder implementation. A real implementation would use an index.
-    const allNodes = Array.from(this.db.${
+    const allNodes = Array.from(this.tx.${
       rel.entity.charAt(0).toLowerCase() + rel.entity.slice(1)
     }s);
     // TODO: This is inefficient. We should use an index.
@@ -114,10 +114,10 @@ function generateSingleNodeClass(
       return `  get ${rel.name}(): ${resolvedNodeType} | null {
     const id = this.fbb.${foreignKeyField}();
     if (!id) return null;
-    return this.db.get(
+    return this.tx.get(
       '${relSchemaName}',
        id,
-       (db, fbb, ac) => new ${relNodeName}(db, fbb, ac),
+       (tx, fbb, ac) => new ${relNodeName}(tx, fbb, ac),
        (bb) => ${relSchemaName}FB.${relSchemaName}.getRootAs${relSchemaName}(bb),
        this.authContext
     ) as ${resolvedNodeType} | null;
@@ -125,83 +125,53 @@ function generateSingleNodeClass(
     })
     .join("\n\n");
 
-  const fieldsList = schema.fields.map((f) => `'${f.name}'`).join(", ");
+  const fieldsList = schema.fields.map((f) => `'${f.name}'`);
 
   const sortedFields = [...schema.fields].sort((a, b) =>
     a.name.localeCompare(b.name)
   );
 
-  const rehydrationParams = sortedFields
-    .map((f) => {
-      const accessor = `target.fbb.${f.name}()`;
-      return `${f.name}: (prop === '${f.name}') ? value : ${accessor}`;
-    })
-    .join(", ");
-
-  const createStrings = sortedFields
-    .filter((f) => f.type === "string")
-    .map(
-      (f) =>
-        `    const ${f.name}Offset = data.${f.name} ? builder.createString(data.${f.name}) : 0;`
-    )
-    .join("\n");
-
   const createParams = sortedFields
     .map((f) => {
+      const fieldName = f.name;
       if (f.type === "string") {
-        return `${f.name}Offset`;
+        return `const ${fieldName}Offset = data.${fieldName} ? builder.createString(data.${fieldName}) : 0;`;
       }
-      return `data.${f.name}`;
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n      ");
+
+  const createArgs = sortedFields
+    .map((f) => {
+      return f.type === "string" ? `${f.name}Offset` : `data.${f.name}`;
     })
     .join(", ");
 
-  return `export class ${schema.name}Node<TActor> extends ZgBaseNode<${schema.name}FB.${schema.name}, TActor> {
+  return `
+const ${schema.name}Schema: NodeSchema = {
+  name: '${schema.name}',
+  fields: [${fieldsList.join(", ")}],
+  create: (builder, data) => {
+      ${createParams}
+      return ${schema.name}FB.${schema.name}.create${
+    schema.name
+  }(builder, ${createArgs});
+  },
+  getRootAs: (bb) => ${schema.name}FB.${schema.name}.getRootAs${
+    schema.name
+  }(bb),
+};
+
+export class ${schema.name}Node<TActor> extends ZgBaseNode<${schema.name}FB.${
+    schema.name
+  }, TActor> {
   constructor(
-    db: ZgDatabase,
+    tx: ZgTransaction,
     fbb: ${schema.name}FB.${schema.name},
     authContext: ZgAuthContext<TActor> | null
   ) {
-    super(db, fbb, authContext);
-    
-    return new Proxy(this, {
-      get: (target, prop, receiver) => {
-        const entityResolvers = target.db.config.entityResolvers?.['${schema.name}'] ?? {};
-        if (prop in entityResolvers) {
-          return entityResolvers[prop as keyof typeof entityResolvers]({ actor: target.authContext?.actor, db: target.db, node: target });
-        }
-        const globalResolvers = target.db.config.globalResolvers ?? {};
-        if (prop in globalResolvers) {
-          return globalResolvers[prop as keyof typeof globalResolvers]({ actor: target.authContext?.actor, db: target.db, node: target });
-        }
-        return Reflect.get(target, prop, receiver);
-      },
-      set: (target, prop, value, receiver) => {
-        const schemaFields = new Set([${fieldsList}]);
-        if (!schemaFields.has(prop as string)) {
-          return Reflect.set(target, prop, value, receiver);
-        }
-
-        const builder = new Builder(1024);
-        const data = { ${rehydrationParams} };
-        
-${createStrings}
-        
-        const entityOffset = ${schema.name}FB.${schema.name}.create${schema.name}(builder, ${createParams});
-        builder.finish(entityOffset);
-        const buffer = builder.asUint8Array();
-
-        target.db.update(
-          '${schema.name}',
-          target.id,
-          buffer
-        );
-        
-        const newFbb = ${schema.name}FB.${schema.name}.getRootAs${schema.name}(new ByteBuffer(buffer));
-        target.fbb = newFbb;
-
-        return true;
-      }
-    });
+    super(tx, fbb, ${schema.name}Schema, authContext);
   }
 
   // --- Fields ---

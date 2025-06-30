@@ -9,7 +9,7 @@ import { NormalizedSchema } from "../parser/types.js";
 
 const LICENSE_HEADER = `// @generated
 // Automatically generated. Don't change this file manually.
-// Name: schema.ts
+// Name: createDB.ts
 `;
 
 export class ZgFileGenerator implements IGenerator {

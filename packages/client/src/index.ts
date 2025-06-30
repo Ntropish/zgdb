@@ -1,7 +1,7 @@
 // The high-level ZG client runtime will be implemented here.
 
 import { BlockManager, ProllyTree } from "@zgdb/prolly-tree";
-import { Table, ByteBuffer } from "flatbuffers";
+import { Table, ByteBuffer, Builder } from "flatbuffers";
 import { compare } from "uint8arrays";
 
 const encoder = new TextEncoder();
@@ -11,14 +11,49 @@ export type ZgAuthContext<TActor = any> = {
   actor: TActor;
 };
 
+export type NodeSchema = {
+  name: string;
+  fields: string[];
+  create: (builder: Builder, data: any) => number;
+  getRootAs: (bb: ByteBuffer) => any;
+};
+
 // This is the base class for all generated node types.
 // It provides the link to the low-level Flatbuffers object.
 export class ZgBaseNode<T extends Table & { id(): string }, TActor = any> {
   constructor(
     protected tx: ZgTransaction,
     public fbb: T,
+    protected schema: NodeSchema,
     public authContext: ZgAuthContext<TActor> | null
-  ) {}
+  ) {
+    return new Proxy(this, {
+      set: (target, prop, value, receiver) => {
+        if (!target.schema.fields.includes(prop as string)) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+
+        const builder = new Builder(1024);
+        const currentData: { [key: string]: any } = {};
+        for (const field of target.schema.fields) {
+          currentData[field] = (target.fbb as any)[field]();
+        }
+
+        const newData = { ...currentData, [prop as string]: value };
+
+        const entityOffset = target.schema.create(builder, newData);
+        builder.finish(entityOffset);
+        const buffer = builder.asUint8Array();
+
+        target.tx.put(target.schema.name, target.id, buffer);
+
+        const newFbb = target.schema.getRootAs(new ByteBuffer(buffer));
+        target.fbb = newFbb;
+
+        return true;
+      },
+    });
+  }
 
   get id(): string {
     return this.fbb.id();
@@ -73,7 +108,13 @@ export class ZgDatabase {
     return encoder.encode(text);
   }
 
-  constructor(options?: any) {
+  constructor(
+    options?: any,
+    private transactionFactory: (
+      db: ZgDatabase,
+      tree: ProllyTree
+    ) => ZgTransaction = (db, tree) => new ZgTransaction(db, tree)
+  ) {
     this.config = options;
     this.blockManager = new BlockManager();
   }
@@ -88,7 +129,7 @@ export class ZgDatabase {
   public async createTransaction(): Promise<ZgTransaction> {
     const tree = await this.getTree();
     const txTree = await ProllyTree.load(tree.root, tree.blockManager);
-    return new ZgTransaction(this, txTree);
+    return this.transactionFactory(this, txTree);
   }
 
   // The main commit method
@@ -206,11 +247,4 @@ export class ZgTransaction {
     }
     await this.db.commitTransaction(this);
   }
-}
-
-export function createClient(options: any) {
-  // TODO: This should return the generated ZgClient, not the base DB
-  // For now, this is just a placeholder. The real implementation will
-  // be generated into the schema.zg.ts file.
-  return new ZgDatabase(options);
 }

@@ -3,7 +3,7 @@ import { NormalizedSchema } from "../../parser/types.js";
 
 export class ClientGenerator implements IGenerator {
   generate(schemas: NormalizedSchema[]): string {
-    const collections = schemas
+    const collectionProperties = schemas
       .filter((s) => !s.isJoinTable)
       .map((s) => {
         const schemaName = s.name;
@@ -21,24 +21,75 @@ export class ClientGenerator implements IGenerator {
         const collectionName =
           schemaName.charAt(0).toLowerCase() + schemaName.slice(1) + "s";
         const collectionClassName = `${schemaName}Collection<TActor>`;
-        return `    this.${collectionName} = new ${collectionClassName}(this, this.authContext);`;
+        const fbsNodeName = `${schemaName}FB.${schemaName}`;
+        const nodeName = `${schemaName}Node<TActor>`;
+        const getRootAs = `${fbsNodeName}.getRootAs${schemaName}`;
+        const nodeFactory = `(tx, fbb, ac) => new ${nodeName}(tx, fbb, ac)`;
+
+        return `    this.${collectionName} = new ${collectionClassName}(this.tx, '${schemaName}', ${nodeFactory}, ${getRootAs}, this.authContext);`;
       })
       .join("\n");
 
-    return `export class ZgClient<TActor> extends ZgDatabase {
-${collections}
+    const transactionClassName = `ZgTransactionWithCollections<TActor>`;
+
+    return `
+export class ${transactionClassName} extends ZgTransaction {
+${collectionProperties}
+
   constructor(
-    prollyTree: ProllyTree,
-    config: ZgConfig<TActor> = { entityResolvers: {}, globalResolvers: {} },
-    authContext: ZgAuthContext<TActor> | null = null,
+    db: ZgDatabase,
+    tree: ProllyTree,
+    private authContext: ZgAuthContext<TActor> | null,
   ) {
-    super(prollyTree, config, authContext);
+    super(db, tree);
 ${constructorAssignments}
   }
+}
 
-  public with<TActor>(actor: TActor): ZgClient<TActor> {
-    return new ZgClient<TActor>(this.prollyTree, this.config, { actor });
+export class ZgClient<TActor> {
+  private db: ZgDatabase;
+  private tx: ${transactionClassName};
+
+  private constructor(
+    db: ZgDatabase,
+    tx: ${transactionClassName},
+  ) {
+    this.db = db;
+    this.tx = tx;
   }
-}`;
+
+  public static async create<TActor>(options?: any): Promise<ZgClient<TActor>> {
+    const transactionFactory = (db: ZgDatabase, tree: ProllyTree) => {
+      // TODO: Make auth context real
+      return new ${transactionClassName}(db, tree, null);
+    }
+    const db = new ZgDatabase(options, transactionFactory);
+    const tx = await db.createTransaction() as ${transactionClassName};
+    return new ZgClient(db, tx);
+  }
+
+  public async commit(): Promise<void> {
+    await this.tx.commit();
+  }
+
+  ${schemas
+    .filter((s) => !s.isJoinTable)
+    .map((s) => {
+      const schemaName = s.name;
+      const collectionName =
+        schemaName.charAt(0).toLowerCase() + schemaName.slice(1) + "s";
+      const collectionClassName = `${schemaName}Collection<TActor>`;
+      return `
+  public get ${collectionName}(): ${collectionClassName} {
+    return this.tx.${collectionName};
+  }`;
+    })
+    .join("")}
+}
+
+export async function createDB<TActor = any>(options?: any): Promise<ZgClient<TActor>> {
+  return ZgClient.create<TActor>(options);
+}
+`;
   }
 }
