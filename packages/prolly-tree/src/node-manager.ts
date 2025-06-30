@@ -86,18 +86,6 @@ export class NodeManager {
       parent.getBranch(i)
     );
 
-    console.log(
-      "updateChild: received parent branches:",
-      branches.map((b) => ({
-        key: new TextDecoder().decode(b.key),
-        address: Buffer.from(b.address).toString("hex"),
-      }))
-    );
-    console.log(
-      "updateChild: looking for old child address:",
-      Buffer.from(oldChildAddress).toString("hex")
-    );
-
     const childIndex = branches.findIndex(
       (branch) => this.config.comparator(branch.address, oldChildAddress) === 0
     );

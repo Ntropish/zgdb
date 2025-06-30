@@ -4,10 +4,18 @@ import { BlockManager } from "../block-store.js";
 import { KeyValuePair } from "../node-proxy.js";
 import { Configuration, defaultConfiguration } from "../configuration.js";
 import { fromString } from "uint8arrays/from-string";
-import { faker } from "@faker-js/faker";
 import { ProllyTree } from "../prolly-tree.js";
+import { faker } from "@faker-js/faker";
 import { sampleSize } from "lodash-es";
 import { logTree } from "./logTree.js";
+import { toString } from "uint8arrays";
+
+const generateManuscriptData = (count: number) => {
+  return Array.from({ length: count }, () => ({
+    key: fromString(faker.string.uuid()),
+    value: fromString(faker.lorem.paragraph()),
+  }));
+};
 
 describe("NodeManager Deep Tests", () => {
   let blockManager: BlockManager;
@@ -30,30 +38,18 @@ describe("NodeManager Deep Tests", () => {
       },
       hashingAlgorithm: "sha2-256",
     };
-    blockManager = new BlockManager(config);
+    const store = new Map();
+    blockManager = new BlockManager();
     nodeManager = new NodeManager(blockManager, config);
   });
 
-  it.only("The Librarian of Babels Index: should handle mass insertions and updates via ProllyTree", async () => {
+  it("The Librarian of Babels Index: should handle mass insertions and updates via ProllyTree", async () => {
     const tree = await ProllyTree.create(blockManager);
 
-    const manuscripts = Array.from({ length: MANUSCRIPT_COUNT }, () => ({
-      id: faker.string.uuid(),
-      content: faker.lorem.paragraph(),
-    }));
-    const manuscriptData = manuscripts.map((m) => ({
-      key: fromString(m.id),
-      value: fromString(m.content),
-    }));
+    const manuscriptData = generateManuscriptData(MANUSCRIPT_COUNT);
 
     for (const data of manuscriptData) {
-      console.log(
-        `put (${new TextDecoder().decode(data.key)}, ${new TextDecoder().decode(
-          data.value
-        )})`
-      );
       await tree.put(data.key, data.value);
-      logTree(await tree.print());
     }
 
     for (const data of manuscriptData) {
