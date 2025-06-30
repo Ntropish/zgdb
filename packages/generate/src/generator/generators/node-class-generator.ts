@@ -78,6 +78,10 @@ function generateSingleNodeClass(
     return "";
   }
 
+  const propertyDeclarations = schema.fields
+    .map((f) => `  public ${f.name}: ${mapTsType(f.type)};`)
+    .join("\n");
+
   const relationships = preprocessRelationships(schema, schemas)
     .map((rel) => {
       const relSchemaName = rel.entity;
@@ -152,9 +156,13 @@ const ${schema.name}Schema: NodeSchema = {
   }(bb),
 };
 
-export class ${schema.name}Node<TActor> extends ZgBaseNode<${schema.name}FB.${
-    schema.name
-  }, TActor> implements I${schema.name} {
+export class ${schema.name}Node<TActor> extends ZgBaseNode<
+  ${schema.name}FB.${schema.name},
+  ZgTransactionWithCollections<TActor>,
+  TActor
+> implements I${schema.name} {
+${propertyDeclarations}
+
   constructor(
     tx: ZgTransaction,
     fbb: ${schema.name}FB.${schema.name},

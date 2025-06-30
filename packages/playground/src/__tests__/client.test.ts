@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { ZgClient } from "../schema/__generated__/createDB.js";
-import { createDB } from "../schema/__generated__/createDB.js";
+import { ZgClient, createDB } from "@zgdb/client";
+import { DB } from "../schema/__generated__/schema";
 
 describe("ZG Playground Client", () => {
   let db: ZgClient<any>;

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { ZgClient, createDB } from "../schema/__generated__/createDB.js";
+import { ZgClient, createDB } from "@zgdb/client";
+import { DB } from "../schema/__generated__/createDB.js";
 
 // This test suite is aspirational. It is written against the API described
 // in MISSION.md and is designed to fail until all features are implemented.
@@ -7,7 +8,7 @@ import { ZgClient, createDB } from "../schema/__generated__/createDB.js";
 let db: ZgClient<any>;
 
 beforeEach(async () => {
-  db = await createDB();
+  db = await createDB(DB);
 });
 
 describe("ZG Client: Relationships", () => {
@@ -80,7 +81,7 @@ describe("ZG Client: Relationships", () => {
     // 5. Commit and fetch from a new instance to ensure it was written to the tree
     await tx.commit();
 
-    const db2 = await createDB();
+    const db2 = await createDB(DB);
     const tx2 = await db2.createTransaction({ actor: { id: "system" } });
     const finalPost = tx2.posts.get("post-to-update");
     expect(finalPost).toBeDefined();

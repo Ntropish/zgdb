@@ -1,4 +1,5 @@
-import { createDB } from "./schema/__generated__/createDB.js";
+import { DB } from "./schema/__generated__/createDB.js";
+import { createDB } from "@zgdb/client";
 
 // The project-specific Actor type.
 export interface MyAppActor {
@@ -150,7 +151,7 @@ const auth = {
   },
 };
 
-export const db = createDB({
+export const db = createDB(DB, {
   globalResolvers,
   entityResolvers,
   auth,

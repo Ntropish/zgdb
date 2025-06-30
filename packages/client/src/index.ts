@@ -20,9 +20,13 @@ export type NodeSchema = {
 
 // This is the base class for all generated node types.
 // It provides the link to the low-level Flatbuffers object.
-export class ZgBaseNode<T extends Table & { id(): string }, TActor = any> {
+export class ZgBaseNode<
+  T extends Table & { id(): string },
+  TTransaction extends ZgTransaction,
+  TActor = any
+> {
   constructor(
-    protected tx: ZgTransaction,
+    protected tx: TTransaction,
     public fbb: T,
     protected schema: NodeSchema,
     public authContext: ZgAuthContext<TActor> | null
@@ -68,9 +72,9 @@ export class ZgBaseNode<T extends Table & { id(): string }, TActor = any> {
   }
 }
 
-export class EntityCollection<
+export class ZgCollection<
   T extends Table & { id(): string },
-  TNode extends ZgBaseNode<T>
+  TNode extends ZgBaseNode<T, ZgTransaction, any>
 > {
   constructor(
     private tx: ZgTransaction,
@@ -106,6 +110,64 @@ export class EntityCollection<
   }
 }
 
+export type ZgDbSchema<TTransaction extends ZgTransaction, TActor> = {
+  Transaction: ZgTransactionClass<TTransaction, TActor>;
+};
+
+export type ZgTransactionClass<
+  TTransaction extends ZgTransaction,
+  TActor
+> = new (
+  db: ZgDatabase,
+  tree: ProllyTree,
+  authContext: ZgAuthContext<TActor> | null
+) => TTransaction;
+
+export class ZgClient<TTransaction extends ZgTransaction> {
+  private db: ZgDatabase;
+  private transactionFactory: (
+    db: ZgDatabase,
+    tree: ProllyTree,
+    authContext: ZgAuthContext<any> | null
+  ) => TTransaction;
+
+  public constructor(
+    db: ZgDatabase,
+    transactionFactory: (
+      db: ZgDatabase,
+      tree: ProllyTree,
+      authContext: ZgAuthContext<any> | null
+    ) => TTransaction
+  ) {
+    this.db = db;
+    this.transactionFactory = transactionFactory;
+  }
+
+  public async createTransaction<TActor = any>(options: {
+    actor: TActor;
+  }): Promise<TTransaction> {
+    return (await this.db.createTransaction(
+      this.transactionFactory,
+      options.actor
+    )) as TTransaction;
+  }
+}
+
+export async function createDB<TActor, TTransaction extends ZgTransaction>(
+  schema: ZgDbSchema<TTransaction, TActor>,
+  options?: any
+): Promise<ZgClient<TTransaction>> {
+  const db = new ZgDatabase(options);
+  const transactionFactory = (
+    db: ZgDatabase,
+    tree: ProllyTree,
+    authContext: ZgAuthContext<any> | null
+  ) => {
+    return new schema.Transaction(db, tree, authContext);
+  };
+  return new ZgClient(db, transactionFactory);
+}
+
 // The ZgDatabase class is the storage engine.
 export class ZgDatabase {
   private tree: ProllyTree | null = null;
@@ -116,15 +178,7 @@ export class ZgDatabase {
     return encoder.encode(text);
   }
 
-  constructor(
-    options?: any,
-    private transactionFactory: (
-      db: ZgDatabase,
-      tree: ProllyTree,
-      authContext: ZgAuthContext<any> | null
-    ) => ZgTransaction = (db, tree, authContext) =>
-      new ZgTransaction(db, tree, authContext)
-  ) {
+  constructor(options?: any) {
     this.config = options;
     this.blockManager = new BlockManager();
   }
@@ -136,12 +190,21 @@ export class ZgDatabase {
     return this.tree;
   }
 
-  public async createTransaction<TActor = any>(
-    authContext: ZgAuthContext<TActor> | null = null
-  ): Promise<ZgTransaction> {
+  public async createTransaction<
+    TTransaction extends ZgTransaction,
+    TActor = any
+  >(
+    transactionFactory: (
+      db: ZgDatabase,
+      tree: ProllyTree,
+      authContext: ZgAuthContext<TActor> | null
+    ) => TTransaction,
+    actor?: TActor
+  ): Promise<TTransaction> {
     const tree = await this.getTree();
     const txTree = await ProllyTree.load(tree.root, tree.blockManager);
-    return this.transactionFactory(this, txTree, authContext);
+    const authContext = actor ? { actor } : null;
+    return transactionFactory(this, txTree, authContext);
   }
 
   // The main commit method
@@ -168,7 +231,10 @@ export class ZgTransaction {
     this.tree = tree;
   }
 
-  get<T extends Table & { id(): string }, TNode extends ZgBaseNode<T>>(
+  get<
+    T extends Table & { id(): string },
+    TNode extends ZgBaseNode<T, any, any>
+  >(
     entityName: string,
     id: string,
     nodeFactory: (

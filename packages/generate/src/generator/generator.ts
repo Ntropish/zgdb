@@ -101,7 +101,7 @@ export async function generate(config: GeneratorConfig) {
   // --- Step 3: Generate the ZG schema file ---
   const fileGenerator = new ZgFileGenerator();
   const tsContent = fileGenerator.generate(schemas);
-  const tsFilePath = path.join(outputDirectory, "createDB.ts");
+  const tsFilePath = path.join(outputDirectory, "schema.ts");
   await fs.writeFile(tsFilePath, tsContent);
   console.log(`Generated ZG schema at ${tsFilePath}`);
 }

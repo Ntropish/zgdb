@@ -22,6 +22,7 @@ export const toKebabCase = (str: string) =>
 
 export const toSnakeCase = (str: string) =>
   str
-    .replace(/([A-Z])/g, "_$1")
-    .replace(/^_/, "")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z\d])([A-Z])/g, "$1_$2")
+    .replace(/_/g, "_")
     .toLowerCase();
