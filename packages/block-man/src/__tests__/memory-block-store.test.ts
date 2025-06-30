@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { MemoryBlockStore } from "../memory-block-store.js";
-import { sha256 } from "../hashers.js";
-import type { Address } from "../types.js";
+import { MemoryBlockStore, sha256 } from "../index.js";
+import type { Address } from "../index.js";
 
 describe("MemoryBlockStore", () => {
   let store: MemoryBlockStore;
