@@ -1,16 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { createDB } from "../schema/__generated__/createDB.js";
+import { createDB as createDBFn } from "../schema/__generated__/createDB.js";
 import { ZgBaseNode } from "@zgdb/client";
 
 // This test suite is aspirational. It is written against the API described
 // in MISSION.md and is designed to fail until all features are implemented.
 
-type Actor = { id: string };
-
-let db: any;
-
-beforeEach(() => {
-  db = createDB({
+function createDB() {
+  return createDBFn({
     globalResolvers: {
       isOwner: (ctx: { actor: Actor; node: any }) => {
         return ctx.actor?.id === ctx.node.authorId;
@@ -25,6 +21,14 @@ beforeEach(() => {
     },
     auth: {},
   });
+}
+
+type Actor = { id: string };
+
+let db: ReturnType<typeof createDB>;
+
+beforeEach(() => {
+  db = createDB();
 });
 
 describe("ZG Client: Relationships", () => {
