@@ -33,7 +33,7 @@ export class ProllyTree {
 
   private constructor(
     rootNode: NodeProxy,
-    private readonly blockManager: BlockManager
+    public readonly blockManager: BlockManager
   ) {
     this.rootNode = rootNode;
     this.nodeManager = new NodeManager(blockManager, blockManager.config);

@@ -133,6 +133,9 @@ importers:
       flatbuffers:
         specifier: ^2.0.0
         version: 2.0.7
+      uint8arrays:
+        specifier: ^5.1.0
+        version: 5.1.0
     devDependencies:
       '@vitest/ui':
         specifier: ^3.2.4

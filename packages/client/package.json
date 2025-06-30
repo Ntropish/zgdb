@@ -8,9 +8,9 @@
   "type": "module",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "scripts": {
@@ -21,8 +21,9 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@zgdb/prolly-tree": "workspace:*",
     "flatbuffers": "^2.0.0",
-    "@zgdb/prolly-tree": "workspace:*"
+    "uint8arrays": "^5.1.0"
   },
   "devDependencies": {
     "@vitest/ui": "^3.2.4",
