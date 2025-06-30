@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ZgClient, createDB } from "@zgdb/client";
-import { DB } from "../schema/__generated__/schema";
+import { DB } from "../schema/__generated__/schema.js";
 
 describe("ZG Playground Client", () => {
   let db: ZgClient<any>;
 
   beforeEach(async () => {
-    db = await createDB();
+    db = await createDB(DB);
   });
 
   it("should be able to import the generated client", () => {

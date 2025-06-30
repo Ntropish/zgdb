@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ZgClient, createDB } from "@zgdb/client";
-import { DB } from "../schema/__generated__/createDB.js";
+import { DB } from "../schema/__generated__/schema.js";
 
 // This test suite is aspirational. It is written against the API described
 // in MISSION.md and is designed to fail until all features are implemented.
