@@ -77,17 +77,6 @@ function generateSingleNodeClass(
   if (schema.isJoinTable) {
     return "";
   }
-  const fields = schema.fields
-    .map((f) => {
-      let tsType = mapTsType(f.type);
-      if (f.type === "string") {
-        tsType = "string | null";
-      }
-      return `  get ${f.name}(): ${tsType} {
-    return this.fbb.${f.name}();
-  }`;
-    })
-    .join("\n\n");
 
   const relationships = preprocessRelationships(schema, schemas)
     .map((rel) => {
@@ -165,7 +154,7 @@ const ${schema.name}Schema: NodeSchema = {
 
 export class ${schema.name}Node<TActor> extends ZgBaseNode<${schema.name}FB.${
     schema.name
-  }, TActor> {
+  }, TActor> implements I${schema.name} {
   constructor(
     tx: ZgTransaction,
     fbb: ${schema.name}FB.${schema.name},
@@ -173,9 +162,6 @@ export class ${schema.name}Node<TActor> extends ZgBaseNode<${schema.name}FB.${
   ) {
     super(tx, fbb, ${schema.name}Schema, authContext);
   }
-
-  // --- Fields ---
-${fields}
 
   // --- Relationships ---
 ${relationships}

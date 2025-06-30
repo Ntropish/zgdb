@@ -85,7 +85,7 @@ function generateSingleCollectionClass(schema: NormalizedSchema): string {
 
       const fbb = ${fbsNodeName}.${fbsRootGetter}(new ByteBuffer(buffer));
 
-      return this['nodeFactory'](this['tx'], fbb, ${schema.name}Schema, this['authContext']);
+      return new ${nodeName}(this['tx'], fbb, this['authContext']);
     }
   }`;
 }

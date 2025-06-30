@@ -28,6 +28,14 @@ export class ZgBaseNode<T extends Table & { id(): string }, TActor = any> {
     public authContext: ZgAuthContext<TActor> | null
   ) {
     return new Proxy(this, {
+      get: (target, prop, receiver) => {
+        // If the property is a field in the schema, get it from the FlatBuffer.
+        if (target.schema.fields.includes(prop as string)) {
+          return (target.fbb as any)[prop as string]();
+        }
+        // Otherwise, use the default behavior (for methods, etc.)
+        return Reflect.get(target, prop, receiver);
+      },
       set: (target, prop, value, receiver) => {
         if (!target.schema.fields.includes(prop as string)) {
           return Reflect.set(target, prop, value, receiver);
@@ -112,8 +120,10 @@ export class ZgDatabase {
     options?: any,
     private transactionFactory: (
       db: ZgDatabase,
-      tree: ProllyTree
-    ) => ZgTransaction = (db, tree) => new ZgTransaction(db, tree)
+      tree: ProllyTree,
+      authContext: ZgAuthContext<any> | null
+    ) => ZgTransaction = (db, tree, authContext) =>
+      new ZgTransaction(db, tree, authContext)
   ) {
     this.config = options;
     this.blockManager = new BlockManager();
@@ -126,10 +136,12 @@ export class ZgDatabase {
     return this.tree;
   }
 
-  public async createTransaction(): Promise<ZgTransaction> {
+  public async createTransaction<TActor = any>(
+    authContext: ZgAuthContext<TActor> | null = null
+  ): Promise<ZgTransaction> {
     const tree = await this.getTree();
     const txTree = await ProllyTree.load(tree.root, tree.blockManager);
-    return this.transactionFactory(this, txTree);
+    return this.transactionFactory(this, txTree, authContext);
   }
 
   // The main commit method
@@ -148,7 +160,11 @@ export class ZgTransaction {
   public tree: ProllyTree;
   private writeCache: Map<string, Uint8Array> = new Map();
 
-  constructor(private db: ZgDatabase, tree: ProllyTree) {
+  constructor(
+    private db: ZgDatabase,
+    tree: ProllyTree,
+    public authContext: ZgAuthContext<any> | null = null
+  ) {
     this.tree = tree;
   }
 

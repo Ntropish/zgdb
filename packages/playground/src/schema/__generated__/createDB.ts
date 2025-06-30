@@ -112,30 +112,13 @@ const UserSchema: NodeSchema = {
   getRootAs: (bb) => UserFB.User.getRootAsUser(bb),
 };
 
-export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> {
+export class UserNode<TActor> extends ZgBaseNode<UserFB.User, TActor> implements IUser {
   constructor(
     tx: ZgTransaction,
     fbb: UserFB.User,
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(tx, fbb, UserSchema, authContext);
-  }
-
-  // --- Fields ---
-  get id(): string | null {
-    return this.fbb.id();
-  }
-
-  get publicKey(): string | null {
-    return this.fbb.publicKey();
-  }
-
-  get displayName(): string | null {
-    return this.fbb.displayName();
-  }
-
-  get avatarUrl(): string | null {
-    return this.fbb.avatarUrl();
   }
 
   // --- Relationships ---
@@ -209,34 +192,13 @@ const PostSchema: NodeSchema = {
   getRootAs: (bb) => PostFB.Post.getRootAsPost(bb),
 };
 
-export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> {
+export class PostNode<TActor> extends ZgBaseNode<PostFB.Post, TActor> implements IPost {
   constructor(
     tx: ZgTransaction,
     fbb: PostFB.Post,
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(tx, fbb, PostSchema, authContext);
-  }
-
-  // --- Fields ---
-  get id(): string | null {
-    return this.fbb.id();
-  }
-
-  get title(): string | null {
-    return this.fbb.title();
-  }
-
-  get content(): string | null {
-    return this.fbb.content();
-  }
-
-  get authorId(): string | null {
-    return this.fbb.authorId();
-  }
-
-  get createdAt(): bigint {
-    return this.fbb.createdAt();
   }
 
   // --- Relationships ---
@@ -300,34 +262,13 @@ const CommentSchema: NodeSchema = {
   getRootAs: (bb) => CommentFB.Comment.getRootAsComment(bb),
 };
 
-export class CommentNode<TActor> extends ZgBaseNode<CommentFB.Comment, TActor> {
+export class CommentNode<TActor> extends ZgBaseNode<CommentFB.Comment, TActor> implements IComment {
   constructor(
     tx: ZgTransaction,
     fbb: CommentFB.Comment,
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(tx, fbb, CommentSchema, authContext);
-  }
-
-  // --- Fields ---
-  get id(): string | null {
-    return this.fbb.id();
-  }
-
-  get content(): string | null {
-    return this.fbb.content();
-  }
-
-  get authorId(): string | null {
-    return this.fbb.authorId();
-  }
-
-  get postId(): string | null {
-    return this.fbb.postId();
-  }
-
-  get createdAt(): bigint {
-    return this.fbb.createdAt();
   }
 
   // --- Relationships ---
@@ -380,30 +321,13 @@ const FollowSchema: NodeSchema = {
   getRootAs: (bb) => FollowFB.Follow.getRootAsFollow(bb),
 };
 
-export class FollowNode<TActor> extends ZgBaseNode<FollowFB.Follow, TActor> {
+export class FollowNode<TActor> extends ZgBaseNode<FollowFB.Follow, TActor> implements IFollow {
   constructor(
     tx: ZgTransaction,
     fbb: FollowFB.Follow,
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(tx, fbb, FollowSchema, authContext);
-  }
-
-  // --- Fields ---
-  get id(): string | null {
-    return this.fbb.id();
-  }
-
-  get followerId(): string | null {
-    return this.fbb.followerId();
-  }
-
-  get followingId(): string | null {
-    return this.fbb.followingId();
-  }
-
-  get createdAt(): bigint {
-    return this.fbb.createdAt();
   }
 
   // --- Relationships ---
@@ -443,30 +367,13 @@ const Image_MetadataSchema: NodeSchema = {
   getRootAs: (bb) => Image_MetadataFB.Image_Metadata.getRootAsImage_Metadata(bb),
 };
 
-export class Image_MetadataNode<TActor> extends ZgBaseNode<Image_MetadataFB.Image_Metadata, TActor> {
+export class Image_MetadataNode<TActor> extends ZgBaseNode<Image_MetadataFB.Image_Metadata, TActor> implements IImage_Metadata {
   constructor(
     tx: ZgTransaction,
     fbb: Image_MetadataFB.Image_Metadata,
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(tx, fbb, Image_MetadataSchema, authContext);
-  }
-
-  // --- Fields ---
-  get width(): bigint {
-    return this.fbb.width();
-  }
-
-  get height(): bigint {
-    return this.fbb.height();
-  }
-
-  get format(): string | null {
-    return this.fbb.format();
-  }
-
-  get createdAt(): bigint {
-    return this.fbb.createdAt();
   }
 
   // --- Relationships ---
@@ -488,42 +395,13 @@ const ImageSchema: NodeSchema = {
   getRootAs: (bb) => ImageFB.Image.getRootAsImage(bb),
 };
 
-export class ImageNode<TActor> extends ZgBaseNode<ImageFB.Image, TActor> {
+export class ImageNode<TActor> extends ZgBaseNode<ImageFB.Image, TActor> implements IImage {
   constructor(
     tx: ZgTransaction,
     fbb: ImageFB.Image,
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(tx, fbb, ImageSchema, authContext);
-  }
-
-  // --- Fields ---
-  get id(): string | null {
-    return this.fbb.id();
-  }
-
-  get url(): string | null {
-    return this.fbb.url();
-  }
-
-  get fartCount(): bigint {
-    return this.fbb.fartCount();
-  }
-
-  get altText(): string | null {
-    return this.fbb.altText();
-  }
-
-  get metadata(): any {
-    return this.fbb.metadata();
-  }
-
-  get postId(): string | null {
-    return this.fbb.postId();
-  }
-
-  get userId(): string | null {
-    return this.fbb.userId();
   }
 
   // --- Relationships ---
@@ -567,34 +445,13 @@ const ReactionSchema: NodeSchema = {
   getRootAs: (bb) => ReactionFB.Reaction.getRootAsReaction(bb),
 };
 
-export class ReactionNode<TActor> extends ZgBaseNode<ReactionFB.Reaction, TActor> {
+export class ReactionNode<TActor> extends ZgBaseNode<ReactionFB.Reaction, TActor> implements IReaction {
   constructor(
     tx: ZgTransaction,
     fbb: ReactionFB.Reaction,
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(tx, fbb, ReactionSchema, authContext);
-  }
-
-  // --- Fields ---
-  get id(): string | null {
-    return this.fbb.id();
-  }
-
-  get type(): string | null {
-    return this.fbb.type();
-  }
-
-  get authorId(): string | null {
-    return this.fbb.authorId();
-  }
-
-  get targetId(): string | null {
-    return this.fbb.targetId();
-  }
-
-  get targetType(): string | null {
-    return this.fbb.targetType();
   }
 
   // --- Relationships ---
@@ -623,22 +480,13 @@ const TagSchema: NodeSchema = {
   getRootAs: (bb) => TagFB.Tag.getRootAsTag(bb),
 };
 
-export class TagNode<TActor> extends ZgBaseNode<TagFB.Tag, TActor> {
+export class TagNode<TActor> extends ZgBaseNode<TagFB.Tag, TActor> implements ITag {
   constructor(
     tx: ZgTransaction,
     fbb: TagFB.Tag,
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(tx, fbb, TagSchema, authContext);
-  }
-
-  // --- Fields ---
-  get id(): string | null {
-    return this.fbb.id();
-  }
-
-  get name(): string | null {
-    return this.fbb.name();
   }
 
   // --- Relationships ---
@@ -658,26 +506,13 @@ const PostTagSchema: NodeSchema = {
   getRootAs: (bb) => PostTagFB.PostTag.getRootAsPostTag(bb),
 };
 
-export class PostTagNode<TActor> extends ZgBaseNode<PostTagFB.PostTag, TActor> {
+export class PostTagNode<TActor> extends ZgBaseNode<PostTagFB.PostTag, TActor> implements IPostTag {
   constructor(
     tx: ZgTransaction,
     fbb: PostTagFB.PostTag,
     authContext: ZgAuthContext<TActor> | null
   ) {
     super(tx, fbb, PostTagSchema, authContext);
-  }
-
-  // --- Fields ---
-  get id(): string | null {
-    return this.fbb.id();
-  }
-
-  get postId(): string | null {
-    return this.fbb.postId();
-  }
-
-  get tagId(): string | null {
-    return this.fbb.tagId();
   }
 
   // --- Relationships ---
@@ -734,7 +569,7 @@ export class UserCollection<TActor> extends EntityCollection<UserFB.User, UserNo
 
       const fbb = UserFB.User.getRootAsUser(new ByteBuffer(buffer));
 
-      return this['nodeFactory'](this['tx'], fbb, UserSchema, this['authContext']);
+      return new UserNode<TActor>(this['tx'], fbb, this['authContext']);
     }
   }
 
@@ -766,7 +601,7 @@ export class PostCollection<TActor> extends EntityCollection<PostFB.Post, PostNo
 
       const fbb = PostFB.Post.getRootAsPost(new ByteBuffer(buffer));
 
-      return this['nodeFactory'](this['tx'], fbb, PostSchema, this['authContext']);
+      return new PostNode<TActor>(this['tx'], fbb, this['authContext']);
     }
   }
 
@@ -798,7 +633,7 @@ export class CommentCollection<TActor> extends EntityCollection<CommentFB.Commen
 
       const fbb = CommentFB.Comment.getRootAsComment(new ByteBuffer(buffer));
 
-      return this['nodeFactory'](this['tx'], fbb, CommentSchema, this['authContext']);
+      return new CommentNode<TActor>(this['tx'], fbb, this['authContext']);
     }
   }
 
@@ -828,7 +663,7 @@ export class FollowCollection<TActor> extends EntityCollection<FollowFB.Follow, 
 
       const fbb = FollowFB.Follow.getRootAsFollow(new ByteBuffer(buffer));
 
-      return this['nodeFactory'](this['tx'], fbb, FollowSchema, this['authContext']);
+      return new FollowNode<TActor>(this['tx'], fbb, this['authContext']);
     }
   }
 
@@ -856,7 +691,7 @@ export class Image_MetadataCollection<TActor> extends EntityCollection<Image_Met
 
       const fbb = Image_MetadataFB.Image_Metadata.getRootAsImage_Metadata(new ByteBuffer(buffer));
 
-      return this['nodeFactory'](this['tx'], fbb, Image_MetadataSchema, this['authContext']);
+      return new Image_MetadataNode<TActor>(this['tx'], fbb, this['authContext']);
     }
   }
 
@@ -891,7 +726,7 @@ export class ImageCollection<TActor> extends EntityCollection<ImageFB.Image, Ima
 
       const fbb = ImageFB.Image.getRootAsImage(new ByteBuffer(buffer));
 
-      return this['nodeFactory'](this['tx'], fbb, ImageSchema, this['authContext']);
+      return new ImageNode<TActor>(this['tx'], fbb, this['authContext']);
     }
   }
 
@@ -924,7 +759,7 @@ export class ReactionCollection<TActor> extends EntityCollection<ReactionFB.Reac
 
       const fbb = ReactionFB.Reaction.getRootAsReaction(new ByteBuffer(buffer));
 
-      return this['nodeFactory'](this['tx'], fbb, ReactionSchema, this['authContext']);
+      return new ReactionNode<TActor>(this['tx'], fbb, this['authContext']);
     }
   }
 
@@ -951,7 +786,7 @@ export class TagCollection<TActor> extends EntityCollection<TagFB.Tag, TagNode<T
 
       const fbb = TagFB.Tag.getRootAsTag(new ByteBuffer(buffer));
 
-      return this['nodeFactory'](this['tx'], fbb, TagSchema, this['authContext']);
+      return new TagNode<TActor>(this['tx'], fbb, this['authContext']);
     }
   }
 
@@ -980,7 +815,7 @@ export class PostTagCollection<TActor> extends EntityCollection<PostTagFB.PostTa
 
       const fbb = PostTagFB.PostTag.getRootAsPostTag(new ByteBuffer(buffer));
 
-      return this['nodeFactory'](this['tx'], fbb, PostTagSchema, this['authContext']);
+      return new PostTagNode<TActor>(this['tx'], fbb, this['authContext']);
     }
   }
 
@@ -999,74 +834,46 @@ export class ZgTransactionWithCollections<TActor> extends ZgTransaction {
   constructor(
     db: ZgDatabase,
     tree: ProllyTree,
-    private authContext: ZgAuthContext<TActor> | null,
+    authContext: ZgAuthContext<TActor> | null,
   ) {
-    super(db, tree);
-    this.users = new UserCollection<TActor>(this.tx, 'User', (tx, fbb, ac) => new UserNode<TActor>(tx, fbb, ac), UserFB.User.getRootAsUser, this.authContext);
-    this.posts = new PostCollection<TActor>(this.tx, 'Post', (tx, fbb, ac) => new PostNode<TActor>(tx, fbb, ac), PostFB.Post.getRootAsPost, this.authContext);
-    this.comments = new CommentCollection<TActor>(this.tx, 'Comment', (tx, fbb, ac) => new CommentNode<TActor>(tx, fbb, ac), CommentFB.Comment.getRootAsComment, this.authContext);
-    this.follows = new FollowCollection<TActor>(this.tx, 'Follow', (tx, fbb, ac) => new FollowNode<TActor>(tx, fbb, ac), FollowFB.Follow.getRootAsFollow, this.authContext);
-    this.image_Metadatas = new Image_MetadataCollection<TActor>(this.tx, 'Image_Metadata', (tx, fbb, ac) => new Image_MetadataNode<TActor>(tx, fbb, ac), Image_MetadataFB.Image_Metadata.getRootAsImage_Metadata, this.authContext);
-    this.images = new ImageCollection<TActor>(this.tx, 'Image', (tx, fbb, ac) => new ImageNode<TActor>(tx, fbb, ac), ImageFB.Image.getRootAsImage, this.authContext);
-    this.reactions = new ReactionCollection<TActor>(this.tx, 'Reaction', (tx, fbb, ac) => new ReactionNode<TActor>(tx, fbb, ac), ReactionFB.Reaction.getRootAsReaction, this.authContext);
-    this.tags = new TagCollection<TActor>(this.tx, 'Tag', (tx, fbb, ac) => new TagNode<TActor>(tx, fbb, ac), TagFB.Tag.getRootAsTag, this.authContext);
-    this.postTags = new PostTagCollection<TActor>(this.tx, 'PostTag', (tx, fbb, ac) => new PostTagNode<TActor>(tx, fbb, ac), PostTagFB.PostTag.getRootAsPostTag, this.authContext);
+    super(db, tree, authContext);
+    this.users = new UserCollection<TActor>(this, 'User', (tx, fbb, ac) => new UserNode<TActor>(tx, fbb, ac), (bb) => UserFB.User.getRootAsUser(bb), this.authContext);
+    this.posts = new PostCollection<TActor>(this, 'Post', (tx, fbb, ac) => new PostNode<TActor>(tx, fbb, ac), (bb) => PostFB.Post.getRootAsPost(bb), this.authContext);
+    this.comments = new CommentCollection<TActor>(this, 'Comment', (tx, fbb, ac) => new CommentNode<TActor>(tx, fbb, ac), (bb) => CommentFB.Comment.getRootAsComment(bb), this.authContext);
+    this.follows = new FollowCollection<TActor>(this, 'Follow', (tx, fbb, ac) => new FollowNode<TActor>(tx, fbb, ac), (bb) => FollowFB.Follow.getRootAsFollow(bb), this.authContext);
+    this.image_Metadatas = new Image_MetadataCollection<TActor>(this, 'Image_Metadata', (tx, fbb, ac) => new Image_MetadataNode<TActor>(tx, fbb, ac), (bb) => Image_MetadataFB.Image_Metadata.getRootAsImage_Metadata(bb), this.authContext);
+    this.images = new ImageCollection<TActor>(this, 'Image', (tx, fbb, ac) => new ImageNode<TActor>(tx, fbb, ac), (bb) => ImageFB.Image.getRootAsImage(bb), this.authContext);
+    this.reactions = new ReactionCollection<TActor>(this, 'Reaction', (tx, fbb, ac) => new ReactionNode<TActor>(tx, fbb, ac), (bb) => ReactionFB.Reaction.getRootAsReaction(bb), this.authContext);
+    this.tags = new TagCollection<TActor>(this, 'Tag', (tx, fbb, ac) => new TagNode<TActor>(tx, fbb, ac), (bb) => TagFB.Tag.getRootAsTag(bb), this.authContext);
+    this.postTags = new PostTagCollection<TActor>(this, 'PostTag', (tx, fbb, ac) => new PostTagNode<TActor>(tx, fbb, ac), (bb) => PostTagFB.PostTag.getRootAsPostTag(bb), this.authContext);
   }
 }
 
 export class ZgClient<TActor> {
   private db: ZgDatabase;
-  private tx: ZgTransactionWithCollections<TActor>;
 
-  private constructor(
-    db: ZgDatabase,
-    tx: ZgTransactionWithCollections<TActor>,
-  ) {
+  private constructor(db: ZgDatabase) {
     this.db = db;
-    this.tx = tx;
   }
 
   public static async create<TActor>(options?: any): Promise<ZgClient<TActor>> {
-    const transactionFactory = (db: ZgDatabase, tree: ProllyTree) => {
-      // TODO: Make auth context real
-      return new ZgTransactionWithCollections<TActor>(db, tree, null);
-    }
+    const transactionFactory = (
+      db: ZgDatabase,
+      tree: ProllyTree,
+      authContext: ZgAuthContext<TActor> | null
+    ) => {
+      return new ZgTransactionWithCollections<TActor>(db, tree, authContext);
+    };
     const db = new ZgDatabase(options, transactionFactory);
-    const tx = await db.createTransaction() as ZgTransactionWithCollections<TActor>;
-    return new ZgClient(db, tx);
+    return new ZgClient(db);
   }
 
-  public async commit(): Promise<void> {
-    await this.tx.commit();
-  }
-
-  
-  public get users(): UserCollection<TActor> {
-    return this.tx.users;
-  }
-  public get posts(): PostCollection<TActor> {
-    return this.tx.posts;
-  }
-  public get comments(): CommentCollection<TActor> {
-    return this.tx.comments;
-  }
-  public get follows(): FollowCollection<TActor> {
-    return this.tx.follows;
-  }
-  public get image_Metadatas(): Image_MetadataCollection<TActor> {
-    return this.tx.image_Metadatas;
-  }
-  public get images(): ImageCollection<TActor> {
-    return this.tx.images;
-  }
-  public get reactions(): ReactionCollection<TActor> {
-    return this.tx.reactions;
-  }
-  public get tags(): TagCollection<TActor> {
-    return this.tx.tags;
-  }
-  public get postTags(): PostTagCollection<TActor> {
-    return this.tx.postTags;
+  public async createTransaction(options: {
+    actor: TActor;
+  }): Promise<ZgTransactionWithCollections<TActor>> {
+    return (await this.db.createTransaction({
+      actor: options.actor,
+    })) as ZgTransactionWithCollections<TActor>;
   }
 }
 
