@@ -7,7 +7,7 @@ export function logTree(jsonString: string) {
     const keys =
       node.type === "Leaf"
         ? node.entries.map((e: any) => e.key).join(", ")
-        : node.children
+        : (node.children || [])
             .map((c: any) => c.key)
             .filter((k: any) => k)
             .join(", ");

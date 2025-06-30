@@ -7,6 +7,7 @@ import { fromString } from "uint8arrays/from-string";
 import { faker } from "@faker-js/faker";
 import { ProllyTree } from "../prolly-tree.js";
 import { sampleSize } from "lodash-es";
+import { logTree } from "./logTree.js";
 
 describe("NodeManager Deep Tests", () => {
   let blockManager: BlockManager;
@@ -33,7 +34,7 @@ describe("NodeManager Deep Tests", () => {
     nodeManager = new NodeManager(blockManager, config);
   });
 
-  it("The Librarian of Babels Index: should handle mass insertions and updates via ProllyTree", async () => {
+  it.only("The Librarian of Babels Index: should handle mass insertions and updates via ProllyTree", async () => {
     const tree = await ProllyTree.create(blockManager);
 
     const manuscripts = Array.from({ length: MANUSCRIPT_COUNT }, () => ({
@@ -46,7 +47,13 @@ describe("NodeManager Deep Tests", () => {
     }));
 
     for (const data of manuscriptData) {
+      console.log(
+        `put (${new TextDecoder().decode(data.key)}, ${new TextDecoder().decode(
+          data.value
+        )})`
+      );
       await tree.put(data.key, data.value);
+      logTree(await tree.print());
     }
 
     for (const data of manuscriptData) {

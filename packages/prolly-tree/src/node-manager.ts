@@ -82,13 +82,24 @@ export class NodeManager {
     oldChildAddress: Address,
     newBranches: Branch[]
   ): Promise<{ newAddress: Address; newBranches?: Branch[] }> {
-    const branches: Branch[] = [];
-    for (let i = 0; i < parent.length; i++) {
-      branches.push(parent.getBranch(i));
-    }
+    const branches = Array.from({ length: parent.length }, (_, i) =>
+      parent.getBranch(i)
+    );
+
+    console.log(
+      "updateChild: received parent branches:",
+      branches.map((b) => ({
+        key: new TextDecoder().decode(b.key),
+        address: Buffer.from(b.address).toString("hex"),
+      }))
+    );
+    console.log(
+      "updateChild: looking for old child address:",
+      Buffer.from(oldChildAddress).toString("hex")
+    );
 
     const childIndex = branches.findIndex(
-      (b) => this.config.comparator(b.address, oldChildAddress) === 0
+      (branch) => this.config.comparator(branch.address, oldChildAddress) === 0
     );
     if (childIndex === -1)
       throw new Error("Could not find child address in parent");
