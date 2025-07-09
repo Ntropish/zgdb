@@ -5,7 +5,6 @@ import dts from "vite-plugin-dts";
 
 export default defineConfig({
   build: {
-    ssr: true,
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
       name: "@zgdb/generate",
@@ -18,7 +17,15 @@ export default defineConfig({
       output: {
         // Provide global variables to use in the UMD build
         // for externalized deps
-        globals: {},
+        globals: {
+          fs: "fs",
+          path: "path",
+          child_process: "child_process",
+          util: "util",
+          ejs: "ejs",
+          zod: "zod",
+          "zod-to-json-schema": "zod-to-json-schema",
+        },
       },
     },
   },
