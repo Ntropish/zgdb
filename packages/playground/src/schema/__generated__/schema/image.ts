@@ -4,7 +4,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Image_Metadata } from '../schema/image-metadata.js';
+import { ImageMetadata } from '../schema/image-metadata.js';
 
 
 /**
@@ -65,9 +65,9 @@ altText(optionalEncoding?:any):string|Uint8Array|null {
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
-metadata(obj?:Image_Metadata):Image_Metadata|null {
+metadata(obj?:ImageMetadata):ImageMetadata|null {
   const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? (obj || new Image_Metadata()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
+  return offset ? (obj || new ImageMetadata()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 postId():string|null

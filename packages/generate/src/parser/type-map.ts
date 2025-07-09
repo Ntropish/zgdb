@@ -47,7 +47,7 @@ export function mapZodToFlatBufferType(
   }
 
   if (typeName === "ZodObject") {
-    const newSchemaName = `${parentName}_${
+    const newSchemaName = `${parentName}${
       fieldName.charAt(0).toUpperCase() + fieldName.slice(1)
     }`;
 

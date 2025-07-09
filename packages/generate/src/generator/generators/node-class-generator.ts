@@ -79,7 +79,7 @@ function generateSingleNodeClass(
   }
 
   const propertyDeclarations = schema.fields
-    .map((f) => `  public ${f.name}: ${mapTsType(f.type)};`)
+    .map((f) => `  declare public ${f.name}: ${mapTsType(f.type)};`)
     .join("\n");
 
   const relationships = preprocessRelationships(schema, schemas)
@@ -137,7 +137,13 @@ function generateSingleNodeClass(
 
   const createArgs = sortedFields
     .map((f) => {
-      return f.type === "string" ? `${f.name}Offset` : `data.${f.name}`;
+      if (f.type === "string") {
+        return `${f.name}Offset`;
+      }
+      if (f.type === "long") {
+        return `BigInt(data.${f.name} || 0)`;
+      }
+      return `data.${f.name}`;
     })
     .join(", ");
 
@@ -164,7 +170,7 @@ export class ${schema.name}Node<TActor> extends ZgBaseNode<
 ${propertyDeclarations}
 
   constructor(
-    tx: ZgTransaction,
+    tx: ZgTransactionWithCollections<TActor>,
     fbb: ${schema.name}FB.${schema.name},
     authContext: ZgAuthContext<TActor> | null
   ) {

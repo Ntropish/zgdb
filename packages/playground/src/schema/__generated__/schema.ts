@@ -14,16 +14,17 @@ import {
   NodeSchema,
   ZgCollection 
 } from '@zgdb/client';
+import { Builder, ByteBuffer } from 'flatbuffers';
 
 import * as UserFB from './schema/user.js';
 import * as PostFB from './schema/post.js';
 import * as CommentFB from './schema/comment.js';
 import * as FollowFB from './schema/follow.js';
-import * as Image_MetadataFB from './schema/image_metadata.js';
+import * as ImageMetadataFB from './schema/image-metadata.js';
 import * as ImageFB from './schema/image.js';
 import * as ReactionFB from './schema/reaction.js';
 import * as TagFB from './schema/tag.js';
-import * as PostTagFB from './schema/post_tag.js';
+import * as PostTagFB from './schema/post-tag.js';
 
 
 // --- Interfaces ---
@@ -57,7 +58,7 @@ export interface IFollow {
   createdAt: bigint;
 }
 
-export interface IImage_Metadata {
+export interface IImageMetadata {
   width: bigint;
   height: bigint;
   format: string;
@@ -98,7 +99,7 @@ export type CreateUserInput = { publicKey: string, displayName: string, avatarUr
 export type CreatePostInput = { title: string, content: string, authorId: string, createdAt: bigint };
 export type CreateCommentInput = { content: string, authorId: string, postId: string, createdAt: bigint };
 export type CreateFollowInput = { followerId: string, followingId: string, createdAt: bigint };
-export type CreateImage_MetadataInput = { width: bigint, height: bigint, format: string, createdAt: bigint };
+export type CreateImageMetadataInput = { width: bigint, height: bigint, format: string, createdAt: bigint };
 export type CreateImageInput = { url: string, fartCount: bigint, altText: string, metadata: any, postId: string, userId: string };
 export type CreateReactionInput = { type: string, authorId: string, targetId: string, targetType: string };
 export type CreateTagInput = { name: string };
@@ -124,13 +125,13 @@ export class UserNode<TActor> extends ZgBaseNode<
   ZgTransactionWithCollections<TActor>,
   TActor
 > implements IUser {
-  public id: string;
-  public publicKey: string;
-  public displayName: string;
-  public avatarUrl: string;
+  declare public id: string;
+  declare public publicKey: string;
+  declare public displayName: string;
+  declare public avatarUrl: string;
 
   constructor(
-    tx: ZgTransaction,
+    tx: ZgTransactionWithCollections<TActor>,
     fbb: UserFB.User,
     authContext: ZgAuthContext<TActor> | null
   ) {
@@ -203,7 +204,7 @@ const PostSchema: NodeSchema = {
       const contentOffset = data.content ? builder.createString(data.content) : 0;
       const idOffset = data.id ? builder.createString(data.id) : 0;
       const titleOffset = data.title ? builder.createString(data.title) : 0;
-      return PostFB.Post.createPost(builder, authorIdOffset, contentOffset, data.createdAt, idOffset, titleOffset);
+      return PostFB.Post.createPost(builder, authorIdOffset, contentOffset, BigInt(data.createdAt || 0), idOffset, titleOffset);
   },
   getRootAs: (bb) => PostFB.Post.getRootAsPost(bb),
 };
@@ -213,14 +214,14 @@ export class PostNode<TActor> extends ZgBaseNode<
   ZgTransactionWithCollections<TActor>,
   TActor
 > implements IPost {
-  public id: string;
-  public title: string;
-  public content: string;
-  public authorId: string;
-  public createdAt: bigint;
+  declare public id: string;
+  declare public title: string;
+  declare public content: string;
+  declare public authorId: string;
+  declare public createdAt: bigint;
 
   constructor(
-    tx: ZgTransaction,
+    tx: ZgTransactionWithCollections<TActor>,
     fbb: PostFB.Post,
     authContext: ZgAuthContext<TActor> | null
   ) {
@@ -283,7 +284,7 @@ const CommentSchema: NodeSchema = {
       const contentOffset = data.content ? builder.createString(data.content) : 0;
       const idOffset = data.id ? builder.createString(data.id) : 0;
       const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
-      return CommentFB.Comment.createComment(builder, authorIdOffset, contentOffset, data.createdAt, idOffset, postIdOffset);
+      return CommentFB.Comment.createComment(builder, authorIdOffset, contentOffset, BigInt(data.createdAt || 0), idOffset, postIdOffset);
   },
   getRootAs: (bb) => CommentFB.Comment.getRootAsComment(bb),
 };
@@ -293,14 +294,14 @@ export class CommentNode<TActor> extends ZgBaseNode<
   ZgTransactionWithCollections<TActor>,
   TActor
 > implements IComment {
-  public id: string;
-  public content: string;
-  public authorId: string;
-  public postId: string;
-  public createdAt: bigint;
+  declare public id: string;
+  declare public content: string;
+  declare public authorId: string;
+  declare public postId: string;
+  declare public createdAt: bigint;
 
   constructor(
-    tx: ZgTransaction,
+    tx: ZgTransactionWithCollections<TActor>,
     fbb: CommentFB.Comment,
     authContext: ZgAuthContext<TActor> | null
   ) {
@@ -352,7 +353,7 @@ const FollowSchema: NodeSchema = {
       const followerIdOffset = data.followerId ? builder.createString(data.followerId) : 0;
       const followingIdOffset = data.followingId ? builder.createString(data.followingId) : 0;
       const idOffset = data.id ? builder.createString(data.id) : 0;
-      return FollowFB.Follow.createFollow(builder, data.createdAt, followerIdOffset, followingIdOffset, idOffset);
+      return FollowFB.Follow.createFollow(builder, BigInt(data.createdAt || 0), followerIdOffset, followingIdOffset, idOffset);
   },
   getRootAs: (bb) => FollowFB.Follow.getRootAsFollow(bb),
 };
@@ -362,13 +363,13 @@ export class FollowNode<TActor> extends ZgBaseNode<
   ZgTransactionWithCollections<TActor>,
   TActor
 > implements IFollow {
-  public id: string;
-  public followerId: string;
-  public followingId: string;
-  public createdAt: bigint;
+  declare public id: string;
+  declare public followerId: string;
+  declare public followingId: string;
+  declare public createdAt: bigint;
 
   constructor(
-    tx: ZgTransaction,
+    tx: ZgTransactionWithCollections<TActor>,
     fbb: FollowFB.Follow,
     authContext: ZgAuthContext<TActor> | null
   ) {
@@ -402,32 +403,32 @@ export class FollowNode<TActor> extends ZgBaseNode<
 }
 
 
-const Image_MetadataSchema: NodeSchema = {
-  name: 'Image_Metadata',
+const ImageMetadataSchema: NodeSchema = {
+  name: 'ImageMetadata',
   fields: ['width', 'height', 'format', 'createdAt'],
   create: (builder, data) => {
       const formatOffset = data.format ? builder.createString(data.format) : 0;
-      return Image_MetadataFB.Image_Metadata.createImage_Metadata(builder, data.createdAt, formatOffset, data.height, data.width);
+      return ImageMetadataFB.ImageMetadata.createImageMetadata(builder, BigInt(data.createdAt || 0), formatOffset, BigInt(data.height || 0), BigInt(data.width || 0));
   },
-  getRootAs: (bb) => Image_MetadataFB.Image_Metadata.getRootAsImage_Metadata(bb),
+  getRootAs: (bb) => ImageMetadataFB.ImageMetadata.getRootAsImageMetadata(bb),
 };
 
-export class Image_MetadataNode<TActor> extends ZgBaseNode<
-  Image_MetadataFB.Image_Metadata,
+export class ImageMetadataNode<TActor> extends ZgBaseNode<
+  ImageMetadataFB.ImageMetadata,
   ZgTransactionWithCollections<TActor>,
   TActor
-> implements IImage_Metadata {
-  public width: bigint;
-  public height: bigint;
-  public format: string;
-  public createdAt: bigint;
+> implements IImageMetadata {
+  declare public width: bigint;
+  declare public height: bigint;
+  declare public format: string;
+  declare public createdAt: bigint;
 
   constructor(
-    tx: ZgTransaction,
-    fbb: Image_MetadataFB.Image_Metadata,
+    tx: ZgTransactionWithCollections<TActor>,
+    fbb: ImageMetadataFB.ImageMetadata,
     authContext: ZgAuthContext<TActor> | null
   ) {
-    super(tx, fbb, Image_MetadataSchema, authContext);
+    super(tx, fbb, ImageMetadataSchema, authContext);
   }
 
   // --- Relationships ---
@@ -444,7 +445,7 @@ const ImageSchema: NodeSchema = {
       const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
       const urlOffset = data.url ? builder.createString(data.url) : 0;
       const userIdOffset = data.userId ? builder.createString(data.userId) : 0;
-      return ImageFB.Image.createImage(builder, altTextOffset, data.fartCount, idOffset, data.metadata, postIdOffset, urlOffset, userIdOffset);
+      return ImageFB.Image.createImage(builder, altTextOffset, BigInt(data.fartCount || 0), idOffset, data.metadata, postIdOffset, urlOffset, userIdOffset);
   },
   getRootAs: (bb) => ImageFB.Image.getRootAsImage(bb),
 };
@@ -454,16 +455,16 @@ export class ImageNode<TActor> extends ZgBaseNode<
   ZgTransactionWithCollections<TActor>,
   TActor
 > implements IImage {
-  public id: string;
-  public url: string;
-  public fartCount: bigint;
-  public altText: string;
-  public metadata: any;
-  public postId: string;
-  public userId: string;
+  declare public id: string;
+  declare public url: string;
+  declare public fartCount: bigint;
+  declare public altText: string;
+  declare public metadata: any;
+  declare public postId: string;
+  declare public userId: string;
 
   constructor(
-    tx: ZgTransaction,
+    tx: ZgTransactionWithCollections<TActor>,
     fbb: ImageFB.Image,
     authContext: ZgAuthContext<TActor> | null
   ) {
@@ -516,14 +517,14 @@ export class ReactionNode<TActor> extends ZgBaseNode<
   ZgTransactionWithCollections<TActor>,
   TActor
 > implements IReaction {
-  public id: string;
-  public type: string;
-  public authorId: string;
-  public targetId: string;
-  public targetType: string;
+  declare public id: string;
+  declare public type: string;
+  declare public authorId: string;
+  declare public targetId: string;
+  declare public targetType: string;
 
   constructor(
-    tx: ZgTransaction,
+    tx: ZgTransactionWithCollections<TActor>,
     fbb: ReactionFB.Reaction,
     authContext: ZgAuthContext<TActor> | null
   ) {
@@ -561,11 +562,11 @@ export class TagNode<TActor> extends ZgBaseNode<
   ZgTransactionWithCollections<TActor>,
   TActor
 > implements ITag {
-  public id: string;
-  public name: string;
+  declare public id: string;
+  declare public name: string;
 
   constructor(
-    tx: ZgTransaction,
+    tx: ZgTransactionWithCollections<TActor>,
     fbb: TagFB.Tag,
     authContext: ZgAuthContext<TActor> | null
   ) {
@@ -594,12 +595,12 @@ export class PostTagNode<TActor> extends ZgBaseNode<
   ZgTransactionWithCollections<TActor>,
   TActor
 > implements IPostTag {
-  public id: string;
-  public postId: string;
-  public tagId: string;
+  declare public id: string;
+  declare public postId: string;
+  declare public tagId: string;
 
   constructor(
-    tx: ZgTransaction,
+    tx: ZgTransactionWithCollections<TActor>,
     fbb: PostTagFB.PostTag,
     authContext: ZgAuthContext<TActor> | null
   ) {
@@ -747,26 +748,26 @@ export class FollowCollection<TActor> extends ZgCollection<FollowFB.Follow, Foll
   
 
 
-export class Image_MetadataCollection<TActor> extends ZgCollection<Image_MetadataFB.Image_Metadata, Image_MetadataNode<TActor>> {
-  add(data: CreateImage_MetadataInput & { id: string }): Image_MetadataNode<TActor> {
+export class ImageMetadataCollection<TActor> extends ZgCollection<ImageMetadataFB.ImageMetadata, ImageMetadataNode<TActor>> {
+  add(data: CreateImageMetadataInput & { id: string }): ImageMetadataNode<TActor> {
     const builder = new Builder(1024);
     const formatOffset = data.format ? builder.createString(data.format) : 0;
 
-    Image_MetadataFB.Image_Metadata.startImage_Metadata(builder);
-    Image_MetadataFB.Image_Metadata.addCreatedAt(builder, data.createdAt);
-    Image_MetadataFB.Image_Metadata.addFormat(builder, formatOffset);
-    Image_MetadataFB.Image_Metadata.addHeight(builder, data.height);
-    Image_MetadataFB.Image_Metadata.addWidth(builder, data.width);
-    const entityOffset = Image_MetadataFB.Image_Metadata.endImage_Metadata(builder);
+    ImageMetadataFB.ImageMetadata.startImageMetadata(builder);
+    ImageMetadataFB.ImageMetadata.addCreatedAt(builder, data.createdAt);
+    ImageMetadataFB.ImageMetadata.addFormat(builder, formatOffset);
+    ImageMetadataFB.ImageMetadata.addHeight(builder, data.height);
+    ImageMetadataFB.ImageMetadata.addWidth(builder, data.width);
+    const entityOffset = ImageMetadataFB.ImageMetadata.endImageMetadata(builder);
 
     builder.finish(entityOffset);
     const buffer = builder.asUint8Array();
 
-    this['tx'].put('Image_Metadata', data.id, buffer);
+    this['tx'].put('ImageMetadata', data.id, buffer);
 
-    const fbb = Image_MetadataFB.Image_Metadata.getRootAsImage_Metadata(new ByteBuffer(buffer));
+    const fbb = ImageMetadataFB.ImageMetadata.getRootAsImageMetadata(new ByteBuffer(buffer));
 
-    return new Image_MetadataNode<TActor>(this['tx'], fbb, this['authContext']);
+    return new ImageMetadataNode<TActor>(this['tx'], fbb, this['authContext']);
   }
 }
   
@@ -889,7 +890,7 @@ export class ZgTransactionWithCollections<TActor> extends ZgTransaction {
   public readonly posts: PostCollection<TActor>;
   public readonly comments: CommentCollection<TActor>;
   public readonly follows: FollowCollection<TActor>;
-  public readonly image_Metadatas: Image_MetadataCollection<TActor>;
+  public readonly imageMetadatas: ImageMetadataCollection<TActor>;
   public readonly images: ImageCollection<TActor>;
   public readonly reactions: ReactionCollection<TActor>;
   public readonly tags: TagCollection<TActor>;
@@ -905,7 +906,7 @@ export class ZgTransactionWithCollections<TActor> extends ZgTransaction {
     this.posts = new PostCollection<TActor>(this, 'Post', (tx, fbb, ac) => new PostNode<TActor>(tx, fbb, ac), (bb) => PostFB.Post.getRootAsPost(bb), this.authContext);
     this.comments = new CommentCollection<TActor>(this, 'Comment', (tx, fbb, ac) => new CommentNode<TActor>(tx, fbb, ac), (bb) => CommentFB.Comment.getRootAsComment(bb), this.authContext);
     this.follows = new FollowCollection<TActor>(this, 'Follow', (tx, fbb, ac) => new FollowNode<TActor>(tx, fbb, ac), (bb) => FollowFB.Follow.getRootAsFollow(bb), this.authContext);
-    this.image_Metadatas = new Image_MetadataCollection<TActor>(this, 'Image_Metadata', (tx, fbb, ac) => new Image_MetadataNode<TActor>(tx, fbb, ac), (bb) => Image_MetadataFB.Image_Metadata.getRootAsImage_Metadata(bb), this.authContext);
+    this.imageMetadatas = new ImageMetadataCollection<TActor>(this, 'ImageMetadata', (tx, fbb, ac) => new ImageMetadataNode<TActor>(tx, fbb, ac), (bb) => ImageMetadataFB.ImageMetadata.getRootAsImageMetadata(bb), this.authContext);
     this.images = new ImageCollection<TActor>(this, 'Image', (tx, fbb, ac) => new ImageNode<TActor>(tx, fbb, ac), (bb) => ImageFB.Image.getRootAsImage(bb), this.authContext);
     this.reactions = new ReactionCollection<TActor>(this, 'Reaction', (tx, fbb, ac) => new ReactionNode<TActor>(tx, fbb, ac), (bb) => ReactionFB.Reaction.getRootAsReaction(bb), this.authContext);
     this.tags = new TagCollection<TActor>(this, 'Tag', (tx, fbb, ac) => new TagNode<TActor>(tx, fbb, ac), (bb) => TagFB.Tag.getRootAsTag(bb), this.authContext);

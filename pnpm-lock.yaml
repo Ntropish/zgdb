@@ -33,31 +33,6 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.1)
 
-  packages/chunk-store:
-    dependencies:
-      '@zgdb/prolly-tree':
-        specifier: workspace:*
-        version: link:../prolly-tree
-      flatbuffers:
-        specifier: ^2.0.0
-        version: 2.0.7
-    devDependencies:
-      '@vitest/ui':
-        specifier: ^3.2.4
-        version: 3.2.4(vitest@3.2.4)
-      typescript:
-        specifier: ^5.0.0
-        version: 5.8.3
-      vite:
-        specifier: ^4.0.0
-        version: 4.5.14(@types/node@20.19.1)
-      vite-plugin-dts:
-        specifier: ^4.5.4
-        version: 4.5.4(@types/node@20.19.1)(rollup@4.44.0)(typescript@5.8.3)(vite@4.5.14(@types/node@20.19.1))
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/node@20.19.1)(@vitest/ui@3.2.4)
-
   packages/cli:
     dependencies:
       '@types/glob':

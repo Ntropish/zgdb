@@ -21,7 +21,7 @@ export type NodeSchema = {
 // This is the base class for all generated node types.
 // It provides the link to the low-level Flatbuffers object.
 export class ZgBaseNode<
-  T extends Table & { id(): string },
+  T extends { id(): string },
   TTransaction extends ZgTransaction,
   TActor = any
 > {
@@ -73,7 +73,7 @@ export class ZgBaseNode<
 }
 
 export class ZgCollection<
-  T extends Table & { id(): string },
+  T extends { id(): string },
   TNode extends ZgBaseNode<T, ZgTransaction, any>
 > {
   constructor(
@@ -231,10 +231,7 @@ export class ZgTransaction {
     this.tree = tree;
   }
 
-  get<
-    T extends Table & { id(): string },
-    TNode extends ZgBaseNode<T, any, any>
-  >(
+  get<T extends { id(): string }, TNode extends ZgBaseNode<T, any, any>>(
     entityName: string,
     id: string,
     nodeFactory: (

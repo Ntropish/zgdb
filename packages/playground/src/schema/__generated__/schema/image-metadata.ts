@@ -7,22 +7,22 @@ import * as flatbuffers from 'flatbuffers';
 /**
  * Nested schema for metadata of Image
  */
-export class Image_Metadata {
+export class ImageMetadata {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):Image_Metadata {
+  __init(i:number, bb:flatbuffers.ByteBuffer):ImageMetadata {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsImage_Metadata(bb:flatbuffers.ByteBuffer, obj?:Image_Metadata):Image_Metadata {
-  return (obj || new Image_Metadata()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsImageMetadata(bb:flatbuffers.ByteBuffer, obj?:ImageMetadata):ImageMetadata {
+  return (obj || new ImageMetadata()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsImage_Metadata(bb:flatbuffers.ByteBuffer, obj?:Image_Metadata):Image_Metadata {
+static getSizePrefixedRootAsImageMetadata(bb:flatbuffers.ByteBuffer, obj?:ImageMetadata):ImageMetadata {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new Image_Metadata()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new ImageMetadata()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 width():bigint {
@@ -80,7 +80,7 @@ mutate_created_at(value:bigint):boolean {
   return true;
 }
 
-static startImage_Metadata(builder:flatbuffers.Builder) {
+static startImageMetadata(builder:flatbuffers.Builder) {
   builder.startObject(4);
 }
 
@@ -100,17 +100,17 @@ static addCreatedAt(builder:flatbuffers.Builder, createdAt:bigint) {
   builder.addFieldInt64(3, createdAt, BigInt('0'));
 }
 
-static endImage_Metadata(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endImageMetadata(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createImage_Metadata(builder:flatbuffers.Builder, width:bigint, height:bigint, formatOffset:flatbuffers.Offset, createdAt:bigint):flatbuffers.Offset {
-  Image_Metadata.startImage_Metadata(builder);
-  Image_Metadata.addWidth(builder, width);
-  Image_Metadata.addHeight(builder, height);
-  Image_Metadata.addFormat(builder, formatOffset);
-  Image_Metadata.addCreatedAt(builder, createdAt);
-  return Image_Metadata.endImage_Metadata(builder);
+static createImageMetadata(builder:flatbuffers.Builder, width:bigint, height:bigint, formatOffset:flatbuffers.Offset, createdAt:bigint):flatbuffers.Offset {
+  ImageMetadata.startImageMetadata(builder);
+  ImageMetadata.addWidth(builder, width);
+  ImageMetadata.addHeight(builder, height);
+  ImageMetadata.addFormat(builder, formatOffset);
+  ImageMetadata.addCreatedAt(builder, createdAt);
+  return ImageMetadata.endImageMetadata(builder);
 }
 }

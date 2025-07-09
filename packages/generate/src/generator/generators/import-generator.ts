@@ -1,6 +1,6 @@
 import { IGenerator } from "./interface.js";
 import { NormalizedSchema } from "../../parser/types.js";
-import { toSnakeCase } from "../utils.js";
+import { toKebabCase } from "../utils.js";
 
 export class ImportGenerator implements IGenerator {
   generate(schemas: NormalizedSchema[]): string {
@@ -8,7 +8,7 @@ export class ImportGenerator implements IGenerator {
       .filter((s) => !s.isJoinTable)
       .map((s) => {
         const schemaName = s.name;
-        const importPath = `./schema/${toSnakeCase(schemaName)}.js`;
+        const importPath = `./schema/${toKebabCase(schemaName)}.js`;
         return `import * as ${schemaName}FB from '${importPath}';`;
       })
       .join("\n");
@@ -24,6 +24,7 @@ import {
   NodeSchema,
   ZgCollection 
 } from '@zgdb/client';
+import { Builder, ByteBuffer } from 'flatbuffers';
 
 ${imports}
 `;
