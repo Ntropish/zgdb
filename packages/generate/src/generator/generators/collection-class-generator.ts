@@ -3,7 +3,7 @@ import { IGenerator } from "./interface.js";
 import { mapTsType } from "../utils.js";
 
 function generateSingleCollectionClass(schema: NormalizedSchema): string {
-  if (schema.isJoinTable) {
+  if (schema.isJoinTable || schema.isNested) {
     return "";
   }
 
@@ -29,14 +29,15 @@ function generateSingleCollectionClass(schema: NormalizedSchema): string {
 
   const addMethods = sortedFields
     .map((f) => {
+      const capitalizedFieldName =
+        f.name.charAt(0).toUpperCase() + f.name.slice(1);
       if (f.type === "string") {
-        return `    ${fbsName}.add${
-          f.name.charAt(0).toUpperCase() + f.name.slice(1)
-        }(builder, ${f.name}Offset);`;
+        return `    ${fbsName}.add${capitalizedFieldName}(builder, ${f.name}Offset);`;
       }
-      return `    ${fbsName}.add${
-        f.name.charAt(0).toUpperCase() + f.name.slice(1)
-      }(builder, data.${f.name});`;
+      if (f.type === "long") {
+        return `    ${fbsName}.add${capitalizedFieldName}(builder, data.${f.name});`;
+      }
+      return `    ${fbsName}.add${capitalizedFieldName}(builder, data.${f.name});`;
     })
     .join("\n");
 

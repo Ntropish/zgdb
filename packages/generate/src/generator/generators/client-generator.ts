@@ -4,7 +4,7 @@ import { NormalizedSchema } from "../../parser/types.js";
 export class ClientGenerator implements IGenerator {
   generate(schemas: NormalizedSchema[]): string {
     const collectionProperties = schemas
-      .filter((s) => !s.isJoinTable)
+      .filter((s) => !s.isJoinTable && !s.isNested)
       .map((s) => {
         const schemaName = s.name;
         const collectionName =
@@ -15,7 +15,7 @@ export class ClientGenerator implements IGenerator {
       .join("\n");
 
     const constructorAssignments = schemas
-      .filter((s) => !s.isJoinTable)
+      .filter((s) => !s.isJoinTable && !s.isNested)
       .map((s) => {
         const schemaName = s.name;
         const collectionName =
@@ -24,7 +24,7 @@ export class ClientGenerator implements IGenerator {
         const nodeName = `${schemaName}Node<TActor>`;
         const fbsNodeName = `${schemaName}FB.${schemaName}`;
         const getRootAs = `(bb) => ${fbsNodeName}.getRootAs${schemaName}(bb)`;
-        const nodeFactory = `(tx, fbb, ac) => new ${nodeName}(tx, fbb, ac)`;
+        const nodeFactory = `(tx, fbb: ${fbsNodeName}, ac) => new ${nodeName}(tx as ZgTransactionWithCollections<TActor>, fbb, ac)`;
 
         return `    this.${collectionName} = new ${collectionClassName}(this, '${schemaName}', ${nodeFactory}, ${getRootAs}, this.authContext);`;
       })

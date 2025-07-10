@@ -153,6 +153,7 @@ export type NormalizedSchema = {
   description?: string;
   fields: Field[];
   isJoinTable?: boolean;
+  isNested?: boolean;
   indexes: Index[];
   relationships: (Relationship | PolymorphicRelationship)[];
   manyToMany: ManyToManyRelationship[];

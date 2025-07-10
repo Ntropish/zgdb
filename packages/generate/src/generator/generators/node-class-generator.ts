@@ -1,10 +1,18 @@
 import {
   NormalizedSchema,
+  Field,
   Relationship,
   PolymorphicRelationship,
 } from "../../parser/types.js";
 import { IGenerator } from "./interface.js";
 import { mapTsType } from "../utils.js";
+
+const toPascalCase = (str: string) => {
+  if (!str) return "";
+  return str
+    .replace(/_(\w)/g, (s) => s[1].toUpperCase())
+    .replace(/^\w/, (s) => s.toUpperCase());
+};
 
 type ProcessedRelationship = {
   name: string;
@@ -24,7 +32,10 @@ function preprocessRelationships(
   allSchemas: NormalizedSchema[]
 ): ProcessedRelationship[] {
   const processed: ProcessedRelationship[] = [];
-  const relationships = schema.relationships ?? [];
+  if (!schema.relationships) {
+    return [];
+  }
+  const relationships = schema.relationships;
 
   for (const rel of relationships) {
     if (!isStandardRelationship(rel)) {
@@ -53,10 +64,10 @@ function preprocessRelationships(
 
       let remoteFk: string | undefined;
       if (remoteRel.type === "polymorphic") {
-        const remotePolyRel = remoteRel as PolymorphicRelationship;
+        const remotePolyRel = remoteRel as any; // PolymorphicRelationship;
         remoteFk = remotePolyRel.foreignKey;
       } else if (remoteRel.type === "standard") {
-        const remoteStandardRel = remoteRel as Relationship;
+        const remoteStandardRel = remoteRel as any; // Relationship;
         remoteFk = remoteStandardRel.field ?? `${remoteStandardRel.name}Id`;
       }
 
@@ -74,11 +85,12 @@ function generateSingleNodeClass(
   schema: NormalizedSchema,
   schemas: NormalizedSchema[]
 ): string {
-  if (schema.isJoinTable) {
+  if (schema.isJoinTable || schema.isNested) {
     return "";
   }
 
   const propertyDeclarations = schema.fields
+    .filter((f) => f.name !== "id")
     .map((f) => `  declare public ${f.name}: ${mapTsType(f.type)};`)
     .join("\n");
 
@@ -110,7 +122,7 @@ function generateSingleNodeClass(
     return this.tx.get(
       '${relSchemaName}',
        id,
-       (tx, fbb, ac) => new ${relNodeName}(tx, fbb, ac),
+       (tx, fbb: ${relSchemaName}FB.${relSchemaName}, ac) => new ${relNodeName}(tx as ZgTransactionWithCollections<TActor>, fbb, ac),
        (bb) => ${relSchemaName}FB.${relSchemaName}.getRootAs${relSchemaName}(bb),
        this.authContext
     ) as ${resolvedNodeType} | null;
@@ -118,45 +130,106 @@ function generateSingleNodeClass(
     })
     .join("\n\n");
 
-  const fieldsList = schema.fields.map((f) => `'${f.name}'`);
+  const fieldsList = schema.fields.map((f: Field) => `'${f.name}'`);
 
-  const sortedFields = [...schema.fields].sort((a, b) =>
+  const sortedFields = [...schema.fields].sort((a: Field, b: Field) =>
     a.name.localeCompare(b.name)
   );
 
   const createParams = sortedFields
-    .map((f) => {
+    .map((f: Field) => {
       const fieldName = f.name;
+      const nestedSchema = schemas.find(
+        (s: NormalizedSchema) => s.name === f.type && s.isNested
+      );
+      if (nestedSchema) {
+        const nestedFields = nestedSchema.fields
+          .map((nf: Field) => {
+            if (nf.type === "string") {
+              return {
+                fieldName: nf.name,
+                offsetName: `${nf.name}Offset`,
+                paramDef: `const ${nf.name}Offset = data.${fieldName}.${nf.name} ? builder.createString(data.${fieldName}.${nf.name}) : 0;`,
+              };
+            }
+            return null;
+          })
+          .filter(Boolean) as {
+          fieldName: string;
+          offsetName: string;
+          paramDef: string;
+        }[];
+
+        const paramDefs = nestedFields
+          .map((nf) => nf.paramDef)
+          .join("\n        ");
+
+        const addCalls = nestedSchema.fields
+          .map((ff: Field) => {
+            const fieldData = nestedFields.find(
+              (nf) => nf.fieldName === ff.name
+            );
+            if (!fieldData) return null; // Should not happen
+            if (ff.type === "long") {
+              return `${nestedSchema.name}FB.${
+                nestedSchema.name
+              }.add${toPascalCase(ff.name)}(builder, BigInt(data.${f.name}.${
+                ff.name
+              } || 0))`;
+            }
+            return `${nestedSchema.name}FB.${
+              nestedSchema.name
+            }.add${toPascalCase(ff.name)}(builder, ${fieldData.offsetName});`;
+          })
+          .join("\n        ");
+
+        return `const ${fieldName}Offset = (() => {
+        ${paramDefs}
+        ${nestedSchema.name}FB.${nestedSchema.name}.start${nestedSchema.name}(builder);
+        ${addCalls}
+        return ${nestedSchema.name}FB.${nestedSchema.name}.end${nestedSchema.name}(builder);
+      })();`;
+      }
       if (f.type === "string") {
-        return `const ${fieldName}Offset = data.${fieldName} ? builder.createString(data.${fieldName}) : 0;`;
+        return `const ${f.name}Offset = data.${f.name} ? builder.createString(data.${f.name}) : 0;`;
       }
       return "";
     })
     .filter(Boolean)
     .join("\n      ");
 
-  const createArgs = sortedFields
-    .map((f) => {
-      if (f.type === "string") {
-        return `${f.name}Offset`;
+  const addCalls = sortedFields
+    .map((f: Field) => {
+      const nestedSchema = schemas.find((s) => s.name === f.type && s.isNested);
+      if (f.type === "string" || nestedSchema) {
+        return `${schema.name}FB.${schema.name}.add${toPascalCase(
+          f.name
+        )}(builder, ${f.name}Offset);`;
       }
       if (f.type === "long") {
-        return `BigInt(data.${f.name} || 0)`;
+        return `${schema.name}FB.${schema.name}.add${toPascalCase(
+          f.name
+        )}(builder, BigInt(data.${f.name} || 0));`;
       }
-      return `data.${f.name}`;
+      return `${schema.name}FB.${schema.name}.add${toPascalCase(
+        f.name
+      )}(builder, data.${f.name});`;
     })
-    .join(", ");
+    .join("\n      ");
+
+  const createMethod = `create: (builder, data) => {
+      ${createParams}
+      ${schema.name}FB.${schema.name}.start${schema.name}(builder);
+      ${addCalls}
+      const entityOffset = ${schema.name}FB.${schema.name}.end${schema.name}(builder);
+      return entityOffset;
+   },`;
 
   return `
 const ${schema.name}Schema: NodeSchema = {
   name: '${schema.name}',
   fields: [${fieldsList.join(", ")}],
-  create: (builder, data) => {
-      ${createParams}
-      return ${schema.name}FB.${schema.name}.create${
-    schema.name
-  }(builder, ${createArgs});
-  },
+  ${createMethod}
   getRootAs: (bb) => ${schema.name}FB.${schema.name}.getRootAs${
     schema.name
   }(bb),
@@ -185,9 +258,9 @@ ${relationships}
 export class NodeClassGenerator implements IGenerator {
   generate(schemas: NormalizedSchema[]): string {
     const classes = schemas
-      .map((s) => generateSingleNodeClass(s, schemas))
+      .map((s: NormalizedSchema) => generateSingleNodeClass(s, schemas))
       .filter(Boolean)
-      .join("\n\n");
+      .join("\n\n\n");
     return `// --- Node Classes ---\n${classes}`;
   }
 }

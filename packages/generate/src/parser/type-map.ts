@@ -59,6 +59,7 @@ export function mapZodToFlatBufferType(
       relationships: [],
       manyToMany: [],
       indexes: [],
+      isNested: true,
     };
 
     // IMPORTANT: Add the schema to the list *before* parsing its fields.
