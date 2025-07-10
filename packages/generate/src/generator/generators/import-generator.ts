@@ -22,7 +22,8 @@ import {
   ZgDatabase, 
   ZgAuthContext,
   NodeSchema,
-  ZgCollection 
+  ZgCollection,
+  ZgDbConfiguration,
 } from '@zgdb/client';
 import { Builder, ByteBuffer } from 'flatbuffers';
 

@@ -4,6 +4,8 @@ import { BlockManager, ProllyTree } from "@zgdb/prolly-tree";
 import { Table, ByteBuffer, Builder } from "flatbuffers";
 import { compare } from "uint8arrays";
 
+export { BlockManager };
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 

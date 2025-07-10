@@ -9,7 +9,7 @@ See our detailed [**MISSION.md**](./MISSION.md) for a deeper dive into the philo
 ## Core Concepts
 
 - **Schema-First Development:** Define your data models, relationships, and business logic in plain TypeScript using `zod` and a simple `EntityDef` object. This is the single source of truth for your database.
-- **Zero-Effort Code Generation:** Run the build command, and ZG automatically generates a high-performance Flatbuffers schema and a fully-typed TypeScript client tailored to your schema.
+- **Zero-Effort Code Generation:** Configure the Vite plugin so that ZG automatically generates a high-performance Flatbuffers schema and a fully-typed TypeScript client tailored to your schema.
 - **Synchronous API & Live Objects:** The generated client provides a fully synchronous API. It feels like interacting with simple in-memory objects, keeping your UI and business logic clean. When you access a node, you get a "live" proxy:
   - Reading a property is a zero-copy read: `console.log(post.title)`
   - Assigning a property is a synchronous write: `post.title = 'New Title'`
@@ -89,35 +89,12 @@ sudo apt-get install flatbuffers-compiler
 winget install Google.Flatbuffers
 ```
 
-**From Source (if a package is not available):**
-If your OS doesn't have a pre-built package, you can build it from source. This requires `git` and `cmake`.
-
-```sh
-# 1. Clone the official repository
-git clone https://github.com/google/flatbuffers.git
-cd flatbuffers
-
-# 2. Build using CMake
-cmake -G "Unix Makefiles"
-make
-
-# 3. Install the compiler system-wide
-sudo make install
-
-# 4. Verify the installation
-flatc --version
-```
-
 </details>
 
 ### 2. Installation & Setup
 
-Clone the repository and install the dependencies.
-
 ```sh
-git clone <repo-url>
-cd <repo-name>
-pnpm install
+npm install @zgdb/generate @zgdb/client flatbuffers
 ```
 
 ### 3. Schema Definition In-Depth
