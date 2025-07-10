@@ -28,7 +28,7 @@ See our detailed [**MISSION.md**](./MISSION.md) for a deeper dive into the philo
   });
   ```
 
-- **High-Performance Backend:** Under the hood, ZG uses Flatbuffers for efficient, zero-copy serialization and deserialization, ensuring minimal latency.
+- **High-Performance Backend:** Under the hood, ZG uses Flatbuffers for efficient serialization and zero-copy reads, ensuring minimal latency by avoiding a traditional parsing step.
 
 ## Architecture
 
