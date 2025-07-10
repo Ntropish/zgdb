@@ -54,8 +54,8 @@ graph TD;
         F --> E;
     end
 
-    style A fill:#f9f,stroke:#333,stroke-width:2px;
-    style G fill:#f9f,stroke:#333,stroke-width:2px;
+    style A fill:#ffc,stroke:#333,stroke-width:2px;
+    style G fill:#ffc,stroke:#333,stroke-width:2px;
 ```
 
 ### Component Breakdown
