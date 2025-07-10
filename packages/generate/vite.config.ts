@@ -9,6 +9,7 @@ export default defineConfig({
       entry: resolve(__dirname, "src/index.ts"),
       name: "@zgdb/generate",
       fileName: "index",
+      formats: ["es", "cjs"],
     },
     rollupOptions: {
       // Make sure to externalize deps that shouldn't be bundled
