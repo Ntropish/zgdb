@@ -40,8 +40,9 @@ ${collectionProperties}
     db: ZgDatabase,
     tree: any,
     authContext: ZgAuthContext<TActor> | null,
+    config: ZgDbConfiguration,
   ) {
-    super(db, tree, authContext);
+    super(db, tree, authContext, config);
 ${constructorAssignments}
   }
 }

@@ -1,17 +1,53 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { ZgClient, createDB } from "@zgdb/client";
+import { ZgClient, createDB, ZgDbConfiguration } from "@zgdb/client";
 import { DB } from "../schema/__generated__/schema.js";
 import { BlockManager } from "@zgdb/prolly-tree";
 
 // This test suite is aspirational. It is written against the API described
 // in MISSION.md and is designed to fail until all features are implemented.
 
+const config: ZgDbConfiguration = {
+  resolvers: {
+    global: {
+      allowAll: () => true,
+      isLoggedIn: (ctx: any) => !!ctx.actor,
+    },
+    entities: {
+      Post: {
+        excerpt: (ctx: any) => {
+          return ctx.record.content.substring(0, 50);
+        },
+        isOwner: (ctx: any) => {
+          return ctx.actor.id === ctx.record.authorId;
+        },
+      },
+    },
+  },
+  policies: {
+    global: {
+      read: "allowAll",
+    },
+    entities: {
+      Post: {
+        verbs: {
+          create: "isLoggedIn",
+        },
+        fields: {
+          title: {
+            update: "isOwner",
+          },
+        },
+      },
+    },
+  },
+};
+
 let db: ZgClient<any>;
 let blockManager: BlockManager;
 
 beforeEach(async () => {
   blockManager = new BlockManager();
-  db = await createDB(DB, { blockManager });
+  db = await createDB(DB, { blockManager, config });
 });
 
 describe("ZG Client: Relationships", () => {
@@ -70,57 +106,65 @@ describe("ZG Client: Relationships", () => {
     });
     expect(originalPost.title).toBe("Original Title");
 
-    // 2. Update the title via direct assignment
-    originalPost.title = "Updated Title";
-
-    // 3. Verify the change is reflected on the same object
-    expect(originalPost.title).toBe("Updated Title");
-
-    // 4. Fetch the post again to ensure the change was persisted in the cache
-    const updatedPost = tx.posts.get("post-to-update");
-    expect(updatedPost).toBeDefined();
-    expect(updatedPost.title).toBe("Updated Title");
-
-    // 5. Commit and fetch from a new instance to ensure it was written to the tree
     await tx.commit();
 
     const root = db.getRoot();
 
-    const db2 = await createDB(DB, { blockManager, root });
-    const tx2 = await db2.createTransaction({ actor: { id: "system" } });
-    const finalPost = tx2.posts.get("post-to-update");
+    const db2 = await createDB(DB, { blockManager, root, config });
+    const tx2 = await db2.createTransaction({ actor: { id: "user-B" } });
+    const postToUpdate = tx2.posts.get("post-to-update");
+    expect(postToUpdate).toBeDefined();
+
+    // 2. Update the title via direct assignment
+    postToUpdate!.title = "Updated Title";
+
+    // 3. Verify the change is reflected on the same object
+    expect(postToUpdate!.title).toBe("Updated Title");
+
+    // 4. Fetch the post again to ensure the change was persisted in the cache
+    const updatedPost = tx2.posts.get("post-to-update");
+    expect(updatedPost).toBeDefined();
+    expect(updatedPost!.title).toBe("Updated Title");
+
+    // 5. Commit and fetch from a new instance to ensure it was written to the tree
+    await tx2.commit();
+
+    const root2 = db2.getRoot();
+    const db3 = await createDB(DB, { blockManager, root: root2, config });
+    const tx3 = await db3.createTransaction({ actor: { id: "system" } });
+
+    const finalPost = tx3.posts.get("post-to-update");
     expect(finalPost).toBeDefined();
     expect(finalPost!.title).toBe("Updated Title");
   });
 });
 
-// TODO: Re-implement resolvers and enable these tests
-// describe("ZG Client: Resolvers", () => {
-//   it("should resolve a computed field on an entity", () => {
-//     const client = db.with({ id: "user-A" });
-//     const post = client.posts.create({
-//       id: "post-1",
-//       title: "A very long post title",
-//       content: "This is the content of the post which is quite long indeed.",
-//       authorId: "user-A",
-//       createdAt: BigInt(Date.now()),
-//     });
-//     // 'excerpt' should now be strongly typed
-//     expect(post.excerpt).toBe(
-//       "This is the content of the post which is quite lon"
-//     );
-//   });
+describe("ZG Client: Resolvers", () => {
+  it("should resolve a computed field on an entity", async () => {
+    const tx = await db.createTransaction({ actor: { id: "user-A" } });
+    const post = tx.posts.add({
+      id: "post-1",
+      title: "A very long post title",
+      content: "This is the content of the post which is quite long indeed.",
+      authorId: "user-A",
+      createdAt: BigInt(Date.now()),
+    });
+    // 'excerpt' should now be strongly typed
+    expect(post.excerpt).toBe(
+      "This is the content of the post which is quite lon"
+    );
+  });
 
-//   it("should resolve a value from the global resolvers", () => {
-//     const client = db.with({ id: "user-A" });
-//     const post = client.posts.create({
-//       id: "post-1",
-//       title: "A post",
-//       content: "content",
-//       authorId: "user-A",
-//       createdAt: BigInt(Date.now()),
-//     });
-//     // 'isOwner' should now be strongly typed
-//     expect(post.isOwner).toBe(true);
-//   });
-// });
+  it("should resolve a value from the global resolvers", async () => {
+    const tx = await db.createTransaction({ actor: { id: "user-A" } });
+    const post = tx.posts.add({
+      id: "post-1",
+      title: "A post",
+      content: "content",
+      authorId: "user-A",
+      createdAt: BigInt(Date.now()),
+    });
+    // 'isOwner' should now be strongly typed
+    expect(post.isOwner).toBe(true);
+  });
+});

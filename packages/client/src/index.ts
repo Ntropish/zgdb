@@ -7,6 +7,55 @@ import { compare } from "uint8arrays";
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+export type ResolverContext<TActor = any, TRecord = any> = {
+  actor: TActor;
+  db: ZgTransaction;
+  input?: Partial<TRecord>;
+  record?: TRecord;
+};
+
+export type Resolver<TActor = any, TRecord = any> = (
+  context: ResolverContext<TActor, TRecord>
+) => any;
+
+export type Policy = string; // The name of a resolver
+
+export type EntityPolicyConfiguration = {
+  verbs?: {
+    [verb: string]: Policy;
+  };
+  fields?: {
+    [fieldName: string]: {
+      [verb: string]: Policy;
+    };
+  };
+};
+
+export type PolicyConfiguration = {
+  global?: {
+    [verb: string]: Policy;
+  };
+  entities?: {
+    [entityName: string]: EntityPolicyConfiguration;
+  };
+};
+
+export type ResolverConfiguration = {
+  global?: {
+    [resolverName: string]: Resolver;
+  };
+  entities?: {
+    [entityName: string]: {
+      [resolverName: string]: Resolver;
+    };
+  };
+};
+
+export type ZgDbConfiguration = {
+  resolvers?: ResolverConfiguration;
+  policies?: PolicyConfiguration;
+};
+
 export type ZgAuthContext<TActor = any> = {
   actor: TActor;
 };
@@ -35,14 +84,55 @@ export class ZgBaseNode<
       get: (target, prop, receiver) => {
         // If the property is a field in the schema, get it from the FlatBuffer.
         if (target.schema.fields.includes(prop as string)) {
+          // Check read policy
+          if (
+            !target.tx.checkPolicy(
+              target.schema.name,
+              "read",
+              prop as string,
+              receiver
+            )
+          ) {
+            return undefined;
+          }
           return (target.fbb as any)[prop as string]();
         }
+
+        // Check for a resolver
+        const resolver = target.tx.getResolver(
+          target.schema.name,
+          prop as string
+        );
+        if (resolver) {
+          return resolver({
+            actor: target.authContext?.actor,
+            db: target.tx,
+            record: receiver,
+          });
+        }
+
         // Otherwise, use the default behavior (for methods, etc.)
         return Reflect.get(target, prop, receiver);
       },
       set: (target, prop, value, receiver) => {
         if (!target.schema.fields.includes(prop as string)) {
           return Reflect.set(target, prop, value, receiver);
+        }
+
+        // Check update policy
+        if (
+          !target.tx.checkPolicy(
+            target.schema.name,
+            "update",
+            prop as string,
+            receiver
+          )
+        ) {
+          throw new Error(
+            `Unauthorized: actor cannot update ${target.schema.name}.${
+              prop as string
+            }`
+          );
         }
 
         const builder = new Builder(1024);
@@ -120,7 +210,8 @@ export type ZgTransactionClass<
 > = new (
   db: ZgDatabase,
   tree: ProllyTree,
-  authContext: ZgAuthContext<TActor> | null
+  authContext: ZgAuthContext<TActor> | null,
+  config: ZgDbConfiguration
 ) => TTransaction;
 
 export class ZgClient<TTransaction extends ZgTransaction> {
@@ -130,6 +221,7 @@ export class ZgClient<TTransaction extends ZgTransaction> {
     tree: ProllyTree,
     authContext: ZgAuthContext<any> | null
   ) => TTransaction;
+  private config: ZgDbConfiguration;
 
   public constructor(
     db: ZgDatabase,
@@ -137,10 +229,12 @@ export class ZgClient<TTransaction extends ZgTransaction> {
       db: ZgDatabase,
       tree: ProllyTree,
       authContext: ZgAuthContext<any> | null
-    ) => TTransaction
+    ) => TTransaction,
+    config: ZgDbConfiguration
   ) {
     this.db = db;
     this.transactionFactory = transactionFactory;
+    this.config = config;
   }
 
   public getRoot(): any | null {
@@ -152,6 +246,7 @@ export class ZgClient<TTransaction extends ZgTransaction> {
   }): Promise<TTransaction> {
     return (await this.db.createTransaction(
       this.transactionFactory,
+      this.config,
       options.actor
     )) as TTransaction;
   }
@@ -159,17 +254,22 @@ export class ZgClient<TTransaction extends ZgTransaction> {
 
 export async function createDB<TActor, TTransaction extends ZgTransaction>(
   schema: ZgDbSchema<TTransaction, TActor>,
-  options?: { blockManager?: BlockManager; root?: any }
+  options?: {
+    blockManager?: BlockManager;
+    root?: any;
+    config?: ZgDbConfiguration;
+  }
 ): Promise<ZgClient<TTransaction>> {
   const db = new ZgDatabase(options);
+  const config = options?.config || {};
   const transactionFactory = (
     db: ZgDatabase,
     tree: ProllyTree,
     authContext: ZgAuthContext<any> | null
   ) => {
-    return new schema.Transaction(db, tree, authContext);
+    return new schema.Transaction(db, tree, authContext, config);
   };
-  return new ZgClient(db, transactionFactory);
+  return new ZgClient(db, transactionFactory, config);
 }
 
 // The ZgDatabase class is the storage engine.
@@ -213,14 +313,16 @@ export class ZgDatabase {
     transactionFactory: (
       db: ZgDatabase,
       tree: ProllyTree,
-      authContext: ZgAuthContext<TActor> | null
+      authContext: ZgAuthContext<TActor> | null,
+      config: ZgDbConfiguration
     ) => TTransaction,
+    config: ZgDbConfiguration,
     actor?: TActor
   ): Promise<TTransaction> {
     const tree = await this.getTree();
     const txTree = await ProllyTree.load(tree.root, tree.blockManager);
     const authContext = actor ? { actor } : null;
-    return transactionFactory(this, txTree, authContext);
+    return transactionFactory(this, txTree, authContext, config);
   }
 
   // The main commit method
@@ -238,13 +340,58 @@ export class ZgDatabase {
 export class ZgTransaction {
   public tree: ProllyTree;
   private writeCache: Map<string, Uint8Array> = new Map();
+  private config: ZgDbConfiguration;
 
   constructor(
     private db: ZgDatabase,
     tree: ProllyTree,
-    public authContext: ZgAuthContext<any> | null = null
+    public authContext: ZgAuthContext<any> | null = null,
+    config: ZgDbConfiguration = {}
   ) {
     this.tree = tree;
+    this.config = config;
+  }
+
+  getResolver(entityName: string, resolverName: string): Resolver | undefined {
+    return (
+      this.config.resolvers?.entities?.[entityName]?.[resolverName] ||
+      this.config.resolvers?.global?.[resolverName]
+    );
+  }
+
+  checkPolicy(
+    entityName: string,
+    verb: string,
+    fieldName?: string,
+    record?: any
+  ): boolean {
+    const policy =
+      (fieldName
+        ? this.config.policies?.entities?.[entityName]?.fields?.[fieldName]?.[
+            verb
+          ]
+        : undefined) ||
+      this.config.policies?.entities?.[entityName]?.verbs?.[verb] ||
+      this.config.policies?.global?.[verb];
+
+    if (!policy) {
+      // Default to allow if no policy is defined
+      return true;
+    }
+
+    const resolver = this.getResolver(entityName, policy);
+
+    if (!resolver) {
+      throw new Error(
+        `Policy enforcement failed: resolver '${policy}' not found for entity '${entityName}'`
+      );
+    }
+
+    return resolver({
+      actor: this.authContext?.actor,
+      db: this,
+      record,
+    });
   }
 
   get<T extends { id(): string | null }, TNode extends ZgBaseNode<T, any, any>>(

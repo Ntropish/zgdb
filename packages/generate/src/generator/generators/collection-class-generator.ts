@@ -2,6 +2,13 @@ import { NormalizedSchema } from "../../parser/types.js";
 import { IGenerator } from "./interface.js";
 import { mapTsType } from "../utils.js";
 
+const toPascalCase = (str: string) => {
+  if (!str) return "";
+  return str
+    .replace(/_(\w)/g, (s) => s[1].toUpperCase())
+    .replace(/^\w/, (s) => s.toUpperCase());
+};
+
 function generateSingleCollectionClass(schema: NormalizedSchema): string {
   if (schema.isJoinTable || schema.isNested) {
     return "";
@@ -44,6 +51,9 @@ function generateSingleCollectionClass(schema: NormalizedSchema): string {
   return `
 export class ${schemaName}Collection<TActor> extends ZgCollection<${fbsName}, ${nodeName}> {
   add(data: ${createInputType} & { id: string }): ${nodeName} {
+    if (!this['tx'].checkPolicy('${schemaName}', 'create', undefined, data)) {
+      throw new Error("Unauthorized");
+    }
     const builder = new Builder(1024);
 ${createParams}
 
@@ -66,11 +76,62 @@ ${addMethods}
 
 export class CollectionClassGenerator implements IGenerator {
   generate(schemas: NormalizedSchema[]): string {
-    const classes = schemas
-      .map(generateSingleCollectionClass)
-      .filter(Boolean)
-      .join("\n\n");
+    const collections = schemas
+      .filter((s) => !s.isJoinTable && !s.isNested)
+      .map((s) => {
+        const fbsName = `${s.name}FB.${s.name}`;
+        const nodeName = `${s.name}Node<TActor>`;
 
-    return `// --- Collection Classes ---\n${classes}`;
+        const createInputType = `Create${s.name}Input`;
+
+        const addMethod = `
+  add(data: ${createInputType} & { id: string }): ${nodeName} {
+    if (!this['tx'].checkPolicy('${s.name}', 'create', undefined, data)) {
+      throw new Error("Unauthorized");
+    }
+    const builder = new Builder(1024);
+    ${s.fields
+      .filter((f) => f.type === "string")
+      .map(
+        (f) =>
+          `const ${
+            f.name
+          }Offset = data.${f.name.toString()} ? builder.createString(data.${f.name.toString()}) : 0;`
+      )
+      .join("\n    ")}
+
+    ${fbsName}.start${s.name}(builder);
+    ${s.fields
+      .map((f) => {
+        const capitalizedFieldName = toPascalCase(f.name);
+        if (f.type === "string") {
+          return `    ${fbsName}.add${capitalizedFieldName}(builder, ${f.name}Offset);`;
+        }
+        if (f.type === "long") {
+          return `    ${fbsName}.add${capitalizedFieldName}(builder, data.${f.name});`;
+        }
+        return `    ${fbsName}.add${capitalizedFieldName}(builder, data.${f.name});`;
+      })
+      .join("\n")}
+    const entityOffset = ${fbsName}.end${s.name}(builder);
+
+    builder.finish(entityOffset);
+    const buffer = builder.asUint8Array();
+
+    this['tx'].put('${s.name}', data.id, buffer);
+
+    const fbb = ${fbsName}.getRootAs${s.name}(new ByteBuffer(buffer));
+
+    return new ${nodeName}(this['tx'], fbb, this['authContext']);
+  }
+`;
+        return `
+export class ${s.name}Collection<TActor> extends ZgCollection<${fbsName}, ${nodeName}> {
+  ${addMethod}
+}
+  `;
+      })
+      .join("\n\n");
+    return `// --- Collection Classes ---\n\n${collections}`;
   }
 }

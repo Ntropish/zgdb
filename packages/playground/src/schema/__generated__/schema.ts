@@ -661,19 +661,24 @@ export class PostTagNode<TActor> extends ZgBaseNode<
 
 // --- Collection Classes ---
 
+
 export class UserCollection<TActor> extends ZgCollection<UserFB.User, UserNode<TActor>> {
+  
   add(data: CreateUserInput & { id: string }): UserNode<TActor> {
+    if (!this['tx'].checkPolicy('User', 'create', undefined, data)) {
+      throw new Error("Unauthorized");
+    }
     const builder = new Builder(1024);
-    const avatarUrlOffset = data.avatarUrl ? builder.createString(data.avatarUrl) : 0;
-    const displayNameOffset = data.displayName ? builder.createString(data.displayName) : 0;
     const idOffset = data.id ? builder.createString(data.id) : 0;
     const publicKeyOffset = data.publicKey ? builder.createString(data.publicKey) : 0;
+    const displayNameOffset = data.displayName ? builder.createString(data.displayName) : 0;
+    const avatarUrlOffset = data.avatarUrl ? builder.createString(data.avatarUrl) : 0;
 
     UserFB.User.startUser(builder);
-    UserFB.User.addAvatarUrl(builder, avatarUrlOffset);
-    UserFB.User.addDisplayName(builder, displayNameOffset);
-    UserFB.User.addId(builder, idOffset);
+        UserFB.User.addId(builder, idOffset);
     UserFB.User.addPublicKey(builder, publicKeyOffset);
+    UserFB.User.addDisplayName(builder, displayNameOffset);
+    UserFB.User.addAvatarUrl(builder, avatarUrlOffset);
     const entityOffset = UserFB.User.endUser(builder);
 
     builder.finish(entityOffset);
@@ -685,24 +690,29 @@ export class UserCollection<TActor> extends ZgCollection<UserFB.User, UserNode<T
 
     return new UserNode<TActor>(this['tx'], fbb, this['authContext']);
   }
+
 }
   
 
 
 export class PostCollection<TActor> extends ZgCollection<PostFB.Post, PostNode<TActor>> {
+  
   add(data: CreatePostInput & { id: string }): PostNode<TActor> {
+    if (!this['tx'].checkPolicy('Post', 'create', undefined, data)) {
+      throw new Error("Unauthorized");
+    }
     const builder = new Builder(1024);
-    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
-    const contentOffset = data.content ? builder.createString(data.content) : 0;
     const idOffset = data.id ? builder.createString(data.id) : 0;
     const titleOffset = data.title ? builder.createString(data.title) : 0;
+    const contentOffset = data.content ? builder.createString(data.content) : 0;
+    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
 
     PostFB.Post.startPost(builder);
-    PostFB.Post.addAuthorId(builder, authorIdOffset);
-    PostFB.Post.addContent(builder, contentOffset);
-    PostFB.Post.addCreatedAt(builder, data.createdAt);
-    PostFB.Post.addId(builder, idOffset);
+        PostFB.Post.addId(builder, idOffset);
     PostFB.Post.addTitle(builder, titleOffset);
+    PostFB.Post.addContent(builder, contentOffset);
+    PostFB.Post.addAuthorId(builder, authorIdOffset);
+    PostFB.Post.addCreatedAt(builder, data.createdAt);
     const entityOffset = PostFB.Post.endPost(builder);
 
     builder.finish(entityOffset);
@@ -714,24 +724,29 @@ export class PostCollection<TActor> extends ZgCollection<PostFB.Post, PostNode<T
 
     return new PostNode<TActor>(this['tx'], fbb, this['authContext']);
   }
+
 }
   
 
 
 export class CommentCollection<TActor> extends ZgCollection<CommentFB.Comment, CommentNode<TActor>> {
+  
   add(data: CreateCommentInput & { id: string }): CommentNode<TActor> {
+    if (!this['tx'].checkPolicy('Comment', 'create', undefined, data)) {
+      throw new Error("Unauthorized");
+    }
     const builder = new Builder(1024);
-    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
-    const contentOffset = data.content ? builder.createString(data.content) : 0;
     const idOffset = data.id ? builder.createString(data.id) : 0;
+    const contentOffset = data.content ? builder.createString(data.content) : 0;
+    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
     const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
 
     CommentFB.Comment.startComment(builder);
-    CommentFB.Comment.addAuthorId(builder, authorIdOffset);
+        CommentFB.Comment.addId(builder, idOffset);
     CommentFB.Comment.addContent(builder, contentOffset);
-    CommentFB.Comment.addCreatedAt(builder, data.createdAt);
-    CommentFB.Comment.addId(builder, idOffset);
+    CommentFB.Comment.addAuthorId(builder, authorIdOffset);
     CommentFB.Comment.addPostId(builder, postIdOffset);
+    CommentFB.Comment.addCreatedAt(builder, data.createdAt);
     const entityOffset = CommentFB.Comment.endComment(builder);
 
     builder.finish(entityOffset);
@@ -743,22 +758,27 @@ export class CommentCollection<TActor> extends ZgCollection<CommentFB.Comment, C
 
     return new CommentNode<TActor>(this['tx'], fbb, this['authContext']);
   }
+
 }
   
 
 
 export class FollowCollection<TActor> extends ZgCollection<FollowFB.Follow, FollowNode<TActor>> {
+  
   add(data: CreateFollowInput & { id: string }): FollowNode<TActor> {
+    if (!this['tx'].checkPolicy('Follow', 'create', undefined, data)) {
+      throw new Error("Unauthorized");
+    }
     const builder = new Builder(1024);
+    const idOffset = data.id ? builder.createString(data.id) : 0;
     const followerIdOffset = data.followerId ? builder.createString(data.followerId) : 0;
     const followingIdOffset = data.followingId ? builder.createString(data.followingId) : 0;
-    const idOffset = data.id ? builder.createString(data.id) : 0;
 
     FollowFB.Follow.startFollow(builder);
-    FollowFB.Follow.addCreatedAt(builder, data.createdAt);
+        FollowFB.Follow.addId(builder, idOffset);
     FollowFB.Follow.addFollowerId(builder, followerIdOffset);
     FollowFB.Follow.addFollowingId(builder, followingIdOffset);
-    FollowFB.Follow.addId(builder, idOffset);
+    FollowFB.Follow.addCreatedAt(builder, data.createdAt);
     const entityOffset = FollowFB.Follow.endFollow(builder);
 
     builder.finish(entityOffset);
@@ -770,26 +790,31 @@ export class FollowCollection<TActor> extends ZgCollection<FollowFB.Follow, Foll
 
     return new FollowNode<TActor>(this['tx'], fbb, this['authContext']);
   }
+
 }
   
 
 
 export class ImageCollection<TActor> extends ZgCollection<ImageFB.Image, ImageNode<TActor>> {
+  
   add(data: CreateImageInput & { id: string }): ImageNode<TActor> {
+    if (!this['tx'].checkPolicy('Image', 'create', undefined, data)) {
+      throw new Error("Unauthorized");
+    }
     const builder = new Builder(1024);
-    const altTextOffset = data.altText ? builder.createString(data.altText) : 0;
     const idOffset = data.id ? builder.createString(data.id) : 0;
-    const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
     const urlOffset = data.url ? builder.createString(data.url) : 0;
+    const altTextOffset = data.altText ? builder.createString(data.altText) : 0;
+    const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
     const userIdOffset = data.userId ? builder.createString(data.userId) : 0;
 
     ImageFB.Image.startImage(builder);
-    ImageFB.Image.addAltText(builder, altTextOffset);
+        ImageFB.Image.addId(builder, idOffset);
+    ImageFB.Image.addUrl(builder, urlOffset);
     ImageFB.Image.addFartCount(builder, data.fartCount);
-    ImageFB.Image.addId(builder, idOffset);
+    ImageFB.Image.addAltText(builder, altTextOffset);
     ImageFB.Image.addMetadata(builder, data.metadata);
     ImageFB.Image.addPostId(builder, postIdOffset);
-    ImageFB.Image.addUrl(builder, urlOffset);
     ImageFB.Image.addUserId(builder, userIdOffset);
     const entityOffset = ImageFB.Image.endImage(builder);
 
@@ -802,25 +827,30 @@ export class ImageCollection<TActor> extends ZgCollection<ImageFB.Image, ImageNo
 
     return new ImageNode<TActor>(this['tx'], fbb, this['authContext']);
   }
+
 }
   
 
 
 export class ReactionCollection<TActor> extends ZgCollection<ReactionFB.Reaction, ReactionNode<TActor>> {
+  
   add(data: CreateReactionInput & { id: string }): ReactionNode<TActor> {
+    if (!this['tx'].checkPolicy('Reaction', 'create', undefined, data)) {
+      throw new Error("Unauthorized");
+    }
     const builder = new Builder(1024);
-    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
     const idOffset = data.id ? builder.createString(data.id) : 0;
+    const typeOffset = data.type ? builder.createString(data.type) : 0;
+    const authorIdOffset = data.authorId ? builder.createString(data.authorId) : 0;
     const targetIdOffset = data.targetId ? builder.createString(data.targetId) : 0;
     const targetTypeOffset = data.targetType ? builder.createString(data.targetType) : 0;
-    const typeOffset = data.type ? builder.createString(data.type) : 0;
 
     ReactionFB.Reaction.startReaction(builder);
+        ReactionFB.Reaction.addId(builder, idOffset);
+    ReactionFB.Reaction.addType(builder, typeOffset);
     ReactionFB.Reaction.addAuthorId(builder, authorIdOffset);
-    ReactionFB.Reaction.addId(builder, idOffset);
     ReactionFB.Reaction.addTargetId(builder, targetIdOffset);
     ReactionFB.Reaction.addTargetType(builder, targetTypeOffset);
-    ReactionFB.Reaction.addType(builder, typeOffset);
     const entityOffset = ReactionFB.Reaction.endReaction(builder);
 
     builder.finish(entityOffset);
@@ -832,18 +862,23 @@ export class ReactionCollection<TActor> extends ZgCollection<ReactionFB.Reaction
 
     return new ReactionNode<TActor>(this['tx'], fbb, this['authContext']);
   }
+
 }
   
 
 
 export class TagCollection<TActor> extends ZgCollection<TagFB.Tag, TagNode<TActor>> {
+  
   add(data: CreateTagInput & { id: string }): TagNode<TActor> {
+    if (!this['tx'].checkPolicy('Tag', 'create', undefined, data)) {
+      throw new Error("Unauthorized");
+    }
     const builder = new Builder(1024);
     const idOffset = data.id ? builder.createString(data.id) : 0;
     const nameOffset = data.name ? builder.createString(data.name) : 0;
 
     TagFB.Tag.startTag(builder);
-    TagFB.Tag.addId(builder, idOffset);
+        TagFB.Tag.addId(builder, idOffset);
     TagFB.Tag.addName(builder, nameOffset);
     const entityOffset = TagFB.Tag.endTag(builder);
 
@@ -856,19 +891,24 @@ export class TagCollection<TActor> extends ZgCollection<TagFB.Tag, TagNode<TActo
 
     return new TagNode<TActor>(this['tx'], fbb, this['authContext']);
   }
+
 }
   
 
 
 export class PostTagCollection<TActor> extends ZgCollection<PostTagFB.PostTag, PostTagNode<TActor>> {
+  
   add(data: CreatePostTagInput & { id: string }): PostTagNode<TActor> {
+    if (!this['tx'].checkPolicy('PostTag', 'create', undefined, data)) {
+      throw new Error("Unauthorized");
+    }
     const builder = new Builder(1024);
     const idOffset = data.id ? builder.createString(data.id) : 0;
     const postIdOffset = data.postId ? builder.createString(data.postId) : 0;
     const tagIdOffset = data.tagId ? builder.createString(data.tagId) : 0;
 
     PostTagFB.PostTag.startPostTag(builder);
-    PostTagFB.PostTag.addId(builder, idOffset);
+        PostTagFB.PostTag.addId(builder, idOffset);
     PostTagFB.PostTag.addPostId(builder, postIdOffset);
     PostTagFB.PostTag.addTagId(builder, tagIdOffset);
     const entityOffset = PostTagFB.PostTag.endPostTag(builder);
@@ -882,6 +922,7 @@ export class PostTagCollection<TActor> extends ZgCollection<PostTagFB.PostTag, P
 
     return new PostTagNode<TActor>(this['tx'], fbb, this['authContext']);
   }
+
 }
   
 
@@ -900,8 +941,9 @@ export class ZgTransactionWithCollections<TActor> extends ZgTransaction {
     db: ZgDatabase,
     tree: any,
     authContext: ZgAuthContext<TActor> | null,
+    config: ZgDbConfiguration,
   ) {
-    super(db, tree, authContext);
+    super(db, tree, authContext, config);
     this.users = new UserCollection<TActor>(this, 'User', (tx, fbb: UserFB.User, ac) => new UserNode<TActor>(tx as ZgTransactionWithCollections<TActor>, fbb, ac), (bb) => UserFB.User.getRootAsUser(bb), this.authContext);
     this.posts = new PostCollection<TActor>(this, 'Post', (tx, fbb: PostFB.Post, ac) => new PostNode<TActor>(tx as ZgTransactionWithCollections<TActor>, fbb, ac), (bb) => PostFB.Post.getRootAsPost(bb), this.authContext);
     this.comments = new CommentCollection<TActor>(this, 'Comment', (tx, fbb: CommentFB.Comment, ac) => new CommentNode<TActor>(tx as ZgTransactionWithCollections<TActor>, fbb, ac), (bb) => CommentFB.Comment.getRootAsComment(bb), this.authContext);
