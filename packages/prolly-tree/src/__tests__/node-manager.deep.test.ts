@@ -1,14 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { NodeManager } from "../node-manager.js";
 import { BlockManager } from "../block-store.js";
-import { KeyValuePair } from "../node-proxy.js";
 import { Configuration, defaultConfiguration } from "../configuration.js";
 import { fromString } from "uint8arrays/from-string";
 import { ProllyTree } from "../prolly-tree.js";
 import { faker } from "@faker-js/faker";
 import { sampleSize } from "lodash-es";
-import { logTree } from "./logTree.js";
-import { toString } from "uint8arrays";
 
 const generateManuscriptData = (count: number) => {
   return Array.from({ length: count }, () => ({
