@@ -78,6 +78,7 @@ You will need the following software installed on your machine:
 
 - [Node.js](https://nodejs.org/) (v18 or higher)
 - [pnpm](https://pnpm.io/installation)
+- [Vite](https://vitejs.dev/) for the recommended build process.
 - The **FlatBuffers Compiler (`flatc`)**. This is a critical dependency for generating the database serialization code.
 
 <details>
@@ -108,7 +109,7 @@ winget install Google.Flatbuffers
 ### 2. Installation & Setup
 
 ```sh
-npm install @zgdb/generate @zgdb/client flatbuffers
+pnpm install @zgdb/client @zgdb/vite-plugin zod flatbuffers
 ```
 
 ### 3. Schema Definition In-Depth
@@ -188,15 +189,30 @@ relationships: {
 },
 ```
 
-### 4. Build the Database Client
+### 4. Configure the Vite Plugin
 
-Run the build command from the root of the project. This will parse your schema and generate the database client.
+The recommended way to build the database client is by using the official Vite plugin. This will automatically rebuild your client whenever your schema files change.
 
-```sh
-pnpm build
+Add the plugin to your `vite.config.ts`:
+
+```typescript
+// vite.config.ts
+import { defineConfig } from "vite";
+import { resolve } from "path";
+import { zgdb } from "@zgdb/vite-plugin";
+
+export default defineConfig({
+  plugins: [
+    zgdb({
+      schema: resolve(__dirname, "src/schema/index.ts"), // Path to your schema entry file
+      output: resolve(__dirname, "src/schema/__generated__"), // Path to the output directory
+    }),
+  ],
+  // ... other vite config
+});
 ```
 
-This command triggers a process that finds your schema, validates it, and generates all the necessary files into the `src/schema/__generated__/` directory within the corresponding package (e.g., `packages/playground/src/schema/__generated__/`).
+With this in place, running `vite dev` will watch your schema for changes, and `vite build` will generate the client as part of your production build.
 
 ### 5. Generated Client API Reference
 
