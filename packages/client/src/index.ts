@@ -57,7 +57,7 @@ export class ZgBaseNode<
         builder.finish(entityOffset);
         const buffer = builder.asUint8Array();
 
-        target.tx.put(target.schema.name, target.id, buffer);
+        target.tx.put(target.schema.name, newData.id, buffer);
 
         const newFbb = target.schema.getRootAs(new ByteBuffer(buffer));
         target.fbb = newFbb;
@@ -143,6 +143,10 @@ export class ZgClient<TTransaction extends ZgTransaction> {
     this.transactionFactory = transactionFactory;
   }
 
+  public getRoot(): any | null {
+    return this.db.getRoot();
+  }
+
   public async createTransaction<TActor = any>(options: {
     actor: TActor;
   }): Promise<TTransaction> {
@@ -155,7 +159,7 @@ export class ZgClient<TTransaction extends ZgTransaction> {
 
 export async function createDB<TActor, TTransaction extends ZgTransaction>(
   schema: ZgDbSchema<TTransaction, TActor>,
-  options?: any
+  options?: { blockManager?: BlockManager; root?: any }
 ): Promise<ZgClient<TTransaction>> {
   const db = new ZgDatabase(options);
   const transactionFactory = (
@@ -173,21 +177,33 @@ export class ZgDatabase {
   private tree: ProllyTree | null = null;
   private blockManager: BlockManager;
   private config: any;
+  private initialRoot: any | null = null;
 
   public static textToKey(text: string): Uint8Array {
     return encoder.encode(text);
   }
 
-  constructor(options?: any) {
+  constructor(options?: { blockManager?: BlockManager; root?: any }) {
     this.config = options;
-    this.blockManager = new BlockManager();
+    this.blockManager = options?.blockManager || new BlockManager();
+    if (options?.root) {
+      this.initialRoot = options.root;
+    }
   }
 
   private async getTree(): Promise<ProllyTree> {
     if (!this.tree) {
-      this.tree = await ProllyTree.create(this.blockManager);
+      if (this.initialRoot) {
+        this.tree = await ProllyTree.load(this.initialRoot, this.blockManager);
+      } else {
+        this.tree = await ProllyTree.create(this.blockManager);
+      }
     }
     return this.tree;
+  }
+
+  public getRoot(): any | null {
+    return this.tree ? this.tree.root : null;
   }
 
   public async createTransaction<
@@ -265,6 +281,7 @@ export class ZgTransaction {
     const key = ZgDatabase.textToKey(`${entityName}:${id}`);
     const keyStr = decoder.decode(key);
     this.writeCache.set(keyStr, data);
+    this.tree.put(key, data);
   }
 
   *scan(

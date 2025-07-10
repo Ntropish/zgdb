@@ -261,6 +261,9 @@ importers:
       '@zgdb/generate':
         specifier: workspace:*
         version: link:../generate
+      '@zgdb/prolly-tree':
+        specifier: workspace:*
+        version: link:../prolly-tree
       '@zgdb/vite-plugin':
         specifier: workspace:*
         version: link:../vite-plugin

@@ -1,14 +1,17 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ZgClient, createDB } from "@zgdb/client";
 import { DB } from "../schema/__generated__/schema.js";
+import { BlockManager } from "@zgdb/prolly-tree";
 
 // This test suite is aspirational. It is written against the API described
 // in MISSION.md and is designed to fail until all features are implemented.
 
 let db: ZgClient<any>;
+let blockManager: BlockManager;
 
 beforeEach(async () => {
-  db = await createDB(DB);
+  blockManager = new BlockManager();
+  db = await createDB(DB, { blockManager });
 });
 
 describe("ZG Client: Relationships", () => {
@@ -76,12 +79,14 @@ describe("ZG Client: Relationships", () => {
     // 4. Fetch the post again to ensure the change was persisted in the cache
     const updatedPost = tx.posts.get("post-to-update");
     expect(updatedPost).toBeDefined();
-    expect(updatedPost!.title).toBe("Updated Title");
+    expect(updatedPost.title).toBe("Updated Title");
 
     // 5. Commit and fetch from a new instance to ensure it was written to the tree
     await tx.commit();
 
-    const db2 = await createDB(DB);
+    const root = db.getRoot();
+
+    const db2 = await createDB(DB, { blockManager, root });
     const tx2 = await db2.createTransaction({ actor: { id: "system" } });
     const finalPost = tx2.posts.get("post-to-update");
     expect(finalPost).toBeDefined();
