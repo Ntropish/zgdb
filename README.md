@@ -10,11 +10,25 @@ See our detailed [**MISSION.md**](./MISSION.md) for a deeper dive into the philo
 
 - **Schema-First Development:** Define your data models, relationships, and business logic in plain TypeScript using `zod` and a simple `EntityDef` object. This is the single source of truth for your database.
 - **Zero-Effort Code Generation:** Configure the Vite plugin so that ZG automatically generates a high-performance Flatbuffers schema and a fully-typed TypeScript client tailored to your schema.
-- **Synchronous API & Live Objects:** The generated client provides a fully synchronous API. It feels like interacting with simple in-memory objects, keeping your UI and business logic clean. When you access a node, you get a "live" proxy:
-  - Reading a property is a zero-copy read: `console.log(post.title)`
-  - Assigning a property is a synchronous write: `post.title = 'New Title'`
-  - Traversing a relationship is a synchronous property access: `const author = post.author`
-- **High-Performance Backend:** Under the hood, ZG uses Flatbuffers for efficient, zero-copy serialization and Deserialization, ensuring minimal latency.
+- **Transactional & Synchronous API:** The API is designed to be safe and predictable. All database operations must be performed inside a transaction. Within that transaction, the API is fully synchronous and feels like interacting with simple in-memory objects:
+
+  ```typescript
+  await db.transaction(async (tx) => {
+    const post = tx.posts.get("post-123");
+    if (!post) return;
+
+    // Reading a property is a zero-copy read
+    console.log(post.title);
+
+    // Assigning a property is a synchronous write
+    post.title = "New Title";
+
+    // Traversing a relationship is a synchronous property access
+    const author = post.author;
+  });
+  ```
+
+- **High-Performance Backend:** Under the hood, ZG uses Flatbuffers for efficient, zero-copy serialization and deserialization, ensuring minimal latency.
 
 ## Architecture
 
@@ -22,18 +36,18 @@ ZG is a monorepo containing a suite of packages that work together to provide a 
 
 ```mermaid
 graph TD;
-    subgraph "Developer Experience";
+    subgraph Developer Experience
         A["Schema Definition<br/>(User-written *.ts files using Zod)"] --> B["@zgdb/generate<br/>(Schema Parser &<br/>Code Generator)"];
     end
 
-    subgraph "Generation & Build Time";
+    subgraph "Generation & Build Time"
         B --> C["@zgdb/fbs-builder<br/>(Generates .fbs schema string)"];
         C --> D["flatc<br/>(FlatBuffers Compiler)"];
         D --> E["Generated FB Bindings<br/>(Low-level TS code)"];
         B --> F["Generated Client<br/>(High-level, typed TS code:<br/>createDB, collections, node proxies)"];
     end
 
-    subgraph "Application Runtime";
+    subgraph "Application Runtime"
         G["Your Application Code"] --> F;
         F --> H["@zgdb/client<br/>(ZgDatabase, Proxy Handler)"];
         H --> I["@zgdb/prolly-tree<br/>(Synchronous Storage Engine)"];
@@ -99,7 +113,7 @@ npm install @zgdb/generate @zgdb/client flatbuffers
 
 ### 3. Schema Definition In-Depth
 
-The schema is the heart of your project. You define entities as an array of `EntityDef` objects. You can see a complete example in `packages/zg-playground/src/schema/`.
+The schema is the heart of your project. You define entities as an array of `EntityDef` objects. You can see a complete example in `packages/playground/src/schema/`.
 
 An `EntityDef` object has the following structure:
 
@@ -182,27 +196,43 @@ Run the build command from the root of the project. This will parse your schema 
 pnpm build
 ```
 
-This command triggers a process that finds your schema, validates it, and generates all the necessary files into the `src/schema/__generated__/` directory within the corresponding package (e.g., `packages/zg-playground/src/schema/__generated__/`).
+This command triggers a process that finds your schema, validates it, and generates all the necessary files into the `src/schema/__generated__/` directory within the corresponding package (e.g., `packages/playground/src/schema/__generated__/`).
 
 ### 5. Generated Client API Reference
 
-The build process generates a `createDB` function. This is your main entry point.
+The build process generates a `schema.ts` file which exports all the necessary classes and types for your database. The main entry point for interacting with the database is the `ZgClient` class from `@zgdb/client`.
+
+You typically create a helper function to instantiate the client:
 
 ```typescript
-import { createDB } from "./schema/__generated__/createDB";
+// in src/db.ts
+import { ZgClient, ZgDbConfiguration } from "@zgdb/client";
+import { DB } from "./schema/__generated__/schema.js";
 
-const db = createDB({
-  // Optional config for resolvers
-});
+export function createDB(config?: ZgDbConfiguration) {
+  return new ZgClient(DB.Transaction, { config });
+}
+
+// in your application
+const db = createDB();
 ```
 
-The `db` object is the main interface to your database. It has a property for each entity collection (e.g., `db.users`, `db.posts`).
+The `db` object is the main interface to your database. All data operations are performed within a transaction.
 
-#### **Collection API (`db.posts`)**
+#### **Transactions**
 
-- `create(data)`: Creates a new entity. The `data` object must match the `zod` schema, including the `id`. Returns a "live" proxy to the new record.
+- `db.transaction(callback)`: Executes a transactional callback, providing access to entity collections. All changes are committed when the callback completes.
   ```typescript
-  const newUser = db.users.create({
+  await db.transaction(async (tx) => {
+    // ... do work with tx.posts, tx.users
+  });
+  ```
+
+#### **Collection API (`tx.posts`)**
+
+- `add(data)`: Creates a new entity. The `data` object must match the `Create<Entity>Input` type from the generated schema, including the `id`. Returns a "live" proxy to the new record.
+  ```typescript
+  const newUser = tx.users.add({
     id: "user-123",
     displayName: "Alice",
     // ... other fields
@@ -210,72 +240,91 @@ The `db` object is the main interface to your database. It has a property for ea
   ```
 - `get(id)`: Finds an entity by its primary key. Returns a "live" proxy or `null`.
   ```typescript
-  const foundPost = db.posts.get("post-abc");
+  const foundPost = tx.posts.get("post-abc");
   ```
 - `[Symbol.iterator]()`: Collections are iterable, allowing you to scan all records.
   ```typescript
-  for (const user of db.users) {
+  for (const user of tx.users) {
     console.log(user.displayName);
   }
   ```
 
-#### **Node Proxy API (`post`)**
+#### **Node Proxy API (within a transaction)**
 
-When you `get` or `create` a record, you receive a "live" node proxy.
+When you `get` or `add` a record inside a transaction, you receive a "live" node proxy. All interactions with this proxy must happen within the same transaction.
 
-- **Reading Fields:** Access properties directly. This is a zero-copy read from the underlying buffer.
-  ```typescript
+This means you can read fields, update them, and access relationships synchronously, as shown in the example below:
+
+```typescript
+await db.transaction(async (tx) => {
+  const post = tx.posts.get("post-abc");
+  if (!post) return;
+
+  // Reading fields
   console.log(post.title);
-  ```
-- **Updating Fields:** Assign a new value to a property. This is a synchronous write to the database.
-  ```typescript
+
+  // Updating fields
   post.title = "A New Title";
-  ```
-- **Accessing Relationships:** Access the relationship property directly. This is a synchronous operation that looks up the related node(s).
-  ```typescript
+
+  // Accessing relationships
   const author = post.author; // Returns a User proxy or null
-  const posts = author.posts; // Returns an array of Post proxies
-  ```
+  if (author) {
+    const posts = author.posts; // Returns an array of Post proxies
+  }
+});
+```
 
-### Advanced Concepts: Resolvers
+### Advanced Concepts: Resolvers and Policies
 
-Resolvers are functions that create "computed" properties on your nodes. They can be defined globally or on a per-entity basis. This is useful for business logic, authorization checks, or creating dynamic fields.
+Resolvers and policies are functions that enable computed properties and access control on your nodes. They are passed in a configuration object when creating the database client.
 
 **Example: Adding an `excerpt` to Posts and a global `isOwner` check.**
 
 ```typescript
+import { createDB } from "./db";
+
 const db = createDB({
-  // Global resolvers are available on all nodes
-  globalResolvers: {
-    isOwner: (ctx: { actor: { id: string }; node: any }) => {
-      // 'actor' is provided via db.with()
-      return ctx.actor?.id === ctx.node.authorId;
+  resolvers: {
+    // Global resolvers are available on all nodes
+    global: {
+      isOwner: (ctx: { actor: { id: string }; node: any }) => {
+        // 'actor' is provided via db.with()
+        return ctx.actor?.id === ctx.node.authorId;
+      },
     },
-  },
-  // Entity resolvers are specific to an entity type
-  entityResolvers: {
-    Post: {
-      excerpt: (ctx: { node: { content: string } }) => {
-        return ctx.node.content?.substring(0, 50) ?? "";
+    // Entity resolvers are specific to an entity type
+    entities: {
+      Post: {
+        excerpt: (ctx: { node: { content: string } }) => {
+          return ctx.node.content?.substring(0, 50) ?? "";
+        },
       },
     },
   },
 });
 
-const clientForUserA = db.with({ id: "user-A" });
-const post = clientForUserA.posts.get("post-1");
+// All data access must be within a transaction.
+// The second argument to `transaction` is the auth context.
+await db.transaction(
+  async (tx) => {
+    const post = tx.posts.get("post-1");
 
-// Now you can access these as if they were real fields:
-console.log(post.excerpt);
-console.log(post.isOwner); // true or false
+    // Now you can access these as if they were real fields:
+    if (post) {
+      console.log(post.excerpt); // "A preview of the post..."
+      console.log(post.isOwner); // true or false
+    }
+  },
+  { actor: { id: "user-A" } }
+);
 ```
 
 ## Monorepo Overview
 
 This project is a monorepo managed by pnpm and Turbo. The key packages are:
 
-- `packages/zg`: The home of the `@zgdb/generate` package, the core schema parser and code generator pipeline.
+- `packages/generate`: The home of the `@zgdb/generate` package, the core schema parser and code generator pipeline.
 - `packages/client`: The core (non-generated) runtime client (`@zgdb/client`) that provides the `ZgDatabase` and manages the live object proxies.
 - `packages/fbs-builder`: A helper library for programmatically building Flatbuffer schemas.
 - `packages/prolly-tree`: The underlying storage engine, a Probabilistic B-Tree with a synchronous API.
-- `packages/zg-playground`: An example package that demonstrates how to define a schema and use the generated client.
+- `packages/playground`: An example package that demonstrates how to define a schema and use the generated client.
